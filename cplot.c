@@ -31,11 +31,15 @@ struct $axes* axes_alloc() {
     struct $axes *axes = calloc(1, sizeof(struct $axes));
     axes->borders = ($f4si){0, 0, 1, 1};
     axes->background = -1;
+
     axes->axis  = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
     axes->axis[0] = axis_alloc();
-    axes->axis[0]->line = ($f4si){0, 1, 1, 1};
+    axes->axis[0]->pos = 0;
+    axes->axis[0]->x_or_y = 'y'; // left y-axis
     axes->axis[1] = axis_alloc();
-    axes->axis[1]->line = ($f4si){0, 0, 0, 1};
+    axes->axis[1]->pos = 1;
+    axes->axis[1]->x_or_y = 'x'; // bottom x-axis
+
     axes->ticks = calloc((axes->mem_ticks = 8) + 1, sizeof(void*));
     axes->ticks[0] = ticks_alloc();
     axes->ticks[0]->axis = axes->axis[0];
@@ -68,27 +72,29 @@ static inline $i4si relative_line_topixels($f4si line, $f4si limits, int axeswid
     return normalized_line_topixels(normalize_relative_line(line, limits), axeswidth, axesheight);
 }
 
-void $axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, $f4si limits) {
-    /*$f4si fborders = axis->line;
-    fborders = ($f4si){
-	(fborders[0] - limits[0]) / (limits[2] - limits[0]),
-	(fborders[1] - limits[1]) / (limits[3] - limits[1]),
-	(fborders[2] - limits[0]) / (limits[2] - limits[0]),
-	(fborders[3] - limits[1]) / (limits[3] - limits[1]),
-    };
-    fborders *= __builtin_convertvector(($i4si){axeswidth, axesheight, axeswidth, axesheight}, $f4si);
-    $i4si borders = __builtin_convertvector(fborders, $i4si);*/
-    $i4si borders = relative_line_topixels(axis->line, limits, axeswidth, axesheight);
+static inline $f4si axis_get_line(struct $axis *axis) {
+    switch (axis->x_or_y) {
+	case 'x':
+	    return ($f4si){0, axis->pos, 1, axis->pos};
+	case 'y':
+	    return ($f4si){axis->pos, 0, axis->pos, 1};
+	default:
+	    __builtin_unreachable(); // a bit risky
+    }
+}
 
+void $axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, $f4si limits) {
     float avgsize = (axeswidth + axesheight) * 0.5;
     float thickness = axis->thickness * avgsize;
     if (thickness > 1e-9 && thickness < 1)
 	thickness = 1;
-    draw_thick_line_bresenham(canvas, ystride, borders, axis->color, thickness, axesheight);
+    $f4si line = axis_get_line(axis);
+    $i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
+    draw_thick_line_bresenham(canvas, ystride, line_px, axis->color, thickness, axesheight);
 }
 
 $f4si get_tick_area(struct $ticks *tk) {
-    $f4si area = tk->axis->line;
+    $f4si area = axis_get_line(tk->axis);
     float dx = area[2] - area[0];
     float dy = area[3] - area[1];
     float dxy[] = {dx, dy};
@@ -113,6 +119,24 @@ $f4si get_tick_area(struct $ticks *tk) {
     return area;
 }
 
+int ptrlen(void* vptr) {
+    void **ptr = vptr;
+    int len=0;
+    while(*ptr++) len++;
+    return len;
+}
+
+void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, $f4si limits) {
+    //$i4si line_px = relative_line_topixels(ticks->, limits, axeswidth, axesheight);
+}
+
+$f4si get_tick_line(int ind, struct $ticks *ticks, $f4si limits, $f4si laatikko) {
+    float pos = ticks->get_ticks(ind, ticks->axis->min, ticks->axis->max);
+    float ero = ticks->axis->max = ticks->axis->min;
+    float rel = (pos - ticks->axis->min) / ero;
+    // kesken
+}
+
 void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     unsigned bg = axes->background;
     for (int j=0; j<axesheight; j++) {
@@ -122,18 +146,21 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
     }
 
     $f4si limits = {0, 0, 1, 1};
-    struct $ticks **tk = axes->ticks;
-    while (*tk) {
-	$f4si tklaatikko = get_tick_area(*tk);
+    int ntickers = ptrlen(axes->ticks);
+    $f4si tklaatikot[ntickers];
+    for (int itick=0; itick<ntickers; itick++) {
+	$f4si tklaatikko = get_tick_area(axes->ticks[itick]);
 	if (tklaatikko[0] < limits[0]) limits[0] = tklaatikko[0];
 	if (tklaatikko[1] < limits[1]) limits[1] = tklaatikko[1];
 	if (tklaatikko[2] > limits[2]) limits[2] = tklaatikko[2];
 	if (tklaatikko[3] > limits[3]) limits[3] = tklaatikko[3];
-	tk++;
+	tklaatikot[itick] = tklaatikko;
     }
 
     for (int i=0; axes->axis[i]; i++)
 	$axis_draw(axes->axis[i], canvas, axeswidth, axesheight, ystride, limits);
+    for (int itk=0; itk<ntickers; itk++) {}
+	
 }
 
 void $show(struct $axes *axes) {

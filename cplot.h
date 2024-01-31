@@ -15,10 +15,10 @@ typedef float $f4si __attribute__((vector_size (16)));
 typedef int $i4si __attribute__((vector_size (16)));
 
 struct $axis {
-    $f4si line;
+    int x_or_y;
+    float pos, min, max;
     unsigned color;
     float thickness;
-    float min, max;
 };
 
 /* crossaxis: Where ticks are parallel to the axis?
@@ -27,7 +27,7 @@ struct $axis {
  */
 struct $ticks {
     struct $axis *axis;
-    int (*get_ticks)(float **out, float min, float max);
+    float (*get_ticks)(int ind, float min, float max);
     unsigned color;
     float crossaxis, length, thickness;
     struct grid {
