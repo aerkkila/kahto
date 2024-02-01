@@ -2,6 +2,7 @@
 #define __cplot_h__
 
 #define $f4si	cplot_f4si
+#define $f2si	cplot_f2si
 #define $i4si	cplot_i4si
 #define $axis	cplot_axis
 #define $ticks	cplot_ticks
@@ -12,6 +13,7 @@
 #define $plot_args	cplot_plot_args
 
 typedef float $f4si __attribute__((vector_size (16)));
+typedef float $f2si __attribute__((vector_size (8)));
 typedef int $i4si __attribute__((vector_size (16)));
 
 struct $axis {
