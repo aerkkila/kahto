@@ -8,6 +8,7 @@
 #define $ticks	cplot_ticks
 #define $axes	cplot_axes
 #define $show	cplot_show
+#define $free	cplot_free
 #define $plot	cplot_plot
 #define $plot_inl	cplot_plot_inl
 #define $plot_args	cplot_plot_args
@@ -69,6 +70,7 @@ static inline struct $axes* $plot_inl(struct $args args) {
 #define cplot_plot(...) $plot_inl((struct $args){__VA_ARGS__})
 
 void $show(struct $axes *axes);
+void $free(struct $axes *axes);
 
 #ifndef using_cplot
 #undef $f4si

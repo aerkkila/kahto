@@ -4,4 +4,5 @@
 int main() {
     struct $axes *axes = $plot(0);
     $show(axes);
+    $free(axes);
 }

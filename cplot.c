@@ -12,6 +12,11 @@
 
 static unsigned fg = 0xff<<24;
 
+static inline int iroundpos(float f) {
+    int a = f;
+    return a + (f-a >= 0.5);
+}
+
 struct $axis* axis_alloc() {
     struct $axis *axis = calloc(1, sizeof(struct $axis));
     axis->color = fg;
@@ -68,15 +73,23 @@ static inline $f4si normalize_relative_line($f4si line, $f4si limits) {
 }
 
 static inline $i4si normalized_line_topixels($f4si line, int axeswidth, int axesheight) {
-    return __builtin_convertvector(line * __builtin_convertvector(($i4si){axeswidth, axesheight, axeswidth, axesheight}, $f4si), $i4si);
+    return ($i4si) {
+	iroundpos(line[0] * (axeswidth-1)),
+	    iroundpos(line[1] * (axesheight-1)),
+	    iroundpos(line[2] * (axeswidth-1)),
+	    iroundpos(line[3] * (axesheight-1))
+    };
 }
 
 static inline $i4si relative_line_topixels($f4si fline, $f4si limits, int axeswidth, int axesheight) {
     $i4si line = normalized_line_topixels(normalize_relative_line(fline, limits), axeswidth, axesheight);
-    if (line[0] < 0) line[0] = 0;
-    if (line[1] < 0) line[1] = 0;
-    if (line[2] > axeswidth) line[2] = axeswidth;
-    if (line[3] > axesheight) line[3] = axesheight;
+    if (line[0] < 0) {line[0] = 0; goto virhe;}
+    if (line[1] < 0) {line[1] = 0; goto virhe;}
+    if (line[2] >= axeswidth) {line[2] = axeswidth-1; goto virhe;}
+    if (line[3] >= axesheight) {line[3] = axesheight-1; goto virhe;}
+    return line;
+virhe: __attribute__((cold));
+    fprintf(stderr, "normalisointi epäonnistui\n");
     return line;
 }
 
@@ -134,14 +147,6 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
     }
 }
 
-$f4si get_tick_line(int ind, struct $ticks *ticks, $f4si limits, $f4si laatikko) {
-    float pos = ticks->get_ticks(ind, ticks->axis->min, ticks->axis->max);
-    float ero = ticks->axis->max = ticks->axis->min;
-    float rel = (pos - ticks->axis->min) / ero;
-    // kesken
-    return ($f4si){0};
-}
-
 void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     unsigned bg = axes->background;
     for (int j=0; j<axesheight; j++) {
@@ -165,6 +170,16 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
     for (int i=0; i<ntickers; i++)
 	$ticks_draw(axes->ticks[i], canvas, axeswidth, axesheight, ystride, limits);
 	
+}
+
+void $free(struct $axes *axes) {
+    struct $ticks **ticks = axes->ticks;
+    while (*ticks) free(*ticks++);
+    free(axes->ticks);
+    struct $axis **axis = axes->axis;
+    while (*axis) free(*axis++);
+    free(axes->axis);
+    free(axes);
 }
 
 void $show(struct $axes *axes) {
