@@ -32,12 +32,12 @@ struct $ticks* ticks_alloc(int have_labels) {
     ticks->color = fg;
     ticks->get_tick = get_tick_basic;
     ticks->get_nticks = get_nticks_basic;
-    ticks->length = 1.0 / 100;
+    ticks->length = 1.0 / 80;
     ticks->thickness = -1; // same as axis
     if (have_labels) {
 	ticks->ttra = calloc(1, sizeof(struct ttra));
 	ttra_init(ticks->ttra);
-	ticks->rowheight = 2*ticks->length;
+	ticks->rowheight = 2.4*ticks->length;
     }
     return ticks;
 }
@@ -175,6 +175,8 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
 	ticks->ttra->h = axesheight; // turha?
 	ticks->ttra->fg_default = ticks->color;
 	ticks->ttra->bg_default = -1;
+	ttra_print(ticks->ttra, "\033[0m");
+	ttra_set_fontheight(ticks->ttra, ticks->rowheight*axesheight);
     }
 
     for (int itick=0; itick<nticks; itick++) {
@@ -188,7 +190,7 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
 	$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
 	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, axesheight);
 	if (ticks->ttra && tick[0])
-	    put_text(ticks->ttra, tick, line[0], line[3], ticks->alignment, 0); // xy ei ole välttämättä oikein
+	    put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->alignment, 0); // xy ei ole välttämättä oikein
     }
 }
 
