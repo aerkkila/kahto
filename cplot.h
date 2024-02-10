@@ -10,12 +10,15 @@
 #define $show	cplot_show
 #define $free	cplot_free
 #define $plot	cplot_plot
+#define $alignment	cplot_alignment
 #define $plot_inl	cplot_plot_inl
 #define $plot_args	cplot_plot_args
 
 typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
 typedef int $i4si __attribute__((vector_size (16)));
+
+enum $alignment {northeast_e, north_e, northwest_e, west_e, southwest_e, south_e, southeast_e, east_e, center_e};
 
 struct $axis {
     int x_or_y;
@@ -30,14 +33,20 @@ struct $axis {
  */
 struct $ticks {
     struct $axis *axis;
-    float (*get_ticks)(int ind, float min, float max);
+    int (*get_nticks)(float min, float max);
+    float (*get_tick)(int ind, float min, float max, char *out, int sizeout);
     unsigned color;
     float crossaxis, length, thickness;
+
     struct grid {
 	unsigned color;
 	float length, thickness;
     } grid;
-    char *labels;
+
+    struct ttra *ttra;
+    enum $alignment alignment;
+    int ascending; // nimiöt tulevat suurempaan päähän
+    float rowheight;
 };
 
 struct $text {

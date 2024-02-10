@@ -1,4 +1,6 @@
 #include <math.h>
+#include <stdio.h>
+#include <ttra.h>
 
 #define Abs(a) ((a) < 0 ? -(a) : (a))
 
@@ -51,4 +53,44 @@ static void draw_thick_line_bresenham(unsigned *data, int win_w, const $i4si xy,
 		D  += D > 0 ? D_add1 : D_add0;
 	    }
     }
+}
+
+static void put_text(struct ttra *ttra, char *text, int x, int y, enum $alignment alignment, float rot) {
+    if (rot != 0)
+	printf("Pyöräytystä ei ole toteutettu\n");
+    int y0;
+    switch (alignment) {
+	default:
+	    y0 = y;
+	    break;
+	case east_e: case center_e: case west_e:
+	    y0 = y - ttra->fontheight * 0.5;
+	    break;
+	case southeast_e: case south_e: case southwest_e:
+	    y0 = y - ttra->fontheight;
+	    break;
+    }
+    if (y0 < 0)
+	return;
+    ttra_set_y0(ttra, y0);
+
+    int x0, width;
+    switch (alignment) {
+	default:
+	    x0 = x;
+	    break;
+	case north_e: case center_e: case south_e:
+	    width = ttra_get_width_pixels(ttra, text);
+	    x0 = x - width*0.5;
+	    break;
+	case southeast_e: case east_e: case northeast_e:
+	    width = ttra_get_width_pixels(ttra, text);
+	    x0 = x - width;
+	    break;
+    }
+    if (x0 < 0)
+	return;
+    ttra_set_x0(ttra, x0);
+    
+    ttra_print(ttra, text);
 }

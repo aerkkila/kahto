@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include <ttra.h>
 
 #define using_cplot
 #include "cplot.h"
@@ -26,12 +27,18 @@ struct $axis* axis_alloc() {
     return axis;
 }
 
-struct $ticks* ticks_alloc() {
+struct $ticks* ticks_alloc(int have_labels) {
     struct $ticks *ticks = calloc(1, sizeof(struct $ticks));
     ticks->color = fg;
-    ticks->get_ticks = get_ticks_basic;
+    ticks->get_tick = get_tick_basic;
+    ticks->get_nticks = get_nticks_basic;
     ticks->length = 1.0 / 100;
     ticks->thickness = -1; // same as axis
+    if (have_labels) {
+	ticks->ttra = calloc(1, sizeof(struct ttra));
+	ttra_init(ticks->ttra);
+	ticks->rowheight = 2*ticks->length;
+    }
     return ticks;
 }
 
@@ -44,17 +51,22 @@ struct $axes* axes_alloc() {
     axes->axis[0] = axis_alloc();
     axes->axis[0]->pos = 1;
     axes->axis[0]->x_or_y = 'x'; // bottom x-axis
+
+    axes->ticks = calloc((axes->mem_ticks = 8) + 1, sizeof(void*));
+    axes->ticks[0] = ticks_alloc(1);
+    axes->ticks[0]->axis = axes->axis[0];
+    axes->ticks[0]->crossaxis = 0; // ulkopuolella
+    axes->ticks[0]->alignment = north_e;
+    axes->ticks[0]->ascending = 1;
+
     axes->axis[1] = axis_alloc();
     axes->axis[1]->pos = 0;
     axes->axis[1]->x_or_y = 'y'; // left y-axis
 
-    axes->ticks = calloc((axes->mem_ticks = 8) + 1, sizeof(void*));
-    axes->ticks[0] = ticks_alloc();
-    axes->ticks[0]->axis = axes->axis[0];
-    axes->ticks[0]->crossaxis = 0; // ulkopuolella
-    axes->ticks[1] = ticks_alloc();
+    axes->ticks[1] = ticks_alloc(1);
     axes->ticks[1]->axis = axes->axis[1];
     axes->ticks[1]->crossaxis = -1; // ulkopuolella
+    axes->ticks[1]->alignment = east_e; // muuttakaani myöhemmin
     return axes;
 }
 
@@ -95,12 +107,9 @@ virhe: __attribute__((cold));
 
 static inline $f4si axis_get_line(struct $axis *axis) {
     switch (axis->x_or_y) {
-	case 'x':
-	    return ($f4si){0, axis->pos, 1, axis->pos};
-	case 'y':
-	    return ($f4si){axis->pos, 0, axis->pos, 1};
-	default:
-	    __builtin_unreachable();
+	case 'x': return ($f4si){0, axis->pos, 1, axis->pos};
+	case 'y': return ($f4si){axis->pos, 0, axis->pos, 1};
+	default: __builtin_unreachable();
     }
 }
 
@@ -117,6 +126,29 @@ static inline $f2si get_ticks_orthogonal(struct $ticks *tk) {
     return ($f2si){tk->axis->pos, tk->axis->pos + tk->length} + tk->crossaxis * tk->length;
 }
 
+static inline $f2si get_ticklabel_limits(struct $ticks *tk) {
+    $f2si lim2 = ($f2si){tk->axis->pos, tk->axis->pos + tk->length} + tk->crossaxis * tk->length;
+    if (!tk->get_nticks)
+	return lim2;
+    float min = tk->axis->min,
+	  max = tk->axis->max;
+    int nlabels = tk->get_nticks(min, max);
+    char out[128];
+    int maxcols=0, maxrows=0;
+    for (int i=0; i<nlabels; i++) {
+	int width, height;
+	tk->get_tick(i, min, max, out, 128);
+	ttra_get_textdims_chars(out, &width, &height);
+	if (height > maxrows)
+	    maxrows = height;
+    }
+    if (tk->ascending)
+	lim2[1] += maxrows * tk->rowheight; // alignment?
+    else
+	lim2[0] -= maxrows * tk->rowheight; // alignment?
+    return lim2;
+}
+
 int ptrlen(void* vptr) {
     void **ptr = vptr;
     int len=0;
@@ -128,14 +160,25 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
     $f2si ort = get_ticks_orthogonal(ticks);
     float min = ticks->axis->min;
     float max = ticks->axis->max;
-    int nticks = ticks->get_ticks(-1, min, max);
+    int nticks = ticks->get_nticks(min, max);
     float thickness = ticks->thickness < 0 ? ticks->axis->thickness * -ticks->thickness : ticks->thickness;
     thickness *= min(axeswidth, axesheight);
     if (thickness > 1e-9 && thickness < 1)
 	thickness = 1;
 
+    char tick[32];
+    if (ticks->ttra) {
+	ticks->ttra->canvas = canvas;
+	ticks->ttra->realw = axeswidth;
+	ticks->ttra->realh = axesheight;
+	ticks->ttra->w = axeswidth; // turha?
+	ticks->ttra->h = axesheight; // turha?
+	ticks->ttra->fg_default = ticks->color;
+	ticks->ttra->bg_default = -1;
+    }
+
     for (int itick=0; itick<nticks; itick++) {
-	float pos = ticks->get_ticks(itick, min, max);
+	float pos = ticks->get_tick(itick, min, max, tick, 32);
 	$f4si line;
 	switch (ticks->axis->x_or_y) {
 	    case 'x': line = ($f4si){pos, ort[0], pos, ort[1]}; break;
@@ -144,6 +187,8 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
 	}
 	$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
 	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, axesheight);
+	if (ticks->ttra && tick[0])
+	    put_text(ticks->ttra, tick, line[0], line[3], ticks->alignment, 0); // xy ei ole välttämättä oikein
     }
 }
 
@@ -158,7 +203,7 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
     $f4si limits = {0, 0, 1, 1};
     int ntickers = ptrlen(axes->ticks);
     for (int itick=0; itick<ntickers; itick++) {
-	$f2si par = get_ticks_orthogonal(axes->ticks[itick]);
+	$f2si par = get_ticklabel_limits(axes->ticks[itick]);
 	int coord = axes->ticks[itick]->axis->x_or_y == 'x'; // ticks are orthogonal to this
 	if (par[0] < limits[0+coord]) limits[0+coord] = par[0];
 	if (par[1] > limits[2+coord]) limits[2+coord] = par[1];
@@ -174,7 +219,13 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
 
 void $free(struct $axes *axes) {
     struct $ticks **ticks = axes->ticks;
-    while (*ticks) free(*ticks++);
+    while (*ticks) {
+	if (ticks[0]->ttra) {
+	    ttra_destroy(ticks[0]->ttra);
+	    free(ticks[0]->ttra);
+	}
+	free(*ticks++);
+    }
     free(axes->ticks);
     struct $axis **axis = axes->axis;
     while (*axis) free(*axis++);
