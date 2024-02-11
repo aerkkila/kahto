@@ -89,7 +89,7 @@ static void put_text(struct ttra *ttra, char *text, int x, int y, enum $alignmen
 	    break;
     }
     if (x0 < 0)
-	return;
+	x0 = 0;
     ttra_set_x0(ttra, x0);
     
     ttra_print(ttra, text);

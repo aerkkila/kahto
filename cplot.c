@@ -18,6 +18,11 @@ static inline int iroundpos(float f) {
     return a + (f-a >= 0.5);
 }
 
+static inline int iceil(float f) {
+    int a = f;
+    return a + (a != f);
+}
+
 struct $axis* axis_alloc() {
     struct $axis *axis = calloc(1, sizeof(struct $axis));
     axis->color = fg;
@@ -114,7 +119,7 @@ static inline $f4si axis_get_line(struct $axis *axis) {
 }
 
 void $axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, $f4si limits) {
-    float thickness = axis->thickness * min(axeswidth, axesheight);
+    float thickness = axis->thickness * axeswidth;
     if (thickness > 1e-9 && thickness < 1)
 	thickness = 1;
     $f4si line = axis_get_line(axis);
@@ -126,8 +131,12 @@ static inline $f2si get_ticks_orthogonal(struct $ticks *tk) {
     return ($f2si){tk->axis->pos, tk->axis->pos + tk->length} + tk->crossaxis * tk->length;
 }
 
-static $f2si get_ticklabel_limits(struct $ticks *tk) {
-    $f2si lim2 = ($f2si){tk->axis->pos, tk->axis->pos + tk->length} + tk->crossaxis * tk->length;
+/* fontheight should equal tk->rowheight but fontsize can differ from the requested size by a few pixels */
+static $f2si get_ticklabel_limits(struct $ticks *tk, int axeswidth, int axesheight, float fontheight) {
+    float axes_ratio = (float)axesheight / axeswidth;
+    $f2si lim2 = get_ticks_orthogonal(tk);
+    if (tk->axis->x_or_y == 'y')
+	lim2 *= axes_ratio;
     if (!tk->get_nticks)
 	return lim2;
     float min = tk->axis->min,
@@ -148,13 +157,13 @@ static $f2si get_ticklabel_limits(struct $ticks *tk) {
 
     switch (tk->axis->x_or_y) {
 	case 'x':
-	    if (tk->ascending)	lim2[1] += maxrows * tk->rowheight; // alignment?
-	    else 		lim2[0] -= maxrows * tk->rowheight; // alignment?
+	    if (tk->ascending)	lim2[1] += maxrows * fontheight; // alignment?
+	    else 		lim2[0] -= maxrows * fontheight; // alignment?
 	    break;
 	case 'y':
-	    float ratio = (float)tk->ttra->fontwidth / tk->ttra->fontheight;
-	    if (tk->ascending)	lim2[1] += maxcols * tk->rowheight * ratio;
-	    else		lim2[0] -= maxcols * tk->rowheight * ratio;
+	    float char_ratio = (float)tk->ttra->fontwidth / tk->ttra->fontheight;
+	    if (tk->ascending)	lim2[1] += maxcols * fontheight * char_ratio * axes_ratio;
+	    else		lim2[0] -= maxcols * fontheight * char_ratio * axes_ratio;
 	    break;
 	default:
 	    __builtin_unreachable();
@@ -173,9 +182,10 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
     $f2si ort = get_ticks_orthogonal(ticks);
     float min = ticks->axis->min;
     float max = ticks->axis->max;
+    float axes_ratio = (float)axesheight / axeswidth;
     int nticks = ticks->get_nticks(min, max);
     float thickness = ticks->thickness < 0 ? ticks->axis->thickness * -ticks->thickness : ticks->thickness;
-    thickness *= min(axeswidth, axesheight);
+    thickness *= axesheight;
     if (thickness > 1e-9 && thickness < 1)
 	thickness = 1;
 
@@ -197,7 +207,7 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
 	$f4si line;
 	switch (ticks->axis->x_or_y) {
 	    case 'x': line = ($f4si){pos, ort[0], pos, ort[1]}; break;
-	    case 'y': line = ($f4si){ort[0], pos, ort[1], pos}; break;
+	    case 'y': line = ($f4si){ort[0] * axes_ratio, pos, ort[1] * axes_ratio, pos}; break;
 	    default: __builtin_unreachable();
 	}
 	$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
@@ -218,9 +228,12 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
     $f4si limits = {0, 0, 1, 1};
     int ntickers = ptrlen(axes->ticks);
     for (int itick=0; itick<ntickers; itick++) {
-	if (axes->ticks[itick]->ttra)
-	    ttra_set_fontheight(axes->ticks[itick]->ttra, axes->ticks[itick]->rowheight * axesheight);
-	$f2si par = get_ticklabel_limits(axes->ticks[itick]);
+	float height = 0;
+	if (axes->ticks[itick]->ttra) {
+	    height = ttra_set_fontheight(axes->ticks[itick]->ttra, axes->ticks[itick]->rowheight * axesheight);
+	    height /= axesheight; // fontheight doesn't necessarily match exactly the requested size
+	}
+	$f2si par = get_ticklabel_limits(axes->ticks[itick], axeswidth, axesheight, height);
 	int coord = axes->ticks[itick]->axis->x_or_y == 'x'; // ticks are orthogonal to this
 	if (par[0] < limits[0+coord]) limits[0+coord] = par[0];
 	if (par[1] > limits[2+coord]) limits[2+coord] = par[1];
