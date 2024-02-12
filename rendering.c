@@ -40,18 +40,25 @@ static void draw_thick_line_bresenham(unsigned *data, int win_w, const $i4si xy,
 	    D += D > 0 ? D_add1 : D_add0;
 	}
 
-	if (nosteep) // (m,n) = (x,y)
-	    for (; m0<=m1; m0++) {
+	/* Miten n0-ehdon saisi ujutettua m0:an? */
+	if (nosteep) { // (m,n) = (x,y)
+	    if (n1 >= win_h)
+		n1 = win_h-1;
+	    for (; m0<=m1 && n0 <= n1; m0++) {
 		data[n0*win_w + m0] = väri;
 		n0 += D > 0 ? n_add : 0;
 		D  += D > 0 ? D_add1 : D_add0;
 	    }
-	else // (m,n) = (y,x)
-	    for (; m0<=m1; m0++) {
+	}
+	else { // (m,n) = (y,x)
+	    if (n1 >= win_w)
+		n1 = win_w-1;
+	    for (; m0<=m1 && n0 <= n1; m0++) {
 		data[m0*win_w + n0] = väri;
 		n0 += D > 0 ? n_add : 0;
 		D  += D > 0 ? D_add1 : D_add0;
 	    }
+	}
     }
 }
 
