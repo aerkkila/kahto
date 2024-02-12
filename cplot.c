@@ -155,8 +155,8 @@ static $f2si get_ticklabel_limits(struct $ticks *tk, int axeswidth, int axesheig
     int nlabels = tk->get_nticks(min, max);
     char out[128];
     int maxcols=0, maxrows=0;
+    int width, height;
     for (int i=0; i<nlabels; i++) {
-	int width, height;
 	tk->get_tick(i, min, max, out, 128);
 	ttra_get_textdims_chars(out, &width, &height);
 	if (height > maxrows)
@@ -174,6 +174,33 @@ static $f2si get_ticklabel_limits(struct $ticks *tk, int axeswidth, int axesheig
 	    break;
     }
     return lim2;
+}
+
+static void get_ticklabel_limits_round2(struct $ticks *tk, int axeswidth, int axesheight, int axis_xywh[4]) {
+    if (!tk->get_nticks)
+	return;
+    float min = tk->axis->min,
+	  max = tk->axis->max;
+
+    int nlabels = tk->get_nticks(min, max);
+    char out[128];
+    int coord = tk->axis->x_or_y == 'y';
+    for (int i=0; i<nlabels; i++) {
+	int wh[2];
+	float pos = tk->get_tick(i, min, max, out, 128);
+	int pos_px = axis_xywh[coord] + iroundpos(pos * (axis_xywh[coord+2]-1));
+	ttra_get_textdims_pixels(tk->ttra, out, wh+0, wh+1);
+	int edge = pos_px - wh[coord] * 0.5;
+	if (edge < 0) {
+	    axis_xywh[coord] += -edge;
+	    axis_xywh[coord+2] -= -edge;
+	    pos_px = axis_xywh[coord] + iroundpos(pos * (axis_xywh[coord+2]-1));
+	}
+	edge = pos_px + wh[coord] * 0.5;
+	int WH[] = {axeswidth, axesheight};
+	if (edge >= WH[coord])
+	    axis_xywh[coord+2] = (WH[coord] - wh[coord] * 0.5 - axis_xywh[coord]) / pos;
+    }
 }
 
 int ptrlen(void* vptr) {
@@ -232,21 +259,24 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
 	    canvas[ind0+i] = bg;
     }
 
-    $f4si overgoing = {0, 0, 0, 0};
+    $f4si overgoing = {0};
     int ntickers = ptrlen(axes->ticks);
     for (int itick=0; itick<ntickers; itick++) {
 	if (axes->ticks[itick]->ttra)
 	    ttra_set_fontheight(axes->ticks[itick]->ttra, axes->ticks[itick]->rowheight * axesheight);
 	$f2si over = get_ticklabel_limits(axes->ticks[itick], axeswidth, axesheight);
 	int coord = axes->ticks[itick]->axis->x_or_y == 'x'; // ticks are orthogonal to this
-	overgoing[coord+0] = max(overgoing[coord+0], over[0]);
-	overgoing[coord+2] = max(overgoing[coord+2], over[1]);
+	overgoing[coord+0]  = max(overgoing[coord+0], over[0]);
+	overgoing[coord+2]  = max(overgoing[coord+2], over[1]);
     }
 
     overgoing *= (float)axesheight; // to pixels
     int axis_xywh[4] = {iceil(overgoing[0]), iceil(overgoing[1])};
     axis_xywh[2] = axeswidth - axis_xywh[0] - iceil(overgoing[2]);
     axis_xywh[3] = axesheight - axis_xywh[1] - iceil(overgoing[3]);
+
+    for (int itick=0; itick<ntickers; itick++)
+	get_ticklabel_limits_round2(axes->ticks[itick], axeswidth, axesheight, axis_xywh);
 
     for (int i=0; axes->axis[i]; i++)
 	$axis_draw(axes->axis[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
