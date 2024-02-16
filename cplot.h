@@ -4,6 +4,7 @@
 #define $f4si	cplot_f4si
 #define $f2si	cplot_f2si
 #define $i4si	cplot_i4si
+#define $i2si	cplot_i2si
 #define $axis	cplot_axis
 #define $ticks	cplot_ticks
 #define $axes	cplot_axes
@@ -17,6 +18,7 @@
 typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
 typedef int $i4si __attribute__((vector_size (16)));
+typedef int $i2si __attribute__((vector_size (8)));
 
 enum $alignment {northeast_e, north_e, northwest_e, west_e, southwest_e, south_e, southeast_e, east_e, center_e};
 
@@ -46,6 +48,7 @@ struct $ticks {
 };
 
 struct $axis {
+    struct $axes *axes;
     int x_or_y;
     float pos, min, max;
     unsigned color;
@@ -69,6 +72,7 @@ struct $axes {
     struct $axis **axis;
     int naxis, mem_axis;
     unsigned background;
+    struct ttra *ttra;
 };
 
 struct $args {

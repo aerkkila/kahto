@@ -26,8 +26,10 @@ static inline int iceil(float f) {
     return a + (a != f);
 }
 
-struct $axis* axis_alloc() {
+struct $axis* axis_alloc(struct $axes *axes) {
     struct $axis *axis = calloc(1, sizeof(struct $axis));
+    axis->axes = axes;
+    axes->naxis++;
     axis->color = fg;
     axis->thickness = 1.0 / 400;
     axis->min = 0;
@@ -76,19 +78,20 @@ struct $axes* axes_alloc() {
     axes->background = -1;
 
     axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
-    axes->axis[0] = axis_alloc();
-    axes->naxis++;
+    axes->axis[0] = axis_alloc(axes);
     axes->axis[0]->x_or_y = 'x'; // bottom x-axis
     axes->axis[0]->pos = 1;
     axes->axis[0]->ticks[0] = ticks_alloc(axes->axis[0], 1);
     axes->axis[0]->nticks++;
 
-    axes->axis[1] = axis_alloc();
-    axes->naxis++;
+    axes->axis[1] = axis_alloc(axes);
     axes->axis[1]->x_or_y = 'y'; // left y-axis
     axes->axis[1]->pos = 0;
     axes->axis[1]->ticks[0] = ticks_alloc(axes->axis[1], 1);
     axes->axis[1]->nticks++;
+
+    axes->ttra = calloc(1, sizeof(struct ttra));
+    ttra_init(axes->ttra);
 
     return axes;
 }
@@ -98,7 +101,7 @@ struct $axes* $plot_args(struct $args *args) {
     return axes;
 }
 
-void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
+$i2si $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
     float min = ticks->axis->min;
     float max = ticks->axis->max;
     int nticks = ticks->get_nticks(min, max);
@@ -120,16 +123,17 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
 	ttra_set_fontheight(ticks->ttra, ticks->rowheight*axesheight);
     }
 
+    int ortc = ticks->axis->x_or_y == 'x';
+    $i4si line_px;
+    line_px[ortc] = axis_xywh[ortc] +
+	iroundpos(ticks->axis->pos * axis_xywh[ortc+2] + ticks->crossaxis * ticks->length * axesheight);
+    line_px[ortc+2] = axis_xywh[ortc] +
+	iroundpos(ticks->axis->pos * axis_xywh[ortc+2] + (ticks->crossaxis+1) * ticks->length * axesheight);
+
     for (int itick=0; itick<nticks; itick++) {
 	float pos = ticks->get_tick(itick, min, max, tick, 32);
-	int ortc = ticks->axis->x_or_y == 'x';
 	if (!ortc)
 	    pos = 1 - pos;
-	$i4si line_px;
-	line_px[ortc] = axis_xywh[ortc] +
-	    iroundpos(ticks->axis->pos * axis_xywh[ortc+2] + ticks->crossaxis * ticks->length * axesheight);
-	line_px[ortc+2] = axis_xywh[ortc] +
-	    iroundpos(ticks->axis->pos * axis_xywh[ortc+2] + (ticks->crossaxis+1) * ticks->length * axesheight);
 	line_px[!ortc] = axis_xywh[!ortc] + iroundpos(pos * axis_xywh[!ortc+2]);
 	line_px[!ortc+2] = axis_xywh[!ortc] + iroundpos(pos * axis_xywh[!ortc+2]);
 	//$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
@@ -137,6 +141,24 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
 	if (ticks->ttra && tick[0])
 	    put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->alignment, 0); // xy ei ole välttämättä oikein
     }
+
+    return ($i2si) {line_px[ortc], line_px[ortc+2] + ticks->ttra->fontheight};
+}
+
+void $axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4], $i2si ticks_ort) {
+    struct ttra *ttra = axistext->axis->axes->ttra;
+    ttra->canvas = canvas;
+    ttra->realw = axeswidth;
+    ttra->realh = axesheight;
+    ttra->fg_default = axistext->axis->color;
+    ttra->bg_default = -1;
+    ttra_print(ttra, "\033[0m");
+    ttra_set_fontheight(ttra, axistext->rowheight*axesheight);
+    int xy[2];
+    int coord = axistext->axis->x_or_y == 'y';
+    xy[coord] = iroundpos(axis_xywh[coord] + axis_xywh[coord+2] * axistext->pos);
+    xy[!coord] = ticks_ort[1];
+    put_text(ttra, axistext->text, xy[0], xy[1], north_e, 0);
 }
 
 static inline $f4si normalize_relative_line($f4si line, $f4si limits) {
@@ -192,8 +214,15 @@ void $axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axeshei
     //$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
     draw_thick_line_bresenham(canvas, ystride, line_px, axis->color, thickness, axesheight);
 
-    for (int i=0; i<axis->nticks; i++)
-	$ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+    $i2si ticks_ort = {0};
+    for (int i=0; i<axis->nticks; i++) {
+	$i2si try = $ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+	ticks_ort[0] = min(try[0], ticks_ort[0]);
+	ticks_ort[1] = max(try[1], ticks_ort[1]);
+    }
+
+    for (int i=0; i<axis->ntext; i++)
+	$axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride, axis_xywh, ticks_ort);
 }
 
 static inline float get_ticks_overlength(struct $ticks *tk) {
@@ -204,6 +233,22 @@ static inline float get_ticks_overlength(struct $ticks *tk) {
 static inline float get_ticks_underlength(struct $ticks *tk) {
     float f = -(tk->crossaxis*tk->length + tk->axis->pos);
     return f * (f>0);
+}
+
+static $f2si get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheight, $f2si lim2) {
+    struct ttra *ttra = axis->axes->ttra;
+    int coord = axis->x_or_y == 'x';
+    $f2si new = lim2;
+    for (int itext=0; itext<axis->ntext; itext++) {
+	struct $axistext *text = axis->text[itext];
+	int wh[2];
+	ttra_set_fontheight(ttra, text->rowheight * axesheight);
+	ttra_get_textdims_pixels(ttra, text->text, wh+0, wh+1);
+	/* kesken */
+	float frac = wh[coord] / (float)axesheight;
+	new[1] = max(lim2[1]+frac, new[1]);
+    }
+    return new;
 }
 
 static $f2si get_ticklabel_limits(struct $axis *axis, int axeswidth, int axesheight) {
@@ -230,7 +275,8 @@ static $f2si get_ticklabel_limits(struct $axis *axis, int axeswidth, int axeshei
 		maxcols = width;
 	}
 
-	switch (tk->axis->x_or_y) {
+	/* voinee siirtää silmukan ulkopuolelle */
+	switch (axis->x_or_y) {
 	    case 'x':
 		lim2[tk->ascending] += (float)maxrows * tk->ttra->fontheight / axesheight; // alignment?
 		break;
@@ -238,10 +284,12 @@ static $f2si get_ticklabel_limits(struct $axis *axis, int axeswidth, int axeshei
 		lim2[tk->ascending] += (float)maxcols * tk->ttra->fontwidth / axesheight;
 		break;
 	}
+
 endloop:
 	lim2out[0] = max(lim2[0], lim2out[0]);
 	lim2out[1] = max(lim2[1], lim2out[1]);
     }
+    lim2out = get_axislabel_limits(axis, axeswidth, axesheight, lim2out);
     return lim2out;
 }
 
@@ -346,6 +394,8 @@ void $free(struct $axes *axes) {
 	$free_axis(axes->axis[i]);
     free(axes->axis);
     //free(axes->text);
+    ttra_destroy(axes->ttra);
+    free(axes->ttra);
     memset(axes, 0, sizeof(*axes));
     free(axes);
 }
