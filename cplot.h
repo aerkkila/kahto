@@ -20,12 +20,8 @@ typedef int $i4si __attribute__((vector_size (16)));
 
 enum $alignment {northeast_e, north_e, northwest_e, west_e, southwest_e, south_e, southeast_e, east_e, center_e};
 
-struct $axis {
-    int x_or_y;
-    float pos, min, max;
-    unsigned color;
-    float thickness;
-};
+
+struct $axis;
 
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
@@ -49,20 +45,29 @@ struct $ticks {
     float rowheight;
 };
 
-struct $text {
+struct $axis {
+    int x_or_y;
+    float pos, min, max;
+    unsigned color;
+    float thickness;
+    struct $axistext **text;
+    int mem_text, ntext;
+    struct $ticks *ticks[3];
+    int nticks;
+};
+
+struct $axistext {
     struct $axis *axis;
     char *text;
-    unsigned color;
-    float fontsize, rotation100, auto_axisrot100;
+    int owner;
+    float pos, rowheight, rotation100;
     float halign, valign;
 };
 
 struct $axes {
     $f4si borders;
     struct $axis **axis;
-    struct $ticks **ticks;
-    struct $text **text;
-    int mem_axis, mem_ticks, mem_text;
+    int naxis, mem_axis;
     unsigned background;
 };
 
@@ -78,6 +83,7 @@ static inline struct $axes* $plot_inl(struct $args args) {
 }
 #define cplot_plot(...) $plot_inl((struct $args){__VA_ARGS__})
 
+void $axislabel(struct $axis *axis, char *label);
 void $show(struct $axes *axes);
 void $free(struct $axes *axes);
 
