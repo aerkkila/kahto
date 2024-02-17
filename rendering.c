@@ -7,7 +7,7 @@
 
 /* https://en.wikipedia.org/wiki/Bresenham's_line_algorithm */
 /* This method is nice because it uses only integers. */
-static void draw_thick_line_bresenham(unsigned *data, int win_w, const $i4si xy, unsigned väri, int leveys, int win_h) {
+static void draw_thick_line_bresenham(unsigned *data, int win_w, const int xy[4], unsigned väri, int leveys, int win_h) {
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
     int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
 
@@ -63,7 +63,7 @@ static void draw_thick_line_bresenham(unsigned *data, int win_w, const $i4si xy,
     }
 }
 
-static void put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot) {
+static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4]) {
     int wh[2], x0, y0;
 
     if ((int)rot % 25)
@@ -74,7 +74,13 @@ static void put_text(struct ttra *ttra, char *text, int x, int y, float xalignme
     y0 = y + wh[(int)rot%50 == 0] * yalignment; // height if not rotated
     x0 = x + wh[(int)rot%50 != 0] * xalignment; // height if rotated
     if (y0 < 0 || x0 < 0)
-	return;
+	return -1;
+
+    int quarter = (int)rot % 50 != 0;
+    area_out[0] = x0;
+    area_out[1] = y0;
+    area_out[2] = x0+wh[quarter];
+    area_out[3] = y0+wh[!quarter];
 
     if ((int)rot % 100) {
 	unsigned *canvas = ttra->canvas;
@@ -83,7 +89,7 @@ static void put_text(struct ttra *ttra, char *text, int x, int y, float xalignme
 
 	if (!(ttra->canvas = malloc(wh[0]*wh[1] * sizeof(unsigned)))) {
 	    warn("malloc %i * %i * %zu epäonnistui", wh[0], wh[1], sizeof(unsigned));
-	    return;
+	    return 1;
 	}
 	ttra->realw = wh[0];
 	ttra->realh = wh[1];
@@ -95,9 +101,10 @@ static void put_text(struct ttra *ttra, char *text, int x, int y, float xalignme
 	ttra->canvas = canvas;
 	ttra->realw = width0;
 	ttra->realh = height0;
-	return;
+	return 0;
     }
 
     ttra_set_xy0(ttra, x0, y0);
     ttra_print(ttra, text);
+    return 0;
 }

@@ -41,6 +41,8 @@ struct $ticks {
     float hvalign_text[2];
     int ascending; // nimiöt tulevat suurempaan päähän
     float rowheight;
+
+    int ro_lines[2], ro_labelarea[4], ro_tot_area[4];
 };
 
 struct $axis {
@@ -53,6 +55,7 @@ struct $axis {
     int mem_text, ntext;
     struct $ticks *ticks[3];
     int nticks;
+    int ro_line[4], ro_tick_area[4], ro_tot_area[4];
 };
 
 struct $axistext {
@@ -61,6 +64,7 @@ struct $axistext {
     int owner;
     float pos, rowheight, rotation100;
     float hvalign[2];
+    int ro_area[4];
 };
 
 struct $axes {
@@ -69,6 +73,7 @@ struct $axes {
     int naxis, mem_axis;
     unsigned background;
     struct ttra *ttra;
+    int ro_inner_xywh[4];
 };
 
 struct $args {
