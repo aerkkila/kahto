@@ -138,7 +138,6 @@ $i2si $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axe
 	    pos = 1 - pos;
 	line_px[!ortc] = axis_xywh[!ortc] + iroundpos(pos * axis_xywh[!ortc+2]);
 	line_px[!ortc+2] = axis_xywh[!ortc] + iroundpos(pos * axis_xywh[!ortc+2]);
-	//$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
 	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, axesheight);
 	if (ticks->ttra && tick[0])
 	    put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!ortc], ticks->hvalign_text[ortc], 0);
@@ -163,36 +162,6 @@ void $axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth,
     put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[coord], axistext->hvalign[!coord], axistext->rotation100);
 }
 
-static inline $f4si normalize_relative_line($f4si line, $f4si limits) {
-    return ($f4si){
-	(line[0] - limits[0]) / (limits[2] - limits[0]),
-	(line[1] - limits[1]) / (limits[3] - limits[1]),
-	(line[2] - limits[0]) / (limits[2] - limits[0]),
-	(line[3] - limits[1]) / (limits[3] - limits[1]),
-    };
-}
-
-static inline $i4si normalized_line_topixels($f4si line, int axeswidth, int axesheight) {
-    return ($i4si) {
-	iroundpos(line[0] * (axeswidth-1)),
-	    iroundpos(line[1] * (axesheight-1)),
-	    iroundpos(line[2] * (axeswidth-1)),
-	    iroundpos(line[3] * (axesheight-1))
-    };
-}
-
-static inline $i4si relative_line_topixels($f4si fline, $f4si limits, int axeswidth, int axesheight) {
-    $i4si line = normalized_line_topixels(normalize_relative_line(fline, limits), axeswidth, axesheight);
-    if (line[0] < 0) {line[0] = 0; goto virhe;}
-    if (line[1] < 0) {line[1] = 0; goto virhe;}
-    if (line[2] >= axeswidth) {line[2] = axeswidth-1; goto virhe;}
-    if (line[3] >= axesheight) {line[3] = axesheight-1; goto virhe;}
-    return line;
-virhe: __attribute__((cold));
-    fprintf(stderr, "normalisointi epäonnistui\n");
-    return line;
-}
-
 static inline $f4si axis_get_line(struct $axis *axis) {
     switch (axis->x_or_y) {
 	case 'x': return ($f4si){0, axis->pos, 1, axis->pos};
@@ -213,7 +182,6 @@ void $axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axeshei
 	axis_xywh[0] + line[2] * (axis_xywh[2]-1),
 	axis_xywh[1] + line[3] * (axis_xywh[3]-1),
     };
-    //$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
     draw_thick_line_bresenham(canvas, ystride, line_px, axis->color, thickness, axesheight);
 
     $i2si ticks_ort = {0};
