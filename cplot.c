@@ -137,6 +137,7 @@ $i2si $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axe
     ticks->ro_lines[0] = line_px[isx];
     ticks->ro_lines[1] = line_px[isx+2];
     int minmaxpos[2];
+    memcpy(ticks->ro_labelarea, ticks->axis->ro_line, sizeof(ticks->ro_labelarea));
 
     /* Silmukan kääntäminen muuttaisi minmaxpos-muuttujaa. */
     for (int itick=0; itick<nticks; itick++) {
@@ -180,10 +181,9 @@ void $axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth,
     ttra_set_fontheight(ttra, axistext->rowheight*axesheight);
     int xy[2];
     int coord = axistext->axis->x_or_y == 'y';
-    int *axis_area = axistext->axis->ro_line;
     int *axis_tot_area = axistext->axis->ro_tot_area;
-    int axislength = axis_area[coord+2] - axis_area[coord];
-    xy[coord] = iroundpos(axis_area[coord] + axislength * axistext->pos);
+    int axislength = axis_tot_area[coord+2] - axis_tot_area[coord];
+    xy[coord] = iroundpos(axis_tot_area[coord] + axislength * axistext->pos);
     xy[!coord] = axis_tot_area[!coord + 2*(axistext->axis->pos >= 0.5)];
     put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[coord], axistext->hvalign[!coord], axistext->rotation100, axistext->ro_area);
 }
@@ -371,7 +371,7 @@ void $axislabel(struct $axis *axis, char *label) {
     *text = (struct $axistext) {
 	.text = label,
 	.pos = 0.5,
-	.hvalign = {-0.5, 0},
+	.hvalign = {-0.5, -1 * (axis->pos < 0.5)},
 	.rowheight = (axis->nticks ? axis->ticks[0]->rowheight : 2.4/80) * 1.3,
 	.axis = axis,
 	.rotation100 = 25 * (axis->x_or_y == 'y'),
