@@ -46,6 +46,7 @@ struct $ticks* ticks_alloc(struct $axis *axis, int have_labels) {
     ticks->get_nticks = get_nticks_basic;
     ticks->length = 1.0 / 80;
     ticks->thickness = -1; // same as axis
+    ticks->hvalign_text[0] = -0.5;
 
     if (have_labels) {
 	ticks->ttra = calloc(1, sizeof(struct ttra));
@@ -55,12 +56,12 @@ struct $ticks* ticks_alloc(struct $axis *axis, int have_labels) {
 
     if (axis->pos >= 0.5) {
 	ticks->crossaxis = 0;
-	ticks->alignment = axis->x_or_y == 'x' ? north_e : west_e;
+	ticks->hvalign_text[1] = 0;
 	ticks->ascending = 1;
     }
     else {
 	ticks->crossaxis = -1;
-	ticks->alignment = axis->x_or_y == 'x' ? south_e : east_e;
+	ticks->hvalign_text[1] = -1;
 	ticks->ascending = 0;
     }
 
@@ -140,7 +141,7 @@ $i2si $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axe
 	//$i4si line_px = relative_line_topixels(line, limits, axeswidth, axesheight);
 	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, axesheight);
 	if (ticks->ttra && tick[0])
-	    put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->alignment, 0); // xy ei ole välttämättä oikein
+	    put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!ortc], ticks->hvalign_text[ortc], 0);
     }
 
     return ($i2si) {line_px[ortc], line_px[ortc+2] + ticks->ttra->fontheight};
@@ -159,7 +160,7 @@ void $axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth,
     int coord = axistext->axis->x_or_y == 'y';
     xy[coord] = iroundpos(axis_xywh[coord] + axis_xywh[coord+2] * axistext->pos);
     xy[!coord] = ticks_ort[1];
-    put_text(ttra, axistext->text, xy[0], xy[1], north_e, axistext->rotation100);
+    put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[coord], axistext->hvalign[!coord], axistext->rotation100);
 }
 
 static inline $f4si normalize_relative_line($f4si line, $f4si limits) {
@@ -364,8 +365,7 @@ void $axislabel(struct $axis *axis, char *label) {
     *text = (struct $axistext) {
 	.text = label,
 	.pos = 0.5,
-	.halign = 0.5,
-	.valign = 0,
+	.hvalign = {-0.5, 0},
 	.rowheight = (axis->nticks ? axis->ticks[0]->rowheight : 2.4/80) * 1.3,
 	.axis = axis,
 	.rotation100 = 25 * (axis->x_or_y == 'y'),

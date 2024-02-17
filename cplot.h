@@ -11,7 +11,6 @@
 #define $show	cplot_show
 #define $free	cplot_free
 #define $plot	cplot_plot
-#define $alignment	cplot_alignment
 #define $plot_inl	cplot_plot_inl
 #define $plot_args	cplot_plot_args
 
@@ -19,9 +18,6 @@ typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
 typedef int $i4si __attribute__((vector_size (16)));
 typedef int $i2si __attribute__((vector_size (8)));
-
-enum $alignment {northeast_e, north_e, northwest_e, west_e, southwest_e, south_e, southeast_e, east_e, center_e};
-
 
 struct $axis;
 
@@ -42,7 +38,7 @@ struct $ticks {
     } grid;
 
     struct ttra *ttra;
-    enum $alignment alignment;
+    float hvalign_text[2];
     int ascending; // nimiöt tulevat suurempaan päähän
     float rowheight;
 };
@@ -64,7 +60,7 @@ struct $axistext {
     char *text;
     int owner;
     float pos, rowheight, rotation100;
-    float halign, valign;
+    float hvalign[2];
 };
 
 struct $axes {

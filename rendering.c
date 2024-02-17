@@ -63,59 +63,33 @@ static void draw_thick_line_bresenham(unsigned *data, int win_w, const $i4si xy,
     }
 }
 
-static void put_text(struct ttra *ttra, char *text, int x, int y, enum $alignment alignment, float rot) {
-    int width = -1, height = -1, x0, y0;
+static void put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot) {
+    int wh[2], x0, y0;
 
     if ((int)rot % 25)
 	fprintf(stderr, "Tekstin pyöräytys on toteutettu vain suorakulmille.\n");
 
-    switch (alignment) {
-	default:
-	    y0 = y;
-	    break;
-	case east_e: case center_e: case west_e:
-	    y0 = y - ttra->fontheight * 0.5;
-	    break;
-	case southeast_e: case south_e: case southwest_e:
-	    y0 = y - ttra->fontheight;
-	    break;
-    }
-    if (y0 < 0)
-	return;
-    //ttra_set_y0(ttra, y0);
+    ttra_get_textdims_pixels(ttra, text, wh+0, wh+1);
 
-    switch (alignment) {
-	default:
-	    x0 = x;
-	    break;
-	case north_e: case center_e: case south_e:
-	    width = ttra_get_width_pixels(ttra, text);
-	    x0 = x - width*0.5;
-	    break;
-	case southeast_e: case east_e: case northeast_e:
-	    width = ttra_get_width_pixels(ttra, text);
-	    x0 = x - width;
-	    break;
-    }
-    if (x0 < 0)
-	x0 = 0;
-    //ttra_set_x0(ttra, x0);
+    y0 = y + wh[(int)rot%50 == 0] * yalignment; // height if not rotated
+    x0 = x + wh[(int)rot%50 != 0] * xalignment; // height if rotated
+    if (y0 < 0 || x0 < 0)
+	return;
 
     if ((int)rot % 100) {
-	ttra_get_textdims_pixels(ttra, text, &width, &height);
 	unsigned *canvas = ttra->canvas;
 	int width0 = ttra->realw;
 	int height0 = ttra->realh;
 
-	if (!(ttra->canvas = malloc(width*height * sizeof(unsigned)))) {
-	    warn("malloc %i * %i * %zu epäonnistui", width, height, sizeof(unsigned));
+	if (!(ttra->canvas = malloc(wh[0]*wh[1] * sizeof(unsigned)))) {
+	    warn("malloc %i * %i * %zu epäonnistui", wh[0], wh[1], sizeof(unsigned));
 	    return;
 	}
-	ttra->realw = width;
-	ttra->realh = height;
+	ttra->realw = wh[0];
+	ttra->realh = wh[1];
 	ttra_set_xy0(ttra, 0, 0);
 	ttra_print(ttra, text);
-	rotate(canvas+y0*width0 + x0, width0, height0, ttra->canvas, width, height, rot);
+	rotate(canvas+y0*width0 + x0, width0, height0, ttra->canvas, wh[0], wh[1], rot);
 
 	free(ttra->canvas);
 	ttra->canvas = canvas;
