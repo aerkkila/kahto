@@ -74,7 +74,7 @@ struct $ticks* ticks_alloc(struct $axis *axis, int have_labels) {
     return ticks;
 }
 
-void $add_axistext(struct $axis *axis, struct $axistext *text) {
+void cplot_add_axistext(struct $axis *axis, struct $axistext *text) {
     if (axis->ntext >= axis->mem_text)
 	axis->text = realloc(axis->text, (axis->mem_text = axis->ntext + 2) * sizeof(void*));
     axis->text[axis->ntext++] = text;
@@ -109,7 +109,7 @@ struct $axes* $plot_args(struct $args *args) {
     return axes;
 }
 
-$i2si $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
+void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
     float min = ticks->axis->min;
     float max = ticks->axis->max;
     int nticks = ticks->get_nticks(min, max);
@@ -178,8 +178,6 @@ $i2si $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axe
     update_min(a->ro_tick_area[1], ticks->ro_tot_area[1]);
     update_max(a->ro_tick_area[2], ticks->ro_tot_area[2]);
     update_max(a->ro_tick_area[3], ticks->ro_tot_area[3]);
-
-    return ($i2si) {line_px[isx], line_px[isx+2] + ticks->ttra->fontheight};
 }
 
 void $axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
@@ -208,7 +206,7 @@ static inline $f4si axis_get_line(struct $axis *axis) {
     }
 }
 
-void $axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
+void cplot_axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
     float thickness = axis->thickness * axesheight;
     if (thickness > 1e-9 && thickness < 1)
 	thickness = 1;
@@ -249,10 +247,11 @@ static inline float get_ticks_underlength(struct $ticks *tk) {
     return f * (f>0);
 }
 
-static $f2si get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheight, $f2si lim2) {
+static void get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheight, float lim2inout[2]) {
     struct ttra *ttra = axis->axes->ttra;
     int coord = axis->x_or_y == 'x';
-    $f2si new = lim2;
+    float old[2];
+    memcpy(old, lim2inout, sizeof(old));
     for (int itext=0; itext<axis->ntext; itext++) {
 	struct $axistext *text = axis->text[itext];
 	int wh[2];
@@ -260,17 +259,16 @@ static $f2si get_axislabel_limits(struct $axis *axis, int axeswidth, int axeshei
 	ttra_get_textdims_pixels(ttra, text->text, wh+0, wh+1);
 	float frac = wh[coord + ((int)text->rotation100 % 50 == 25)] / (float)axesheight;
 	int side = axis->pos >= 0.5;
-	new[side] = max(lim2[side]+frac, new[side]);
+	lim2inout[side] = max(old[side]+frac, lim2inout[side]);
     }
-    return new;
 }
 
 /* Akselia kohtisuoraan */
-static $f2si get_ticklabel_limits(struct $axis *axis, int axeswidth, int axesheight) {
-    $f2si lim2out = {0};
+static void get_ticklabel_limits(struct $axis *axis, int axeswidth, int axesheight, float lim2out[2]) {
+    memset(lim2out, 0, 2*sizeof(float));
     for (int i=0; i<axis->nticks; i++) {
 	struct $ticks *tk = axis->ticks[i];
-	$f2si lim2 = {get_ticks_underlength(tk), get_ticks_overlength(tk)};
+	float lim2[] = {get_ticks_underlength(tk), get_ticks_overlength(tk)};
 	if (!tk->get_nticks)
 	    goto endloop;
 	float min = tk->axis->min,
@@ -304,8 +302,7 @@ endloop:
 	lim2out[0] = max(lim2[0], lim2out[0]);
 	lim2out[1] = max(lim2[1], lim2out[1]);
     }
-    lim2out = get_axislabel_limits(axis, axeswidth, axesheight, lim2out);
-    return lim2out;
+    get_axislabel_limits(axis, axeswidth, axesheight, lim2out);
 }
 
 /* Akselin suuntaan */
@@ -341,13 +338,6 @@ static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int a
     }
 }
 
-int ptrlen(void* vptr) {
-    void **ptr = vptr;
-    int len=0;
-    while(*ptr++) len++;
-    return len;
-}
-
 void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     unsigned bg = axes->background;
     for (int j=0; j<axesheight; j++) {
@@ -358,7 +348,8 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
 
     $f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
-	$f2si over = get_ticklabel_limits(axes->axis[iaxis], axeswidth, axesheight);
+	float over[2];
+	get_ticklabel_limits(axes->axis[iaxis], axeswidth, axesheight, over);
 	int coord = axes->axis[iaxis]->x_or_y == 'x'; // ticks are orthogonal to this
 	overgoing[coord+0]  = max(overgoing[coord+0], over[0]);
 	overgoing[coord+2]  = max(overgoing[coord+2], over[1]);
@@ -375,7 +366,7 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
 	get_ticklabel_limits_round2(axes->axis[iaxis], axeswidth, axesheight, axis_xywh);
 
     for (int i=0; axes->axis[i]; i++)
-	$axis_draw(axes->axis[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+	cplot_axis_draw(axes->axis[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
 }
 
 void $axislabel(struct $axis *axis, char *label) {
@@ -388,7 +379,7 @@ void $axislabel(struct $axis *axis, char *label) {
 	.axis = axis,
 	.rotation100 = 25 * (axis->x_or_y == 'y'),
     };
-    $add_axistext(axis, text);
+    cplot_add_axistext(axis, text);
 }
 
 void $free_axis(struct $axis *axis) {

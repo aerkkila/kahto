@@ -1,23 +1,22 @@
 #ifndef __cplot_h__
 #define __cplot_h__
 
-#define $f4si	cplot_f4si
 #define $f2si	cplot_f2si
-#define $i4si	cplot_i4si
-#define $i2si	cplot_i2si
+#define $f4si	cplot_f4si
 #define $axis	cplot_axis
 #define $ticks	cplot_ticks
 #define $axes	cplot_axes
+#define $axes_draw	cplot_axes_draw
+#define $axislabel	cplot_axislabel
 #define $show	cplot_show
 #define $free	cplot_free
+#define $free_axis	cplot_free_axis
 #define $plot	cplot_plot
 #define $plot_inl	cplot_plot_inl
 #define $plot_args	cplot_plot_args
 
 typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
-typedef int $i4si __attribute__((vector_size (16)));
-typedef int $i2si __attribute__((vector_size (8)));
 
 struct $axis;
 
@@ -81,9 +80,9 @@ struct $axes {
 };
 
 struct $args {
-    struct $axes *axes;
     void *ydata, *xdata;
     int ytype, xtype;
+    struct $axes *axes;
 };
 
 struct $axes* $plot_args(struct $args *args);
@@ -92,17 +91,23 @@ static inline struct $axes* $plot_inl(struct $args args) {
 }
 #define cplot_plot(...) $plot_inl((struct $args){__VA_ARGS__})
 
+void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void $axislabel(struct $axis *axis, char *label);
 void $show(struct $axes *axes);
 void $free(struct $axes *axes);
+void $free_axis(struct $axis *axis);
 
 #ifndef using_cplot
+#undef $f2si
 #undef $f4si
-#undef $i4si
 #undef $axis
 #undef $ticks
 #undef $axes
+#undef $axes_draw
+#undef $axislabel
 #undef $show
+#undef $free
+#undef $free_axis
 #undef $plot
 #undef $plot_inl
 #undef $plot_args
