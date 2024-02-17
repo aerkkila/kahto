@@ -93,6 +93,7 @@ static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignmen
 	}
 	ttra->realw = wh[0];
 	ttra->realh = wh[1];
+	ttra->clean_line = 1;
 	ttra_set_xy0(ttra, 0, 0);
 	ttra_print(ttra, text);
 	rotate(canvas+y0*width0 + x0, width0, height0, ttra->canvas, wh[0], wh[1], rot);

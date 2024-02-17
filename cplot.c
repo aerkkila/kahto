@@ -30,7 +30,7 @@ static inline int iceil(float f) {
     return a + (a != f);
 }
 
-struct $axis* axis_alloc(struct $axes *axes) {
+struct $axis* cplot_axis_alloc(struct $axes *axes) {
     struct $axis *axis = calloc(1, sizeof(struct $axis));
     axis->axes = axes;
     axes->naxis++;
@@ -41,7 +41,7 @@ struct $axis* axis_alloc(struct $axes *axes) {
     return axis;
 }
 
-struct $ticks* ticks_alloc(struct $axis *axis, int have_labels) {
+struct $ticks* cplot_ticks_alloc(struct $axis *axis, int have_labels) {
     struct $ticks *ticks = calloc(1, sizeof(struct $ticks));
     ticks->axis = axis;
     ticks->color = fg;
@@ -80,22 +80,22 @@ void cplot_add_axistext(struct $axis *axis, struct $axistext *text) {
     axis->text[axis->ntext++] = text;
 }
 
-struct $axes* axes_alloc() {
+struct $axes* cplot_axes_alloc() {
     struct $axes *axes = calloc(1, sizeof(struct $axes));
     axes->borders = ($f4si){0, 0, 1, 1};
     axes->background = -1;
 
     axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
-    axes->axis[0] = axis_alloc(axes);
+    axes->axis[0] = cplot_axis_alloc(axes);
     axes->axis[0]->x_or_y = 'x'; // bottom x-axis
     axes->axis[0]->pos = 1;
-    axes->axis[0]->ticks[0] = ticks_alloc(axes->axis[0], 1);
+    axes->axis[0]->ticks[0] = cplot_ticks_alloc(axes->axis[0], 1);
     axes->axis[0]->nticks++;
 
-    axes->axis[1] = axis_alloc(axes);
+    axes->axis[1] = cplot_axis_alloc(axes);
     axes->axis[1]->x_or_y = 'y'; // left y-axis
     axes->axis[1]->pos = 0;
-    axes->axis[1]->ticks[0] = ticks_alloc(axes->axis[1], 1);
+    axes->axis[1]->ticks[0] = cplot_ticks_alloc(axes->axis[1], 1);
     axes->axis[1]->nticks++;
 
     axes->ttra = calloc(1, sizeof(struct ttra));
@@ -105,11 +105,11 @@ struct $axes* axes_alloc() {
 }
 
 struct $axes* $plot_args(struct $args *args) {
-    struct $axes *axes = args->axes ? args->axes : axes_alloc();
+    struct $axes *axes = args->axes ? args->axes : cplot_axes_alloc();
     return axes;
 }
 
-void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
+void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
     float min = ticks->axis->min;
     float max = ticks->axis->max;
     int nticks = ticks->get_nticks(min, max);
@@ -180,7 +180,7 @@ void $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axes
     update_max(a->ro_tick_area[3], ticks->ro_tot_area[3]);
 }
 
-void $axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     struct ttra *ttra = axistext->axis->axes->ttra;
     ttra->canvas = canvas;
     ttra->realw = axeswidth;
@@ -226,7 +226,7 @@ void cplot_axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int ax
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
     axis->ro_tick_area[1] = axis->ro_tick_area[3] = axis->ro_line[1];
     for (int i=0; i<axis->nticks; i++)
-	$ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+	cplot_ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
 
     axis->ro_tot_area[0] = min(axis->ro_line[0], axis->ro_tick_area[0]);
     axis->ro_tot_area[1] = min(axis->ro_line[1], axis->ro_tick_area[1]);
@@ -234,7 +234,7 @@ void cplot_axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int ax
     axis->ro_tot_area[3] = max(axis->ro_line[3], axis->ro_tick_area[3]);
 
     for (int i=0; i<axis->ntext; i++)
-	$axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
+	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
 
 static inline float get_ticks_overlength(struct $ticks *tk) {

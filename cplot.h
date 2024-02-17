@@ -97,6 +97,14 @@ void $show(struct $axes *axes);
 void $free(struct $axes *axes);
 void $free_axis(struct $axis *axis);
 
+static inline struct $axis* cplot_xaxis0(struct $axes *axes) {
+    return axes->axis[0];
+}
+
+static inline struct $axis* cplot_yaxis0(struct $axes *axes) {
+    return axes->axis[1];
+}
+
 #ifndef using_cplot
 #undef $f2si
 #undef $f4si
@@ -111,6 +119,10 @@ void $free_axis(struct $axis *axis);
 #undef $plot
 #undef $plot_inl
 #undef $plot_args
+
+#else
+#define $xaxis0 cplot_xaxis0
+#define $yaxis0 cplot_yaxis0
 #endif
 
 #endif
