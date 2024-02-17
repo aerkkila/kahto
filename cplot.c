@@ -16,6 +16,7 @@
 #define update_min(a, b) ((a) = min(a,b))
 #define update_max(a, b) ((a) = max(a,b))
 #define arrlen(a) (sizeof(a) / sizeof(*(a)))
+#define RGB(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
 static unsigned fg = 0xff<<24;
 
@@ -49,6 +50,9 @@ struct $ticks* ticks_alloc(struct $axis *axis, int have_labels) {
     ticks->length = 1.0 / 80;
     ticks->thickness = -1; // same as axis
     ticks->hvalign_text[0] = -0.5;
+    ticks->grid_on = 1;
+    ticks->grid_pen.thickness = 1.0/1200;
+    ticks->grid_pen.color = RGB(100, 100, 100);
 
     if (have_labels) {
 	ticks->ttra = calloc(1, sizeof(struct ttra));
@@ -154,6 +158,14 @@ $i2si $ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axe
 		update_max(ticks->ro_labelarea[2], area_text[2]);
 		update_max(ticks->ro_labelarea[3], area_text[3]);
 	    }
+	if (ticks->grid_on) {
+	    int gridline[4];
+	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
+	    int *xywh = ticks->axis->axes->ro_inner_xywh;
+	    gridline[isx] = xywh[isx];
+	    gridline[isx+2] = xywh[isx] + xywh[isx+2];
+	    draw_thick_line_bresenham(canvas, axeswidth, gridline, ticks->grid_pen.color, ticks->grid_pen.thickness * axesheight, axesheight);
+	}
     }
 
     ticks->ro_tot_area[isx+0] = min(ticks->ro_labelarea[isx+0], ticks->ro_lines[0]);

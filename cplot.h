@@ -21,6 +21,12 @@ typedef int $i2si __attribute__((vector_size (8)));
 
 struct $axis;
 
+struct cplot_pen {
+    unsigned color;
+    float thickness;
+    /* linestyle? */
+};
+
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
  *	1: Ticks end at the axis i.e. are left or above.
@@ -32,10 +38,8 @@ struct $ticks {
     unsigned color;
     float crossaxis, length, thickness;
 
-    struct grid {
-	unsigned color;
-	float length, thickness;
-    } grid;
+    int grid_on;
+    struct cplot_pen grid_pen;
 
     struct ttra *ttra;
     float hvalign_text[2];
