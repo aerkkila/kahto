@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <ttra.h>
+#include <err.h>
 
 #define Abs(a) ((a) < 0 ? -(a) : (a))
 
@@ -63,9 +64,11 @@ static void draw_thick_line_bresenham(unsigned *data, int win_w, const $i4si xy,
 }
 
 static void put_text(struct ttra *ttra, char *text, int x, int y, enum $alignment alignment, float rot) {
-    if (rot != 0)
-	printf("Pyöräytystä ei ole toteutettu\n");
-    int y0;
+    int width = -1, height = -1, x0, y0;
+
+    if ((int)rot % 25)
+	fprintf(stderr, "Tekstin pyöräytys on toteutettu vain suorakulmille.\n");
+
     switch (alignment) {
 	default:
 	    y0 = y;
@@ -79,9 +82,8 @@ static void put_text(struct ttra *ttra, char *text, int x, int y, enum $alignmen
     }
     if (y0 < 0)
 	return;
-    ttra_set_y0(ttra, y0);
+    //ttra_set_y0(ttra, y0);
 
-    int x0, width;
     switch (alignment) {
 	default:
 	    x0 = x;
@@ -97,7 +99,31 @@ static void put_text(struct ttra *ttra, char *text, int x, int y, enum $alignmen
     }
     if (x0 < 0)
 	x0 = 0;
-    ttra_set_x0(ttra, x0);
-    
+    //ttra_set_x0(ttra, x0);
+
+    if ((int)rot % 100) {
+	ttra_get_textdims_pixels(ttra, text, &width, &height);
+	unsigned *canvas = ttra->canvas;
+	int width0 = ttra->realw;
+	int height0 = ttra->realh;
+
+	if (!(ttra->canvas = malloc(width*height * sizeof(unsigned)))) {
+	    warn("malloc %i * %i * %zu epäonnistui", width, height, sizeof(unsigned));
+	    return;
+	}
+	ttra->realw = width;
+	ttra->realh = height;
+	ttra_set_xy0(ttra, 0, 0);
+	ttra_print(ttra, text);
+	rotate(canvas+y0*width0 + x0, width0, height0, ttra->canvas, width, height, rot);
+
+	free(ttra->canvas);
+	ttra->canvas = canvas;
+	ttra->realw = width0;
+	ttra->realh = height0;
+	return;
+    }
+
+    ttra_set_xy0(ttra, x0, y0);
     ttra_print(ttra, text);
 }

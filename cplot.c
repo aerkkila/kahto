@@ -6,6 +6,7 @@
 #define using_cplot
 #include "cplot.h"
 
+#include "rotate.c"
 #include "rendering.c"
 #include "ticks.c"
 #include "wayland_helper/waylandhelper.h"
@@ -158,7 +159,7 @@ void $axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth,
     int coord = axistext->axis->x_or_y == 'y';
     xy[coord] = iroundpos(axis_xywh[coord] + axis_xywh[coord+2] * axistext->pos);
     xy[!coord] = ticks_ort[1];
-    put_text(ttra, axistext->text, xy[0], xy[1], north_e, 0);
+    put_text(ttra, axistext->text, xy[0], xy[1], north_e, axistext->rotation100);
 }
 
 static inline $f4si normalize_relative_line($f4si line, $f4si limits) {
@@ -244,9 +245,9 @@ static $f2si get_axislabel_limits(struct $axis *axis, int axeswidth, int axeshei
 	int wh[2];
 	ttra_set_fontheight(ttra, text->rowheight * axesheight);
 	ttra_get_textdims_pixels(ttra, text->text, wh+0, wh+1);
-	/* kesken */
-	float frac = wh[coord] / (float)axesheight;
-	new[1] = max(lim2[1]+frac, new[1]);
+	float frac = wh[coord + ((int)text->rotation100 % 50 == 25)] / (float)axesheight;
+	int side = axis->pos >= 0.5;
+	new[side] = max(lim2[side]+frac, new[side]);
     }
     return new;
 }
@@ -365,8 +366,9 @@ void $axislabel(struct $axis *axis, char *label) {
 	.pos = 0.5,
 	.halign = 0.5,
 	.valign = 0,
-	.rowheight = (axis->nticks ? axis->ticks[0]->rowheight : 2.4/80) * 1.5,
+	.rowheight = (axis->nticks ? axis->ticks[0]->rowheight : 2.4/80) * 1.3,
 	.axis = axis,
+	.rotation100 = 25 * (axis->x_or_y == 'y'),
     };
     $add_axistext(axis, text);
 }
