@@ -279,16 +279,18 @@ static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int a
 	    float pos = tk->get_tick(i, min, max, out, 128);
 	    int pos_px = axis_xywh[coord] + iroundpos(pos * (axis_xywh[coord+2]-1));
 	    ttra_get_textdims_pixels(tk->ttra, out, wh+0, wh+1);
-	    int edge = pos_px - wh[coord] * 0.5;
+	    /* lower side */
+	    int edge = pos_px + wh[coord] * tk->hvalign_text[0];
 	    if (edge < 0) {
 		axis_xywh[coord] += -edge;
 		axis_xywh[coord+2] -= -edge;
 		pos_px = axis_xywh[coord] + iroundpos(pos * (axis_xywh[coord+2]-1));
 	    }
-	    edge = pos_px + wh[coord] * 0.5;
+	    /* higher side */
+	    edge = pos_px + wh[coord] * (1 + tk->hvalign_text[0]);
 	    int WH[] = {axeswidth, axesheight};
 	    if (edge >= WH[coord])
-		axis_xywh[coord+2] = (WH[coord] - wh[coord] * 0.5 - axis_xywh[coord]) / pos;
+		axis_xywh[coord+2] = (WH[coord] - axis_xywh[coord] - wh[coord] * (1 + tk->hvalign_text[0])) / pos;
 	}
     }
 }
