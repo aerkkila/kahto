@@ -6,17 +6,17 @@
 #define using_cplot
 #include "cplot.h"
 
-#include "rotate.c"
-#include "rendering.c"
-#include "ticks.c"
-#include "wayland_helper/waylandhelper.h"
-
 #define min(a,b) ((a) < (b) ? a : (b))
 #define max(a,b) ((a) > (b) ? a : (b))
 #define update_min(a, b) ((a) = min(a,b))
 #define update_max(a, b) ((a) = max(a,b))
 #define arrlen(a) (sizeof(a) / sizeof(*(a)))
 #define RGB(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
+
+static inline int iround(float f) {
+    int a = f;
+    return a + (f-a >= 0.5) - (a-f > 0.5);
+}
 
 static unsigned fg = 0xff<<24;
 
@@ -29,6 +29,12 @@ static inline int iceil(float f) {
     int a = f;
     return a + (a != f);
 }
+
+#include "data_to_pixels.c"
+#include "rotate.c"
+#include "rendering.c"
+#include "ticks.c"
+#include "wayland_helper/waylandhelper.h"
 
 struct $axis* cplot_axis_alloc(struct $axes *axes) {
     struct $axis *axis = calloc(1, sizeof(struct $axis));
@@ -104,8 +110,23 @@ struct $axes* cplot_axes_alloc() {
     return axes;
 }
 
+static void add_data(struct $args *args) {
+    if (args->axes->mem_data < args->axes->ndata+1)
+	args->axes->data = realloc(args->axes->data, (args->axes->mem_data = args->axes->ndata+3) * sizeof(void*));
+    struct $data *data;
+    args->axes->data[args->axes->ndata++] = data = malloc(sizeof(struct $data));
+    memcpy(data, &args->data, sizeof(struct $data));
+    if (!data->yxaxis[0])
+	data->yxaxis[0] = $yaxis0(args->axes);
+    if (!data->yxaxis[1])
+	data->yxaxis[1] = $xaxis0(args->axes);
+}
+
 struct $axes* $plot_args(struct $args *args) {
     struct $axes *axes = args->axes ? args->axes : cplot_axes_alloc();
+    args->axes = axes;
+    if (args->data.yxzdata[0])
+	add_data(args);
     return axes;
 }
 
@@ -365,8 +386,11 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
     for (int iaxis=0; iaxis<axes->naxis; iaxis++)
 	get_ticklabel_limits_round2(axes->axis[iaxis], axeswidth, axesheight, axis_xywh);
 
-    for (int i=0; axes->axis[i]; i++)
+    for (int i=0; i<axes->naxis; i++)
 	cplot_axis_draw(axes->axis[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+
+    for (int i=0; i<axes->ndata; i++)
+	cplot_data_draw(axes->data[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
 }
 
 void $axislabel(struct $axis *axis, char *label) {
@@ -407,6 +431,16 @@ void $free(struct $axes *axes) {
     //free(axes->text);
     ttra_destroy(axes->ttra);
     free(axes->ttra);
+
+    for (int i=0; i<axes->ndata; i++) {
+	struct $data *data = axes->data[i];
+	for (int j=0; j<3; j++)
+	    if (data->owner[j])
+		free(data->yxzdata[j]);
+	free(data);
+    }
+    free(axes->data);
+
     memset(axes, 0, sizeof(*axes));
     free(axes);
 }

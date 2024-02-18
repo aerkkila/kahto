@@ -109,3 +109,42 @@ static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignmen
     ttra_print(ttra, text);
     return 0;
 }
+
+static void draw_data_xy(const short *xypixels, int len, unsigned *canvas, int axeswidth, int axeheight, int ystride, int *axis_xywh) {
+    for (int idata=0; idata<len; idata++) {
+	if (xypixels[idata*2] < 0 || xypixels[idata*2] > axis_xywh[2]) continue;
+	if (xypixels[idata*2+1] < 0 || xypixels[idata*2+1] > axis_xywh[3]) continue;
+	canvas[(axis_xywh[1] + xypixels[idata*2+1]) * ystride + axis_xywh[0] + xypixels[idata*2]] = 0;
+    }
+}
+
+static void draw_data_x(const short *xypixels, double xjump, long x0, int len, unsigned *canvas, int axeswidth, int axeheight, int ystride, int *axis_xywh) {
+    for (int idata=0; idata<len; idata++) {
+	if (xypixels[idata*2+1] < 0 || xypixels[idata*2+1] > axis_xywh[3]) continue;
+	double xd = (x0 + idata) * xjump;
+	int x = iroundpos(xd);
+	canvas[(axis_xywh[1] + xypixels[idata*2+1]) * ystride + axis_xywh[0] + x] = 0;
+    }
+}
+
+static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride, int *axis_xywh) {
+    double yxmin[] = {data->yxaxis[0]->min, data->yxaxis[1]->min};
+    double yxdiff[] = {data->yxaxis[0]->max - yxmin[0], data->yxaxis[1]->max - yxmin[1]};
+    int yxlen[] = {axis_xywh[3], axis_xywh[2]};
+    const long npoints = 1024;
+    short xypixels[npoints*2];
+
+    double xjump = (double)axis_xywh[2] / (data->length - 1);
+
+    for (long istart=0; istart<data->length; ) {
+	long iend = min(istart+npoints, data->length);
+	if (data->yxzdata[1])
+	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxmin[1], yxdiff[1], yxlen[1]);
+	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxmin[0], yxdiff[0], yxlen[0]);
+	if (data->yxzdata[1])
+	    draw_data_xy(xypixels, iend-istart, canvas, axeswidth, axesheight, ystride, axis_xywh);
+	else
+	    draw_data_x(xypixels, xjump, istart, iend-istart, canvas, axeswidth, axesheight, ystride, axis_xywh);
+	istart = iend;
+    }
+}

@@ -6,6 +6,7 @@
 #define $axis	cplot_axis
 #define $ticks	cplot_ticks
 #define $axes	cplot_axes
+#define $data	cplot_data
 #define $axes_draw	cplot_axes_draw
 #define $axislabel	cplot_axislabel
 #define $show	cplot_show
@@ -15,10 +16,35 @@
 #define $plot_inl	cplot_plot_inl
 #define $plot_args	cplot_plot_args
 
+#define cplot_i1 11	// signed integer is enumerated as size + 10
+#define cplot_i2 12
+#define cplot_i4 14
+#define cplot_i8 18
+#define cplot_u1 1	// unsigned integer is enumerated as size
+#define cplot_u2 2
+#define cplot_u4 4
+#define cplot_u8 8
+#define cplot_f4 24	// floating point number is enumerated as size + 20
+#define cplot_f8 28
+#define cplot_f10 36 // f10 is likely to take 16 bytes due to padding bytes
+_Static_assert(sizeof(long double) == 16);
+
+/* returns some of the enumerations above according to the data type */
+#define cplot_get_type(a) ((int)( \
+	    (typeof(a))1.5 == 1 ?	/* integer or floating point number */ \
+	    /* integer */ \
+	    sizeof(a) + (		/* size of integer */ \
+	    (typeof(a))(-1) < 0 ?	/* signed or unsigned */ \
+	     10 : 0 )			/* signed integer is enumerated as size + 10 */ \
+	    /* floating point */ \
+	    : sizeof(a) + 20 ))		/* floating point number is enumerated as size + 20 */
+
+
 typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
 
 struct $axis;
+struct $data;
 
 struct cplot_pen {
     unsigned color;
@@ -51,7 +77,8 @@ struct $ticks {
 struct $axis {
     struct $axes *axes;
     int x_or_y;
-    float pos, min, max;
+    float pos;
+    double min, max;
     unsigned color;
     float thickness;
     struct $axistext **text;
@@ -70,19 +97,29 @@ struct $axistext {
     int ro_area[4];
 };
 
+struct $data {
+    void *yxzdata[3];
+    int yxztype[3];
+    int owner[3];
+    long length;
+    struct $axis *yxaxis[2];
+};
+
 struct $axes {
-    $f4si borders;
+    $f4si borders; // not used yet
     struct $axis **axis;
     int naxis, mem_axis;
     unsigned background;
     struct ttra *ttra;
     int ro_inner_xywh[4];
+    struct $data **data;
+    int ndata, mem_data;
 };
 
 struct $args {
-    void *ydata, *xdata;
-    int ytype, xtype;
     struct $axes *axes;
+    struct $data data;
+    int copy[3]; // not used yet
 };
 
 struct $axes* $plot_args(struct $args *args);
@@ -111,6 +148,7 @@ static inline struct $axis* cplot_yaxis0(struct $axes *axes) {
 #undef $axis
 #undef $ticks
 #undef $axes
+#undef $data
 #undef $axes_draw
 #undef $axislabel
 #undef $show
@@ -123,6 +161,7 @@ static inline struct $axis* cplot_yaxis0(struct $axes *axes) {
 #else
 #define $xaxis0 cplot_xaxis0
 #define $yaxis0 cplot_yaxis0
+#define $type	cplot_get_type
 #endif
 
 #endif
