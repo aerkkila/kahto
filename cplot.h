@@ -16,6 +16,7 @@
 #define $plot_inl	cplot_plot_inl
 #define $plot_args	cplot_plot_args
 
+#define cplot_notype 0
 #define cplot_i1 11	// signed integer is enumerated as size + 10
 #define cplot_i2 12
 #define cplot_i4 14
@@ -39,6 +40,8 @@ _Static_assert(sizeof(long double) == 16);
 	    /* floating point */ \
 	    : sizeof(a) + 20 ))		/* floating point number is enumerated as size + 20 */
 
+#define minbit 1
+#define maxbit 2
 
 typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
@@ -58,8 +61,8 @@ struct cplot_pen {
  */
 struct $ticks {
     struct $axis *axis;
-    int (*get_nticks)(float min, float max);
-    float (*get_tick)(int ind, float min, float max, char *out, int sizeout);
+    int (*get_nticks)(double min, double max);
+    double (*get_tick)(int ind, double min, double max, char *out, int sizeout);
     unsigned color;
     float crossaxis, length, thickness;
 
@@ -79,6 +82,7 @@ struct $axis {
     int x_or_y;
     float pos;
     double min, max;
+    int range_isset;
     unsigned color;
     float thickness;
     struct $axistext **text;
@@ -100,9 +104,11 @@ struct $axistext {
 struct $data {
     void *yxzdata[3];
     int yxztype[3];
-    int owner[3];
     long length;
     struct $axis *yxaxis[2];
+    double minmax[3][2];
+    char have_minmax[3]; // bits: minbit, maxbit
+    int owner[3];
 };
 
 struct $axes {

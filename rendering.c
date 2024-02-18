@@ -118,9 +118,14 @@ static void draw_data_xy(const short *xypixels, int len, unsigned *canvas, int a
     }
 }
 
-static void draw_data_x(const short *xypixels, double xjump, long x0, int len, unsigned *canvas, int axeswidth, int axeheight, int ystride, int *axis_xywh) {
+static void draw_data_x(const short *xypixels, double xdiff, long x0, int len,
+    unsigned *canvas, int axeswidth, int axeheight, int ystride, int *axis_xywh)
+{
+    int y0 = axis_xywh[1], y1 = axis_xywh[1] + axis_xywh[3];
+    double xjump = axis_xywh[2] / (xdiff-1);
+
     for (int idata=0; idata<len; idata++) {
-	if (xypixels[idata*2+1] < 0 || xypixels[idata*2+1] > axis_xywh[3]) continue;
+	if (xypixels[idata*2+1] < y0 || xypixels[idata*2+1] > y1) continue;
 	double xd = (x0 + idata) * xjump;
 	int x = iroundpos(xd);
 	canvas[(axis_xywh[1] + xypixels[idata*2+1]) * ystride + axis_xywh[0] + x] = 0;
@@ -134,8 +139,6 @@ static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth,
     const long npoints = 1024;
     short xypixels[npoints*2];
 
-    double xjump = (double)axis_xywh[2] / (data->length - 1);
-
     for (long istart=0; istart<data->length; ) {
 	long iend = min(istart+npoints, data->length);
 	if (data->yxzdata[1])
@@ -144,7 +147,7 @@ static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth,
 	if (data->yxzdata[1])
 	    draw_data_xy(xypixels, iend-istart, canvas, axeswidth, axesheight, ystride, axis_xywh);
 	else
-	    draw_data_x(xypixels, xjump, istart, iend-istart, canvas, axeswidth, axesheight, ystride, axis_xywh);
+	    draw_data_x(xypixels, yxdiff[1], istart, iend-istart, canvas, axeswidth, axesheight, ystride, axis_xywh);
 	istart = iend;
     }
 }
