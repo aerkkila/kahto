@@ -5,6 +5,8 @@
 #define $f4si	cplot_f4si
 #define $axis	cplot_axis
 #define $ticks	cplot_ticks
+#define $ticker	cplot_ticker
+#define $tickerdata cplot_tickerdata
 #define $axes	cplot_axes
 #define $data	cplot_data
 #define $axes_draw	cplot_axes_draw
@@ -55,14 +57,32 @@ struct cplot_pen {
     /* linestyle? */
 };
 
+struct cplot_tickerdata_linear {
+    int nticks;
+    double step, min;
+};
+
+union $tickerdata {
+    struct cplot_tickerdata_linear lin;
+    /* for future use */
+};
+
+enum cplot_tickere {ticker_linear};
+
+struct $ticker {
+    enum cplot_tickere species;
+    int (*init)(struct $ticker *this, double min, double max); // returns the number of ticks
+    double (*get_tick)(struct $ticker *this, int ind, char *out, int sizeout);
+    union $tickerdata tickerdata;
+};
+
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
  *	1: Ticks end at the axis i.e. are left or above.
  */
 struct $ticks {
     struct $axis *axis;
-    int (*get_nticks)(double min, double max);
-    double (*get_tick)(int ind, double min, double max, char *out, int sizeout);
+    struct $ticker ticker;
     unsigned color;
     float crossaxis, length, thickness;
 
@@ -153,6 +173,8 @@ static inline struct $axis* cplot_yaxis0(struct $axes *axes) {
 #undef $f4si
 #undef $axis
 #undef $ticks
+#undef $ticker
+#undef $tickerdata
 #undef $axes
 #undef $data
 #undef $axes_draw

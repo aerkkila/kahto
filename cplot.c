@@ -34,7 +34,7 @@ static inline int iceil(float f) {
 #include "data_to_pixels.c"
 #include "rotate.c"
 #include "rendering.c"
-#include "ticks.c"
+#include "ticker.c"
 #include "wayland_helper/waylandhelper.h"
 
 struct $axis* cplot_axis_alloc(struct $axes *axes) {
@@ -52,8 +52,7 @@ struct $ticks* cplot_ticks_alloc(struct $axis *axis, int have_labels) {
     struct $ticks *ticks = calloc(1, sizeof(struct $ticks));
     ticks->axis = axis;
     ticks->color = fg;
-    ticks->get_tick = get_tick_basic;
-    ticks->get_nticks = get_nticks_basic;
+    ticks->ticker.init = cplot_init_ticker_default;
     ticks->length = 1.0 / 80;
     ticks->thickness = -1; // same as axis
     ticks->hvalign_text[0] = -0.5;
@@ -136,7 +135,7 @@ struct $axes* $plot_args(struct $args *args) {
 void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
     float min = ticks->axis->min;
     float max = ticks->axis->max;
-    int nticks = ticks->get_nticks(min, max);
+    int nticks = ticks->ticker.init(&ticks->ticker, min, max);
     float thickness = ticks->thickness < 0 ? ticks->axis->thickness * -ticks->thickness : ticks->thickness;
     thickness *= axesheight;
     if (thickness > 1e-9 && thickness < 1)
@@ -171,7 +170,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 
     /* Silmukan kääntäminen muuttaisi minmaxpos-muuttujaa. */
     for (int itick=0; itick<nticks; itick++) {
-	double pos_data = ticks->get_tick(itick, min, max, tick, 32);
+	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, tick, 32);
 	double pos_rel = (pos_data - ticks->axis->min) / axisdiff;
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
@@ -293,21 +292,21 @@ static void get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheig
 /* Akselia kohtisuoraan */
 static void get_ticklabel_limits(struct $axis *axis, int axeswidth, int axesheight, float lim2out[2]) {
     memset(lim2out, 0, 2*sizeof(float));
+    float min = axis->min,
+	  max = axis->max;
     for (int i=0; i<axis->nticks; i++) {
 	struct $ticks *tk = axis->ticks[i];
 	float lim2[] = {get_ticks_underlength(tk), get_ticks_overlength(tk)};
-	if (!tk->get_nticks)
+	if (!tk->ticker.init)
 	    goto endloop;
-	float min = tk->axis->min,
-	      max = tk->axis->max;
 
 	ttra_set_fontheight(tk->ttra, tk->rowheight * axesheight);
-	int nlabels = tk->get_nticks(min, max);
+	int nlabels = tk->ticker.init(&tk->ticker, min, max);
 	char out[128];
 	int maxcols=0, maxrows=0;
 	int width, height;
 	for (int i=0; i<nlabels; i++) {
-	    tk->get_tick(i, min, max, out, 128);
+	    tk->ticker.get_tick(&tk->ticker, i, out, 128);
 	    ttra_get_textdims_chars(out, &width, &height);
 	    if (height > maxrows)
 		maxrows = height;
@@ -337,17 +336,17 @@ static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int a
     double axisdiff = axis->max - axis->min;
     for (int iticks=0; iticks<axis->nticks; iticks++) {
 	struct $ticks *tk = axis->ticks[iticks];
-	if (!tk->get_nticks)
+	if (!tk->ticker.init)
 	    continue;
 	float min = axis->min,
 	      max = axis->max;
 
-	int nlabels = tk->get_nticks(min, max);
+	int nlabels = tk->ticker.init(&tk->ticker, min, max);
 	char out[128];
 	int coord = axis->x_or_y == 'y';
 	for (int i=0; i<nlabels; i++) {
 	    int wh[2];
-	    double pos_data = tk->get_tick(i, min, max, out, 128);
+	    double pos_data = tk->ticker.get_tick(&tk->ticker, i, out, 128);
 	    double pos_rel = (pos_data - axis->min) / axisdiff;
 	    int pos_px = axis_xywh[coord] + iroundpos(pos_rel * (axis_xywh[coord+2]-1));
 	    ttra_get_textdims_pixels(tk->ttra, out, wh+0, wh+1);
@@ -418,14 +417,14 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
 
     $f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
+	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
+	    axis_update_range(axes->axis[iaxis]);
+
 	float over[2];
 	get_ticklabel_limits(axes->axis[iaxis], axeswidth, axesheight, over);
 	int coord = axes->axis[iaxis]->x_or_y == 'x'; // ticks are orthogonal to this
 	overgoing[coord+0]  = max(overgoing[coord+0], over[0]);
 	overgoing[coord+2]  = max(overgoing[coord+2], over[1]);
-
-	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
-	    axis_update_range(axes->axis[iaxis]);
     }
 
     overgoing *= (float)axesheight; // to pixels
