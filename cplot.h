@@ -33,7 +33,7 @@
 _Static_assert(sizeof(long double) == 16);
 
 /* returns some of the enumerations above according to the data type */
-#define cplot_get_type(a) ((int)( \
+#define cplot_type(a) ((int)( \
 	    (typeof(a))1.5 == 1 ?	/* integer or floating point number */ \
 	    /* integer */ \
 	    sizeof(a) + (		/* size of integer */ \
@@ -121,6 +121,7 @@ struct $axistext {
     int ro_area[4];
 };
 
+/* If changed, cplot_args must be changed similarily. */
 struct $data {
     void *yxzdata[3];
     int yxztype[3];
@@ -142,17 +143,34 @@ struct $axes {
     int ndata, mem_data;
 };
 
-struct $args {
+struct cplot_args {
     struct $axes *axes;
-    struct $data data;
+    /* struct $data inlined. ydata must stay first */
+    void *ydata, *xdata, *zdata;
+    int ytype, xtype, ztype;
+    long len;
+    struct $axis *yaxis, *xaxis;
+    double minmax[3][2];
+    char have_minmax[3]; // bits: minbit, maxbit
+    int yxzowner[3];
+    /* end struct $data */
     int copy[3]; // not used yet
 };
 
-struct $axes* $plot_args(struct $args *args);
-static inline struct $axes* $plot_inl(struct $args args) {
+#define cplot_y(y, ...) $plot_inl((struct cplot_args){.ydata=(y), .ytype=cplot_type(*(y)), __VA_ARGS__})
+#define cplot_yx(y, x, ...) $plot_inl((struct cplot_args){\
+    .ydata=(y), \
+    .xdata=(x), \
+    .ytype=cplot_type(*(y)), \
+    .xtype=cplot_type(*(x)), \
+    __VA_ARGS__ \
+    })
+
+struct $axes* $plot_args(struct cplot_args *args);
+static inline struct $axes* $plot_inl(struct cplot_args args) {
     return $plot_args(&args);
 }
-#define cplot_plot(...) $plot_inl((struct $args){__VA_ARGS__})
+#define cplot_plot(...) $plot_inl((struct cplot_args){__VA_ARGS__})
 
 void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void $axislabel(struct $axis *axis, char *label);
@@ -189,7 +207,7 @@ static inline struct $axis* cplot_yaxis0(struct $axes *axes) {
 #else
 #define $xaxis0 cplot_xaxis0
 #define $yaxis0 cplot_yaxis0
-#define $type	cplot_get_type
+#define $type	cplot_type
 #endif
 
 #endif

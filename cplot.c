@@ -110,12 +110,12 @@ struct $axes* cplot_axes_alloc() {
     return axes;
 }
 
-static void add_data(struct $args *args) {
+static void add_data(struct cplot_args *args) {
     if (args->axes->mem_data < args->axes->ndata+1)
 	args->axes->data = realloc(args->axes->data, (args->axes->mem_data = args->axes->ndata+3) * sizeof(void*));
     struct $data *data;
     args->axes->data[args->axes->ndata++] = data = malloc(sizeof(struct $data));
-    memcpy(data, &args->data, sizeof(struct $data));
+    memcpy(data, &args->ydata, sizeof(struct $data));
     if (!data->yxaxis[0])
 	data->yxaxis[0] = $yaxis0(args->axes);
     if (!data->yxaxis[1])
@@ -124,10 +124,10 @@ static void add_data(struct $args *args) {
     data->yxaxis[1]->range_isset = 0;
 }
 
-struct $axes* $plot_args(struct $args *args) {
+struct $axes* $plot_args(struct cplot_args *args) {
     struct $axes *axes = args->axes ? args->axes : cplot_axes_alloc();
     args->axes = axes;
-    if (args->data.yxzdata[0])
+    if (args->ydata)
 	add_data(args);
     return axes;
 }
