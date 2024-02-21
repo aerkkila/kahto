@@ -32,7 +32,7 @@ static inline int iceil(float f) {
     return a + (a != f);
 }
 
-#include "data_to_pixels.c"
+#include "functions.c"
 #include "rotate.c"
 #include "rendering.c"
 #include "ticker.c"

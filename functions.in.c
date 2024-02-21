@@ -7,7 +7,7 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
     int len = iend - istart;
     for (int i=0; i<len; i++) {
 	float pos = (data[i] - axismin) / axisdiff;
-	out[i*2] = iround(pos * axislen);
+	out[i*2] = iround(pos * axislen - 0.5);
     }
 }
 
@@ -18,7 +18,7 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
     int len = iend - istart;
     for (int i=0; i<len; i++) {
 	float pos = (data[i] - axismin) / axisdiff;
-	out[i*2] = iround((1 - pos) * axislen);
+	out[i*2] = iround((1 - pos) * axislen - 0.5);
     }
 }
 

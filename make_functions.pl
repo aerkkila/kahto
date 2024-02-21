@@ -6,8 +6,8 @@ use warnings;
              'long', 'long unsigned', 'float', 'double', 'long double');
 
 sub main {
-    open file_in, "<data_to_pixels.in.c" or die;
-    open file_out, ">data_to_pixels.c";
+    open file_in, "<functions.in.c" or die;
+    open file_out, ">functions.c";
 
     for (my $i=0; $i<@enumtypes; $i++) {
 	while (<file_in>) {
