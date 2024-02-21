@@ -1,6 +1,6 @@
 #include <float.h>
 
-static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, int axismin, int axisdiff, int axislen) {
+static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, int axismin, double axisdiff, int axislen) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
@@ -11,7 +11,7 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
     }
 }
 
-static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, int axismin, int axisdiff, int axislen) {
+static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, int axismin, double axisdiff, int axislen) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
