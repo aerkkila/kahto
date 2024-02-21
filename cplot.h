@@ -45,6 +45,8 @@ _Static_assert(sizeof(long double) == 16);
 #define minbit 1
 #define maxbit 2
 
+#define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
+
 typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
 
@@ -130,6 +132,11 @@ struct $data {
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int owner[3];
+    /* style */
+    const char* marker;
+    int literal_marker;
+    float markersize;
+    unsigned color;
 };
 
 struct $axes {
@@ -145,6 +152,7 @@ struct $axes {
 
 struct cplot_args {
     struct $axes *axes;
+
     /* struct $data inlined. ydata must stay first */
     void *ydata, *xdata, *zdata;
     int ytype, xtype, ztype;
@@ -153,6 +161,12 @@ struct cplot_args {
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int yxzowner[3];
+
+    const char* marker;
+    int literal_marker;
+    float markersize;
+    unsigned color;
+
     /* end struct $data */
     int copy[3]; // not used yet
 };

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 int main() {
-    const int pit = 10000;
+    const int pit = 5000;
     float ydata[pit];
     for (int i=0; i<pit; i++)
 	ydata[i] = rand() % (i+1) + 0.1;

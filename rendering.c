@@ -110,7 +110,39 @@ static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignmen
     return 0;
 }
 
-static void draw_data_xy(const short *xypixels, int len, unsigned *canvas, int axeswidth, int axeheight, int ystride, int *axis_xywh) {
+static void init_circle(unsigned char *to, int tow, int toh) {
+    int radius = min(tow, toh) / 2;
+    to += radius * tow + radius;
+    int radius2 = radius * radius;
+    for (int j=0; j<=radius; j++) {
+	int j3 = (j+0.5) * (j+0.5);
+	int j2 = j * j;
+	for (int i=0; i<=radius; i++) {
+	    int i3 = (i+0.5) * (i+0.5);
+	    int i2 = i * i;
+	    int value = j3 + i3 < radius2 ? 255 :
+		j3 + i2 < radius2 || j2 + i3 < radius2 ? 128 :
+		j2 + i2 < radius2 ? 80 : 0;
+	    to[j*tow + i] = to[-j*tow + i] = to[j*tow - i] = to[-j*tow - i] = value;
+	}
+    }
+}
+
+static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
+    int eulav = 255 - value;
+    int fg2 = color >> 16 & 0xff,
+	fg1 = color >> 8 & 0xff,
+	fg0 = color >> 0 & 0xff,
+	bg2 = *ptr >> 16 & 0xff,
+	bg1 = *ptr >> 8 & 0xff,
+	bg0 = *ptr >> 0 & 0xff;
+    int c2 = (fg2 * value + bg2 * eulav) / 255,
+	c1 = (fg1 * value + bg1 * eulav) / 255,
+	c0 = (fg0 * value + bg0 * eulav) / 255;
+    *ptr = *ptr>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
+}
+
+static void draw_data_xy(const short *xypixels, int len, unsigned *canvas, int ystride, int *axis_xywh) {
     for (int idata=0; idata<len; idata++) {
 	if (xypixels[idata*2] < 0 || xypixels[idata*2] > axis_xywh[2]) continue;
 	if (xypixels[idata*2+1] < 0 || xypixels[idata*2+1] > axis_xywh[3]) continue;
@@ -119,7 +151,8 @@ static void draw_data_xy(const short *xypixels, int len, unsigned *canvas, int a
 }
 
 static void draw_data_x(const short *xypixels, double xdiff, long x0, int len,
-    unsigned *canvas, int axeswidth, int axeheight, int ystride, int *axis_xywh)
+    unsigned *canvas, int ystride, int *axis_xywh,
+    unsigned char *bmap, int mapw, int maph, unsigned color)
 {
     int y0 = axis_xywh[1], y1 = axis_xywh[1] + axis_xywh[3];
     double xjump = axis_xywh[2] / (xdiff-1);
@@ -128,7 +161,20 @@ static void draw_data_x(const short *xypixels, double xdiff, long x0, int len,
 	if (xypixels[idata*2+1] < y0 || xypixels[idata*2+1] > y1) continue;
 	double xd = (x0 + idata) * xjump;
 	int x = iroundpos(xd);
-	canvas[(axis_xywh[1] + xypixels[idata*2+1]) * ystride + axis_xywh[0] + x] = 0;
+	int y = xypixels[idata*2+1];
+	//canvas[(axis_xywh[1] + y) * ystride + axis_xywh[0] + x] = 0;
+
+	for (int j=0; j<maph; j++) {
+	    int jaxis = y - maph/2 + j;
+	    if (jaxis < 0 || jaxis >= axis_xywh[3]) continue;
+	    for (int i=0; i<mapw; i++) {
+		int iaxis = x - mapw/2 + i;
+		if (iaxis < 0 || iaxis >= axis_xywh[2]) continue;
+		int value = bmap[j*mapw + i];
+		unsigned *ptr = &canvas[(axis_xywh[1]+jaxis) * ystride + axis_xywh[0] + iaxis];
+		tocanvas(ptr, value, color);
+	    }
+	}
     }
 }
 
@@ -139,15 +185,28 @@ static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth,
     const long npoints = 1024;
     short xypixels[npoints*2];
 
+    int width, height;
+    width = height = iroundpos(data->markersize * axeswidth);
+    unsigned char bmap_buff[width*height];
+    unsigned char *bmap = bmap_buff;
+
+    if (data->literal_marker) {
+	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
+	ttra_set_fontheight(ttra, height);
+	bmap = ttra_get_bitmap(ttra, data->marker, &width, &height);
+    }
+    else
+	init_circle(bmap, width, height);
+
     for (long istart=0; istart<data->length; ) {
 	long iend = min(istart+npoints, data->length);
 	if (data->yxzdata[1])
 	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxmin[1], yxdiff[1], yxlen[1]);
 	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxmin[0], yxdiff[0], yxlen[0]);
 	if (data->yxzdata[1])
-	    draw_data_xy(xypixels, iend-istart, canvas, axeswidth, axesheight, ystride, axis_xywh);
+	    draw_data_xy(xypixels, iend-istart, canvas, ystride, axis_xywh);
 	else
-	    draw_data_x(xypixels, yxdiff[1], istart, iend-istart, canvas, axeswidth, axesheight, ystride, axis_xywh);
+	    draw_data_x(xypixels, yxdiff[1], istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color);
 	istart = iend;
     }
 }

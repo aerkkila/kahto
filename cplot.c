@@ -110,6 +110,15 @@ struct $axes* cplot_axes_alloc() {
     return axes;
 }
 
+static void init_datastyle(struct $data *data) {
+    if (data->markersize == 0)
+	data->markersize = 1.0 / 150;
+    if (!data->marker)
+	data->marker = "o";
+    if (!data->color)
+	data->color = RGB(0, 70, 185);
+}
+
 static void add_data(struct cplot_args *args) {
     if (args->axes->mem_data < args->axes->ndata+1)
 	args->axes->data = realloc(args->axes->data, (args->axes->mem_data = args->axes->ndata+3) * sizeof(void*));
@@ -122,6 +131,7 @@ static void add_data(struct cplot_args *args) {
 	data->yxaxis[1] = $xaxis0(args->axes);
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;
+    init_datastyle(data);
 }
 
 struct $axes* $plot_args(struct cplot_args *args) {
