@@ -7,7 +7,7 @@
 
 /* https://en.wikipedia.org/wiki/Bresenham's_line_algorithm */
 /* This method is nice because it uses only integers. */
-static void draw_thick_line_bresenham(unsigned *data, int win_w, const int xy[4], unsigned väri, int leveys, int win_h) {
+static void draw_thick_line_bresenham(unsigned *data, int win_w, const int xy[4], unsigned väri, int leveys, const int area[4]) {
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
     int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
 
@@ -25,8 +25,8 @@ static void draw_thick_line_bresenham(unsigned *data, int win_w, const int xy[4]
 	int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
 	    n1=xy[2*!backwards+nosteep]+p,  n0=xy[2*backwards+nosteep]+p;
 	if (n0 < 0 && n1 < 0) continue;
-	if (n1 >= win_h && n0 >= win_h && nosteep) continue;
-	if (n1 >= win_w && n0 >= win_w && !nosteep) continue;
+	if (n1 >= area[3] && n0 >= area[3] && nosteep) continue;
+	if (n1 >= area[2] && n0 >= area[2] && !nosteep) continue;
 
 	const int n_add = n1 > n0 ? 1 : -1;
 	const int dm = m1 - m0;
@@ -40,21 +40,28 @@ static void draw_thick_line_bresenham(unsigned *data, int win_w, const int xy[4]
 	    n0 += D > 0 ? n_add : 0;
 	    D += D > 0 ? D_add1 : D_add0;
 	}
+	/* ohitetaan negatiivinen m0 */
+	if (m0 < 0 && m1 < 0)
+	    continue;
+	for (; m0<=0; m0++) {
+	    n0 += D > 0 ? n_add : 0;
+	    D  += D > 0 ? D_add1 : D_add0;
+	}
 
 	/* Miten n0-ehdon saisi ujutettua m0:an? */
 	if (nosteep) { // (m,n) = (x,y)
-	    if (n1 >= win_h)
-		n1 = win_h-1;
-	    for (; m0<=m1 && n0 <= n1; m0++) {
+	    if (n1 >= area[3])
+		n1 = area[3]-1;
+	    for (; m0<=m1; m0++) {
 		data[n0*win_w + m0] = väri;
 		n0 += D > 0 ? n_add : 0;
 		D  += D > 0 ? D_add1 : D_add0;
 	    }
 	}
 	else { // (m,n) = (y,x)
-	    if (n1 >= win_w)
-		n1 = win_w-1;
-	    for (; m0<=m1 && n0 <= n1; m0++) {
+	    if (n1 >= area[2])
+		n1 = area[2]-1;
+	    for (; m0<=m1; m0++) {
 		data[m0*win_w + n0] = väri;
 		n0 += D > 0 ? n_add : 0;
 		D  += D > 0 ? D_add1 : D_add0;
@@ -150,20 +157,22 @@ static void draw_data_xy(const short *xypixels, int len, unsigned *canvas, int y
     }
 }
 
-static void draw_data_x(const short *xypixels, double xdiff, long x0, int len,
+static void draw_data_x(const short *xypixels, double xpix_per_unit, long x0, int len,
     unsigned *canvas, int ystride, int *axis_xywh,
     unsigned char *bmap, int mapw, int maph, unsigned color)
 {
     int y0 = axis_xywh[1], y1 = axis_xywh[1] + axis_xywh[3];
-    double xjump = axis_xywh[2] / (xdiff-1);
 
     for (int idata=0; idata<len; idata++) {
 	if (xypixels[idata*2+1] < y0 || xypixels[idata*2+1] > y1) continue;
-	double xd = (x0 + idata) * xjump;
+	double xd = (x0 + idata) * xpix_per_unit;
 	int x = iroundpos(xd);
 	int y = xypixels[idata*2+1];
-	//canvas[(axis_xywh[1] + y) * ystride + axis_xywh[0] + x] = 0;
 
+	if (!bmap) {
+	    canvas[(axis_xywh[1] + y) * ystride + axis_xywh[0] + x] = color;
+	    continue;
+	}
 	for (int j=0; j<maph; j++) {
 	    int jaxis = y - maph/2 + j;
 	    if (jaxis < 0 || jaxis >= axis_xywh[3]) continue;
@@ -178,6 +187,20 @@ static void draw_data_x(const short *xypixels, double xdiff, long x0, int len,
     }
 }
 
+static void connect_data_x(const short *xypixels, double xpix_per_unit, long x0, long len, unsigned *canvas, int ystride, int *axis_xywh, int thickness, unsigned color) {
+    int axis_area[] = xywh_to_area(axis_xywh);
+    for (int i=0; i<len-1; i++) {
+	int xy[] = {
+	    iroundpos((x0+i) * xpix_per_unit) + axis_xywh[0],
+	    xypixels[1],
+	    iroundpos((x0+i+1) * xpix_per_unit) + axis_xywh[0],
+	    xypixels[3],
+	};
+	draw_thick_line_bresenham(canvas, ystride, xy, color, thickness, axis_area);
+	xypixels += 2;
+    }
+}
+
 static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride, int *axis_xywh) {
     double yxmin[] = {data->yxaxis[0]->min, data->yxaxis[1]->min};
     double yxdiff[] = {data->yxaxis[0]->max - yxmin[0], data->yxaxis[1]->max - yxmin[1]};
@@ -189,24 +212,37 @@ static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth,
     width = height = iroundpos(data->markersize * axeswidth);
     unsigned char bmap_buff[width*height];
     unsigned char *bmap = bmap_buff;
+    int marker = 1;
 
     if (data->literal_marker) {
 	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
 	ttra_set_fontheight(ttra, height);
 	bmap = ttra_get_bitmap(ttra, data->marker, &width, &height);
     }
+    else if (!data->marker || data->marker[0] == ' ')
+	marker = 0;
+    else if (data->marker[0] == '.')
+	bmap = NULL;
     else
 	init_circle(bmap, width, height);
+
+    int line_thickness = iroundpos(data->line_thickness * axesheight);
+
+    double xpix_per_unit = axis_xywh[2] / yxdiff[1]; // Used if x is not given.
 
     for (long istart=0; istart<data->length; ) {
 	long iend = min(istart+npoints, data->length);
 	if (data->yxzdata[1])
 	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxmin[1], yxdiff[1], yxlen[1]);
 	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxmin[0], yxdiff[0], yxlen[0]);
-	if (data->yxzdata[1])
-	    draw_data_xy(xypixels, iend-istart, canvas, ystride, axis_xywh);
-	else
-	    draw_data_x(xypixels, yxdiff[1], istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color);
+	if (marker) {
+	    if (data->yxzdata[1])
+		draw_data_xy(xypixels, iend-istart, canvas, ystride, axis_xywh);
+	    else
+		draw_data_x(xypixels, xpix_per_unit, istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color);
+	}
+	if (data->linestyle)
+	    connect_data_x(xypixels, xpix_per_unit, istart, iend-istart, canvas, ystride, axis_xywh, line_thickness, data->color);
 	istart = iend;
     }
 }

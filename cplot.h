@@ -137,6 +137,8 @@ struct $data {
     int literal_marker;
     float markersize;
     unsigned color;
+    const char *linestyle;
+    float line_thickness;
 };
 
 struct $axes {
@@ -166,6 +168,8 @@ struct cplot_args {
     int literal_marker;
     float markersize;
     unsigned color;
+    const char *linestyle;
+    float line_thickness;
 
     /* end struct $data */
     int copy[3]; // not used yet

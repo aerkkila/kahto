@@ -13,6 +13,7 @@
 #define update_max(a, b) ((a) = max(a,b))
 #define arrlen(a) (sizeof(a) / sizeof(*(a)))
 #define RGB(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
+#define xywh_to_area(xywh) {xywh[0], xywh[1], xywh[2]+xywh[0], xywh[3]+xywh[1]}
 
 static inline int iround(float f) {
     int a = f;
@@ -177,6 +178,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
     memcpy(ticks->ro_labelarea, ticks->axis->ro_line, sizeof(ticks->ro_labelarea));
 
     double axisdiff = ticks->axis->max - ticks->axis->min;
+    int axis_area[] = xywh_to_area(axis_xywh);
 
     /* Silmukan kääntäminen muuttaisi minmaxpos-muuttujaa. */
     for (int itick=0; itick<nticks; itick++) {
@@ -185,7 +187,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
 	line_px[!isx] = line_px[!isx+2] = minmaxpos[itick!=0] = axis_xywh[!isx] + iroundpos(pos_rel * axis_xywh[!isx+2]);
-	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, axesheight);
+	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, axis_area);
 	int area_text[4] = {0};
 	if (ticks->ttra && tick[0])
 	    if (put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text) >= 0) { // successful geometry
@@ -200,7 +202,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	    int *xywh = ticks->axis->axes->ro_inner_xywh;
 	    gridline[isx] = xywh[isx];
 	    gridline[isx+2] = xywh[isx] + xywh[isx+2];
-	    draw_thick_line_bresenham(canvas, axeswidth, gridline, ticks->grid_pen.color, ticks->grid_pen.thickness * axesheight, axesheight);
+	    draw_thick_line_bresenham(canvas, axeswidth, gridline, ticks->grid_pen.color, ticks->grid_pen.thickness * axesheight, axis_area);
 	}
     }
 
@@ -257,7 +259,8 @@ void cplot_axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int ax
 	};
 	memcpy(axis->ro_line, tmp, sizeof(tmp));
     }
-    draw_thick_line_bresenham(canvas, ystride, axis->ro_line, axis->color, thickness, axesheight);
+    int axis_area[] = xywh_to_area(axis_xywh);
+    draw_thick_line_bresenham(canvas, ystride, axis->ro_line, axis->color, thickness, axis_area);
 
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
     axis->ro_tick_area[1] = axis->ro_tick_area[3] = axis->ro_line[1];
