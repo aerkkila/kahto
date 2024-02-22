@@ -7,66 +7,116 @@
 
 /* https://en.wikipedia.org/wiki/Bresenham's_line_algorithm */
 /* This method is nice because it uses only integers. */
-static void draw_thick_line_bresenham(unsigned *data, int win_w, const int xy[4], unsigned väri, int leveys, const int area[4]) {
+static void draw_line_bresenham(unsigned *canvas, int ystride, const int *xy, unsigned color) {
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
     int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
+    int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
+	n1=xy[2*!backwards+nosteep],  n0=xy[2*backwards+nosteep];
+
+    const int n_add = n1 > n0 ? 1 : -1;
+    const int dm = m1 - m0;
+    const int dn = n1 > n0 ? n1 - n0 : n0 - n1;
+    const int D_add0 = 2 * dn;
+    const int D_add1 = 2 * (dn - dm);
+    int D = 2*dn - dm;
+    if (nosteep) // (m,n) = (x,y)
+	for (; m0<=m1; m0++) {
+	    canvas[n0*ystride + m0] = color;
+	    n0 += D > 0 ? n_add : 0;
+	    D  += D > 0 ? D_add1 : D_add0;
+	}
+    else // (m,n) = (y,x)
+	for (; m0<=m1; m0++) {
+	    canvas[m0*ystride + n0] = color;
+	    n0 += D > 0 ? n_add : 0;
+	    D  += D > 0 ? D_add1 : D_add0;
+	}
+}
+
+static int check_line(int *line, const int *area) {
+    if (line[0] == line[2]) {
+	if (line[0] < area[0] || line[0] >= area[2])
+	    return 1;
+	update_max(line[0], area[0]);
+	update_max(line[2], area[0]);
+	update_max(line[1], area[1]);
+	update_max(line[3], area[1]);
+
+	update_min(line[0], area[2]-1);
+	update_min(line[2], area[2]-1);
+	update_min(line[1], area[3]-1);
+	update_min(line[3], area[3]-1);
+	return 0;
+    }
+
+    float slope = (float)(line[3] - line[1]) / (line[2] - line[0]);
+    if (line[0] < area[0]) {
+	line[0] = area[0];
+	line[1] = iround(line[3] - ((line[2]-line[0]) * slope));
+    }
+    else if (line[0] >= area[2]) {
+	line[0] = area[2]-1;
+	line[1] = iround(line[3] - ((line[2]-line[0]) * slope));
+    }
+
+    if (line[1] < area[1]) {
+	if (slope == 0)
+	    return 1;
+	line[1] = area[1];
+	line[0] = iround(line[2] - ((line[3]-line[1]) / slope));
+    }
+    else if (line[1] >= area[3]) {
+	if (slope == 0)
+	    return 1;
+	line[1] = area[3]-1;
+	line[0] = iround(line[2] - ((line[3]-line[1]) / slope));
+    }
+
+    if (line[2] < area[0]) {
+	line[2] = area[0];
+	line[3] = iround(line[1] + ((line[2]-line[0]) * slope));
+    }
+    else if (line[2] >= area[2]) {
+	line[2] = area[2]-1;
+	line[3] = iround(line[1] + ((line[2]-line[0]) * slope));
+    }
+
+    if (line[3] < area[1]) {
+	if (slope == 0)
+	    return 1;
+	line[3] = area[0];
+	line[2] = iround(line[0] + ((line[3]-line[1]) / slope));
+    }
+    else if (line[3] >= area[3]) {
+	if (slope == 0)
+	    return 1;
+	line[3] = area[3]-1;
+	line[2] = iround(line[0] + ((line[3]-line[1]) / slope));
+    }
+    return 0;
+}
+
+static void draw_thick_line_bresenham(unsigned *canvas, int ystride, int *xy, unsigned color, int thickness, int *axis_area) {
+    int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 
     /* Vinon viivan leveys vaakasuunnassa on eri.
        Yhtälö on johdettu kynällä ja paperilla yhdenmuotoisista kolmioista. */
     int dy = xy[2+!nosteep] - xy[!nosteep];
     int dx = xy[2+nosteep] - xy[nosteep];
-    int lev = leveys;
     if (dx && dy) {
 	float x_per_y = (float)dx / dy;
-	lev = round(leveys * sqrt(1 + (x_per_y * x_per_y)));
+	thickness = iround(thickness * sqrt(1 + (x_per_y * x_per_y)));
     }
 
-    for (int p=-(lev-1)/2; p<=lev/2; p++) {
-	int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
-	    n1=xy[2*!backwards+nosteep]+p,  n0=xy[2*backwards+nosteep]+p;
-	if (n0 < 0 && n1 < 0) continue;
-	if (n1 >= area[3] && n0 >= area[3] && nosteep) continue;
-	if (n1 >= area[2] && n0 >= area[2] && !nosteep) continue;
+    xy[nosteep+0] -= thickness/2;
+    xy[nosteep+2] -= thickness/2;
 
-	const int n_add = n1 > n0 ? 1 : -1;
-	const int dm = m1 - m0;
-	const int dn = n1 > n0 ? n1 - n0 : n0 - n1;
-	const int D_add0 = 2 * dn;
-	const int D_add1 = 2 * (dn - dm);
-	int D = 2*dn - dm;
-
-	/* ohitetaan negatiivinen n0 */
-	for (; m0<=m1 && n0 < 0; m0++) {
-	    n0 += D > 0 ? n_add : 0;
-	    D += D > 0 ? D_add1 : D_add0;
-	}
-	/* ohitetaan negatiivinen m0 */
-	if (m0 < 0 && m1 < 0)
+    for (int p=0; p<thickness; p++) {
+	xy[nosteep+0]++;
+	xy[nosteep+2]++;
+	if (check_line(xy, axis_area))
 	    continue;
-	for (; m0<=0; m0++) {
-	    n0 += D > 0 ? n_add : 0;
-	    D  += D > 0 ? D_add1 : D_add0;
-	}
-
-	/* Miten n0-ehdon saisi ujutettua m0:an? */
-	if (nosteep) { // (m,n) = (x,y)
-	    if (n1 >= area[3])
-		n1 = area[3]-1;
-	    for (; m0<=m1; m0++) {
-		data[n0*win_w + m0] = väri;
-		n0 += D > 0 ? n_add : 0;
-		D  += D > 0 ? D_add1 : D_add0;
-	    }
-	}
-	else { // (m,n) = (y,x)
-	    if (n1 >= area[2])
-		n1 = area[2]-1;
-	    for (; m0<=m1; m0++) {
-		data[m0*win_w + n0] = väri;
-		n0 += D > 0 ? n_add : 0;
-		D  += D > 0 ? D_add1 : D_add0;
-	    }
-	}
+	draw_line_bresenham(canvas, ystride, xy, color);
     }
 }
 
