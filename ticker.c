@@ -34,21 +34,21 @@ int cplot_init_ticker_default(struct $ticker *this, double min, double max) {
     int maxsign = Sign(max);
     max *= maxsign; // absolute value
     int maxpower = 0;
-    double maxtick = 1;
+    double base = 1;
     if (max >= 1) {
-	while (maxtick < max) {
-	    maxtick *= 10;
+	while (base < max) {
+	    base *= 10;
 	    maxpower++;
 	}
 	/* pitäisi huomioida likipitäen yhtäsuuruus */
-	if (maxtick > max) {
-	    maxtick *= 0.1;
+	if (base > max) {
+	    base *= 0.1;
 	    maxpower--;
 	}
     }
     else
-	while (maxtick > max) {
-	    maxtick *= 0.1;
+	while (base > max) {
+	    base *= 0.1;
 	    maxpower--;
 	}
     max *= maxsign;
@@ -57,7 +57,6 @@ int cplot_init_ticker_default(struct $ticker *this, double min, double max) {
     double best_step, best_diff = DBL_MAX;
     double target_n = 7;
     double diff = max - min;
-    double base = maxtick;
     if (diff / (base*step_opts[0]) < target_n)
 	base *= 0.1;
     for (int iopt=0; iopt<nstep_opt; iopt++) {
@@ -76,7 +75,7 @@ int cplot_init_ticker_default(struct $ticker *this, double min, double max) {
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
 	.nticks = diff / best_step,
 	.step = best_step,
-	.min = best_step,
+	.min = best_step * (int)(min/best_step),
     };
 
     return this->tickerdata.lin.nticks;
