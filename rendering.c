@@ -149,45 +149,52 @@ static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
     *ptr = *ptr>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
 }
 
-static void draw_data_xy(const short *xypixels, int len, unsigned *canvas, int ystride, int *axis_xywh) {
-    for (int idata=0; idata<len; idata++) {
-	if (xypixels[idata*2] < 0 || xypixels[idata*2] > axis_xywh[2]) continue;
-	if (xypixels[idata*2+1] < 0 || xypixels[idata*2+1] > axis_xywh[3]) continue;
-	canvas[(axis_xywh[1] + xypixels[idata*2+1]) * ystride + axis_xywh[0] + xypixels[idata*2]] = 0;
+static inline void draw_datum(unsigned *canvas, int ystride,
+    const unsigned char *bmap, int mapw, int maph,
+    int x, int y, const int *axis_xywh, unsigned char color)
+{
+    if (!bmap) {
+	if (0 <= x && x < axis_xywh[2] && 0 <= y && y < axis_xywh[3])
+	    canvas[(axis_xywh[1] + y) * ystride + axis_xywh[0] + x] = color;
+	return;
+    }
+    for (int j=0; j<maph; j++) {
+	int jaxis = y - maph/2 + j;
+	if (jaxis < 0 || jaxis >= axis_xywh[3]) continue;
+	for (int i=0; i<mapw; i++) {
+	    int iaxis = x - mapw/2 + i;
+	    if (iaxis < 0 || iaxis >= axis_xywh[2]) continue;
+	    int value = bmap[j*mapw + i];
+	    unsigned *ptr = &canvas[(axis_xywh[1]+jaxis) * ystride + axis_xywh[0] + iaxis];
+	    tocanvas(ptr, value, color);
+	}
     }
 }
 
-static void draw_data_x(const short *xypixels, double xpix_per_unit, long x0, int len,
+static void draw_data_x(const short *xypixels, long x0, int len,
     unsigned *canvas, int ystride, int *axis_xywh,
-    unsigned char *bmap, int mapw, int maph, unsigned color)
+    unsigned char *bmap, int mapw, int maph, unsigned color, double xpix_per_unit)
 {
-    int y0 = axis_xywh[1], y1 = axis_xywh[1] + axis_xywh[3];
-
     for (int idata=0; idata<len; idata++) {
-	if (xypixels[idata*2+1] < y0 || xypixels[idata*2+1] > y1) continue;
 	double xd = (x0 + idata) * xpix_per_unit;
 	int x = iroundpos(xd);
 	int y = xypixels[idata*2+1];
-
-	if (!bmap) {
-	    canvas[(axis_xywh[1] + y) * ystride + axis_xywh[0] + x] = color;
-	    continue;
-	}
-	for (int j=0; j<maph; j++) {
-	    int jaxis = y - maph/2 + j;
-	    if (jaxis < 0 || jaxis >= axis_xywh[3]) continue;
-	    for (int i=0; i<mapw; i++) {
-		int iaxis = x - mapw/2 + i;
-		if (iaxis < 0 || iaxis >= axis_xywh[2]) continue;
-		int value = bmap[j*mapw + i];
-		unsigned *ptr = &canvas[(axis_xywh[1]+jaxis) * ystride + axis_xywh[0] + iaxis];
-		tocanvas(ptr, value, color);
-	    }
-	}
+	draw_datum(canvas, ystride, bmap, mapw, maph, x, y, axis_xywh, color);
     }
 }
 
-static void connect_data_x(const short *xypixels, double xpix_per_unit, long x0, long len, unsigned *canvas, int ystride, int *axis_xywh, int thickness, unsigned color) {
+static void draw_data_xy(const short *xypixels, long x0, int len,
+    unsigned *canvas, int ystride, int *axis_xywh,
+    unsigned char *bmap, int mapw, int maph, unsigned color)
+{
+    for (int idata=0; idata<len; idata++) {
+	int x = xypixels[idata*2],
+	y = xypixels[idata*2+1];
+	draw_datum(canvas, ystride, bmap, mapw, maph, x, y, axis_xywh, color);
+    }
+}
+
+static void connect_data_x(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, int *axis_xywh, int thickness, unsigned color, double xpix_per_unit) {
     int axis_area[] = xywh_to_area(axis_xywh);
     for (int i=0; i<len-1; i++) {
 	int xy[] = {
@@ -195,6 +202,20 @@ static void connect_data_x(const short *xypixels, double xpix_per_unit, long x0,
 	    xypixels[1],
 	    iroundpos((x0+i+1) * xpix_per_unit) + axis_xywh[0],
 	    xypixels[3],
+	};
+	draw_thick_line_bresenham(canvas, ystride, xy, color, thickness, axis_area);
+	xypixels += 2;
+    }
+}
+
+static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, int *axis_xywh, int thickness, unsigned color) {
+    int axis_area[] = xywh_to_area(axis_xywh);
+    for (int i=0; i<len-1; i++) {
+	int xy[] = {
+	    xypixels[0] + axis_xywh[0],
+	    xypixels[1] + axis_xywh[1],
+	    xypixels[2] + axis_xywh[0],
+	    xypixels[3] + axis_xywh[1],
 	};
 	draw_thick_line_bresenham(canvas, ystride, xy, color, thickness, axis_area);
 	xypixels += 2;
@@ -237,12 +258,16 @@ static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth,
 	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxmin[0], yxdiff[0], yxlen[0]);
 	if (marker) {
 	    if (data->yxzdata[1])
-		draw_data_xy(xypixels, iend-istart, canvas, ystride, axis_xywh);
+		draw_data_xy(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color);
 	    else
-		draw_data_x(xypixels, xpix_per_unit, istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color);
+		draw_data_x(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color, xpix_per_unit);
 	}
-	if (data->linestyle)
-	    connect_data_x(xypixels, xpix_per_unit, istart, iend-istart, canvas, ystride, axis_xywh, line_thickness, data->color);
+	if (data->linestyle) {
+	    if (data->yxzdata[1])
+		connect_data_xy(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, line_thickness, data->color);
+	    else
+		connect_data_x(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, line_thickness, data->color, xpix_per_unit);
+	}
 	istart = iend;
     }
 }

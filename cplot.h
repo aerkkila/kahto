@@ -176,12 +176,12 @@ struct cplot_args {
 };
 
 #define cplot_y(y, ...) $plot_inl((struct cplot_args){.ydata=(y), .ytype=cplot_type(*(y)), __VA_ARGS__})
-#define cplot_yx(y, x, ...) $plot_inl((struct cplot_args){\
-    .ydata=(y), \
-    .xdata=(x), \
-    .ytype=cplot_type(*(y)), \
-    .xtype=cplot_type(*(x)), \
-    __VA_ARGS__ \
+#define cplot_yx(y, x, ...) $plot_inl((struct cplot_args){	\
+    .ydata=(y),							\
+    .xdata=(x),							\
+    .ytype=cplot_type(*(y)),					\
+    .xtype=cplot_type(*(x)),					\
+    __VA_ARGS__							\
     })
 
 struct $axes* $plot_args(struct cplot_args *args);
