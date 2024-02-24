@@ -111,7 +111,7 @@ struct $axis {
     int mem_text, ntext;
     struct $ticks *ticks[3];
     int nticks;
-    int ro_line[4], ro_tick_area[4], ro_tot_area[4];
+    int ro_line[4], ro_tick_area[4], ro_linetick_area[4];
 };
 
 struct $axistext {

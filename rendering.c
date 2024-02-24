@@ -96,7 +96,9 @@ static int check_line(int *line, const int *area) {
     return 0;
 }
 
-static void draw_thick_line_bresenham(unsigned *canvas, int ystride, int *xy, unsigned color, int thickness, int *axis_area) {
+static void draw_thick_line_bresenham(unsigned *canvas, int ystride, const int *xy_c, unsigned color, int thickness, int *axis_area) {
+    int xy[4];
+    memcpy(xy, xy_c, sizeof(xy));
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 
     /* Vinon viivan leveys vaakasuunnassa on eri.
@@ -120,7 +122,7 @@ static void draw_thick_line_bresenham(unsigned *canvas, int ystride, int *xy, un
     }
 }
 
-static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4]) {
+static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
     int wh[2], x0, y0;
 
     if ((int)rot % 25)
@@ -130,14 +132,17 @@ static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignmen
 
     y0 = y + wh[(int)rot%50 == 0] * yalignment; // height if not rotated
     x0 = x + wh[(int)rot%50 != 0] * xalignment; // height if rotated
-    if (y0 < 0 || x0 < 0)
-	return -1;
 
     int quarter = (int)rot % 50 != 0;
     area_out[0] = x0;
     area_out[1] = y0;
     area_out[2] = x0+wh[quarter];
     area_out[3] = y0+wh[!quarter];
+    if (area_only)
+	return 0;
+
+    if (y0 < 0 || x0 < 0)
+	return -1;
 
     if ((int)rot % 100) {
 	unsigned *canvas = ttra->canvas;
@@ -222,7 +227,7 @@ static inline void draw_datum(unsigned *canvas, int ystride,
 }
 
 static void draw_data_x(const short *xypixels, long x0, int len,
-    unsigned *canvas, int ystride, int *axis_xywh,
+    unsigned *canvas, int ystride, const int *axis_xywh,
     unsigned char *bmap, int mapw, int maph, unsigned color, double xpix_per_unit)
 {
     for (int idata=0; idata<len; idata++) {
@@ -234,7 +239,7 @@ static void draw_data_x(const short *xypixels, long x0, int len,
 }
 
 static void draw_data_xy(const short *xypixels, long x0, int len,
-    unsigned *canvas, int ystride, int *axis_xywh,
+    unsigned *canvas, int ystride, const int *axis_xywh,
     unsigned char *bmap, int mapw, int maph, unsigned color)
 {
     for (int idata=0; idata<len; idata++) {
@@ -244,7 +249,7 @@ static void draw_data_xy(const short *xypixels, long x0, int len,
     }
 }
 
-static void connect_data_x(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, int *axis_xywh, int thickness, unsigned color, double xpix_per_unit) {
+static void connect_data_x(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, const int *axis_xywh, int thickness, unsigned color, double xpix_per_unit) {
     int axis_area[] = xywh_to_area(axis_xywh);
     for (int i=0; i<len-1; i++) {
 	int xy[] = {
@@ -258,7 +263,7 @@ static void connect_data_x(const short *xypixels, long x0, long len, unsigned *c
     }
 }
 
-static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, int *axis_xywh, int thickness, unsigned color) {
+static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, const int *axis_xywh, int thickness, unsigned color) {
     int axis_area[] = xywh_to_area(axis_xywh);
     for (int i=0; i<len-1; i++) {
 	int xy[] = {
@@ -272,10 +277,11 @@ static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *
     }
 }
 
-static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride, int *axis_xywh) {
+static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     double yxmin[] = {data->yxaxis[0]->min, data->yxaxis[1]->min};
     double yxdiff[] = {data->yxaxis[0]->max - yxmin[0], data->yxaxis[1]->max - yxmin[1]};
-    int yxlen[] = {axis_xywh[3], axis_xywh[2]};
+    const int *xywh = data->yxaxis[0]->axes->ro_inner_xywh;
+    int yxlen[] = {xywh[3], xywh[2]};
     const long npoints = 1024;
     short xypixels[npoints*2];
 
@@ -299,7 +305,7 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
 
     int line_thickness = iroundpos(data->line_thickness * axesheight);
 
-    double xpix_per_unit = axis_xywh[2] / yxdiff[1]; // Used if x is not given.
+    double xpix_per_unit = xywh[2] / yxdiff[1]; // Used if x is not given.
 
     for (long istart=0; istart<data->length; ) {
 	long iend = min(istart+npoints, data->length);
@@ -308,15 +314,15 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
 	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxmin[0], yxdiff[0], yxlen[0]);
 	if (marker) {
 	    if (data->yxzdata[1])
-		draw_data_xy(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color);
+		draw_data_xy(xypixels, istart, iend-istart, canvas, ystride, xywh, bmap, width, height, data->color);
 	    else
-		draw_data_x(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, bmap, width, height, data->color, xpix_per_unit);
+		draw_data_x(xypixels, istart, iend-istart, canvas, ystride, xywh, bmap, width, height, data->color, xpix_per_unit);
 	}
 	if (data->linestyle) {
 	    if (data->yxzdata[1])
-		connect_data_xy(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, line_thickness, data->color);
+		connect_data_xy(xypixels, istart, iend-istart, canvas, ystride, xywh, line_thickness, data->color);
 	    else
-		connect_data_x(xypixels, istart, iend-istart, canvas, ystride, axis_xywh, line_thickness, data->color, xpix_per_unit);
+		connect_data_x(xypixels, istart, iend-istart, canvas, ystride, xywh, line_thickness, data->color, xpix_per_unit);
 	}
 	istart = iend;
     }

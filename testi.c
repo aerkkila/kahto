@@ -7,7 +7,7 @@
 #define π 3.14159265358979
 
 int main() {
-    const int pit = 50;
+    const int pit = 45;
     float ydata[pit], xdata[pit];
     for (int i=0; i<pit; i++) {
 	ydata[i] = cos(2*π/pit*10 * i) * i * 0.1;
@@ -16,11 +16,6 @@ int main() {
     struct $axes *axes = cplot_yx(ydata, xdata, .len=pit, .linestyle="-", .line_thickness=1.0/500);
     $axislabel($xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
     $axislabel($yaxis0(axes), "y-nimiö\njatkuu täällä");
-
-    cplot_axes_commit(axes, 1000, 1000);
-
-    printf("x-akseli: %f ; %f\n", $xaxis0(axes)->min, $xaxis0(axes)->max);
-    printf("y-akseli: %f ; %f\n", $yaxis0(axes)->min, $yaxis0(axes)->max);
 
     cplot_show(axes);
 
