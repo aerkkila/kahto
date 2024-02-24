@@ -244,12 +244,20 @@ static inline $f4si axis_get_line(struct $axis *axis) {
     }
 }
 
-void cplot_axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
+void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
     float thickness = axis->thickness * axesheight;
     if (thickness > 1e-9 && thickness < 1)
 	thickness = 1;
-    $f4si line = axis_get_line(axis);
+    int axis_area[] = xywh_to_area(axis_xywh);
+    draw_thick_line_bresenham(canvas, ystride, axis->ro_line, axis->color, thickness, axis_area);
+    for (int i=0; i<axis->nticks; i++)
+	cplot_ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+    for (int i=0; i<axis->ntext; i++)
+	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
+}
 
+void cplot_axis_commit(struct $axis *axis, const int axis_xywh[4]) {
+    $f4si line = axis_get_line(axis);
     {
 	int tmp[] = {
 	    axis_xywh[0] + line[0] * (axis_xywh[2]-1),
@@ -259,21 +267,19 @@ void cplot_axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int ax
 	};
 	memcpy(axis->ro_line, tmp, sizeof(tmp));
     }
-    int axis_area[] = xywh_to_area(axis_xywh);
-    draw_thick_line_bresenham(canvas, ystride, axis->ro_line, axis->color, thickness, axis_area);
 
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
     axis->ro_tick_area[1] = axis->ro_tick_area[3] = axis->ro_line[1];
-    for (int i=0; i<axis->nticks; i++)
-	cplot_ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
 
     axis->ro_tot_area[0] = min(axis->ro_line[0], axis->ro_tick_area[0]);
     axis->ro_tot_area[1] = min(axis->ro_line[1], axis->ro_tick_area[1]);
     axis->ro_tot_area[2] = max(axis->ro_line[2], axis->ro_tick_area[2]);
     axis->ro_tot_area[3] = max(axis->ro_line[3], axis->ro_tick_area[3]);
+}
 
-    for (int i=0; i<axis->ntext; i++)
-	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
+void cplot_axis_draw(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride, const int axis_xywh[4]) {
+    cplot_axis_commit(axis, axis_xywh);
+    cplot_axis_render(axis, canvas, axeswidth, axesheight, ystride, axis_xywh);
 }
 
 static inline float get_ticks_overlength(struct $ticks *tk) {
@@ -420,14 +426,20 @@ static void axis_update_range(struct $axis *axis) {
     axis->range_isset = minbit | maxbit;
 }
 
-void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_axes_render(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     unsigned bg = axes->background;
     for (int j=0; j<axesheight; j++) {
 	unsigned ind0 = j * ystride;
 	for (int i=0; i<axeswidth; i++)
 	    canvas[ind0+i] = bg;
     }
+    for (int i=0; i<axes->naxis; i++)
+	cplot_axis_render(axes->axis[i], canvas, axeswidth, axesheight, ystride, axes->ro_inner_xywh);
+    for (int i=0; i<axes->ndata; i++)
+	cplot_data_render(axes->data[i], canvas, axeswidth, axesheight, ystride, axes->ro_inner_xywh);
+}
 
+void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight) {
     $f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
@@ -451,10 +463,12 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
 	get_ticklabel_limits_round2(axes->axis[iaxis], axeswidth, axesheight, axis_xywh);
 
     for (int i=0; i<axes->naxis; i++)
-	cplot_axis_draw(axes->axis[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+	cplot_axis_commit(axes->axis[i], axis_xywh);
+}
 
-    for (int i=0; i<axes->ndata; i++)
-	cplot_data_draw(axes->data[i], canvas, axeswidth, axesheight, ystride, axis_xywh);
+void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+    cplot_axes_commit(axes, axeswidth, axesheight);
+    cplot_axes_render(axes, canvas, axeswidth, axesheight, ystride);
 }
 
 void $axislabel(struct $axis *axis, char *label) {

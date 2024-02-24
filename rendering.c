@@ -272,7 +272,7 @@ static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *
     }
 }
 
-static void cplot_data_draw(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride, int *axis_xywh) {
+static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride, int *axis_xywh) {
     double yxmin[] = {data->yxaxis[0]->min, data->yxaxis[1]->min};
     double yxdiff[] = {data->yxaxis[0]->max - yxmin[0], data->yxaxis[1]->max - yxmin[1]};
     int yxlen[] = {axis_xywh[3], axis_xywh[2]};

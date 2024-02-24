@@ -196,6 +196,9 @@ void $show(struct $axes *axes);
 void $free(struct $axes *axes);
 void $free_axis(struct $axis *axis);
 
+void cplot_axes_render(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride);
+void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight);
+
 static inline struct $axis* cplot_xaxis0(struct $axes *axes) {
     return axes->axis[0];
 }
