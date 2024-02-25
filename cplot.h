@@ -61,7 +61,7 @@ struct cplot_pen {
 
 struct cplot_tickerdata_linear {
     int nticks;
-    double step, min;
+    double step, min, base;
 };
 
 union $tickerdata {
@@ -75,6 +75,7 @@ struct $ticker {
     enum cplot_tickere species;
     int (*init)(struct $ticker *this, double min, double max); // returns the number of ticks
     double (*get_tick)(struct $ticker *this, int ind, char *out, int sizeout);
+    int (*get_multiplication)(struct $ticker *this, char *out, int sizeout);
     union $tickerdata tickerdata;
 };
 
@@ -114,9 +115,12 @@ struct $axis {
     int ro_line[4], ro_tick_area[4], ro_linetick_area[4];
 };
 
+enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};
+
 struct $axistext {
     struct $axis *axis;
     char *text;
+    enum axistext_type type;
     int owner;
     float pos, rowheight, rotation100;
     float hvalign[2];
@@ -198,6 +202,7 @@ void $free_axis(struct $axis *axis);
 
 void cplot_axes_render(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight);
+void cplot_add_axistext(struct $axis *axis, struct $axistext *text);
 
 static inline struct $axis* cplot_xaxis0(struct $axes *axes) {
     return axes->axis[0];

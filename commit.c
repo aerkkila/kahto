@@ -75,7 +75,7 @@ void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, con
 
     /* Silmukan käyminen takaperin muuttaisi minmaxpos-muuttujaa. */
     for (int itick=0; itick<nticks; itick++) {
-	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, tick, 500);
+	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, tick, sizeof(tick));
 	double pos_rel = (pos_data - ticks->axis->min) / (ticks->axis->max - ticks->axis->min);
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
@@ -209,6 +209,8 @@ void get_ticklabel_limits_round3(struct $axis *axis, int axeswidth, int axesheig
 void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight) {
     $f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
+	if (axes->axis[iaxis]->ticks[0])
+	    check_tick_multiplication(axes->axis[iaxis]->ticks[0]);
 	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
 	    axis_update_range(axes->axis[iaxis]);
 

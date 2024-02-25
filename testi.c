@@ -10,7 +10,7 @@ int main() {
     const int pit = 45;
     float ydata[pit], xdata[pit];
     for (int i=0; i<pit; i++) {
-	ydata[i] = cos(2*π/pit*10 * i) * i * 0.1;
+	ydata[i] = cos(2*π/pit*10 * i) * i * 0.0001;
 	xdata[i] = sin(2*π/pit*10 * i) * i * 0.1;
     }
     struct $axes *axes = cplot_yx(ydata, xdata, .len=pit, .linestyle="-", .line_thickness=1.0/500);
