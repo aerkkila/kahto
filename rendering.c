@@ -84,7 +84,7 @@ static int check_line(int *line, const int *area) {
     if (line[3] < area[1]) {
 	if (slope == 0)
 	    return 1;
-	line[3] = area[0];
+	line[3] = area[1];
 	line[2] = iround(line[0] + ((line[3]-line[1]) / slope));
     }
     else if (line[3] >= area[3]) {
