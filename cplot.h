@@ -60,7 +60,7 @@ struct cplot_pen {
 };
 
 struct cplot_tickerdata_linear {
-    int nticks;
+    int nticks, baseten;
     double step, min, base;
 };
 
@@ -75,7 +75,6 @@ struct $ticker {
     enum cplot_tickere species;
     int (*init)(struct $ticker *this, double min, double max); // returns the number of ticks
     double (*get_tick)(struct $ticker *this, int ind, char *out, int sizeout);
-    int (*get_multiplication)(struct $ticker *this, char *out, int sizeout);
     union $tickerdata tickerdata;
 };
 

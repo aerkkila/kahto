@@ -209,8 +209,6 @@ void get_ticklabel_limits_round3(struct $axis *axis, int axeswidth, int axesheig
 void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight) {
     $f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
-	if (axes->axis[iaxis]->ticks[0])
-	    check_tick_multiplication(axes->axis[iaxis]->ticks[0]);
 	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
 	    axis_update_range(axes->axis[iaxis]);
 

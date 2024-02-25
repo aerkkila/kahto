@@ -15,8 +15,6 @@
 #define RGB(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 #define xywh_to_area(xywh) {(xywh)[0], (xywh)[1], (xywh)[2]+(xywh)[0], (xywh)[3]+(xywh)[1]}
 
-static void check_tick_multiplication(struct $ticks *ticks);
-
 static inline int iround(float f) {
     int a = f;
     return a + (f-a >= 0.5) - (a-f > 0.5);
@@ -124,26 +122,6 @@ struct $axes* cplot_axes_alloc() {
     ttra_init(axes->ttra);
 
     return axes;
-}
-
-static void check_tick_multiplication(struct $ticks *ticks) {
-    if (!ticks->ticker.get_multiplication || !ticks->ticker.get_multiplication(&ticks->ticker, NULL, 0))
-	return;
-    for (int i=0; i<ticks->axis->ntext; i++)
-	if (ticks->axis->text[i]->type == cplot_axistext_tickmul)
-	    return;
-
-    struct $axistext *text = malloc(sizeof(struct $axistext));
-    int isx = ticks->axis->x_or_y == 'x';
-    *text = (struct $axistext) {
-	.text = "0000",
-	.pos = 1.0 * isx,
-	.hvalign = {0, -0.5},
-	.rowheight = (ticks->axis->nticks ? ticks->axis->ticks[0]->rowheight : 2.4/80) * 1.3,
-	.axis = ticks->axis,
-	.type = cplot_axistext_tickmul,
-    };
-    cplot_add_axistext(ticks->axis, text);
 }
 
 void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {

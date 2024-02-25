@@ -2,16 +2,7 @@
 
 #define Sign(a) ((a) < 0 ? -1 : ((a) > 0) * 1)
 
-int cplot_get_lintick_multiplication(struct $ticker *this, char *out, int sizeout) {
-    double base = this->tickerdata.lin.base;
-    if (base < 0.05) {
-	snprintf(out, sizeout, "%.1e", base);
-	return 1;
-    }
-    if (sizeout)
-	out[0] = 0;
-    return 0;
-}
+const char *cplot_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
 double cplot_get_tick_linear(struct $ticker *this, int ind, char *out, int sizeout) {
     double step = this->tickerdata.lin.step,
@@ -19,15 +10,33 @@ double cplot_get_tick_linear(struct $ticker *this, int ind, char *out, int sizeo
 	   min = this->tickerdata.lin.min;
     double val = ind * step + min;
 
-    const char *form = (step == (long)step ? "%.0f" : "%.1f");
-    snprintf(out, sizeout, form, base < 0.05 ? val/base : val);
+    if (base < 0.05 || base > 5000) {
+	const char *form = (step == (long)step ? "%.0f\n10" : "%.1f\n10");
+	snprintf(out, sizeout, form, val/base, base);
+	int baseten = this->tickerdata.lin.baseten;
+	char buff[20];
+	int len;
+	sprintf(buff, "%i%n", baseten, &len);
+	int slen = strlen(out);
+	for (int i=0; i<len; i++) {
+	    const char *str = (buff[i] == '-' ? "⁻" : cplot_supernum[buff[i] - '0']);
+	    int slen1 = strlen(str);
+	    if (slen+slen1+1 >= sizeout)
+		break;
+	    strcpy(out + slen, str);
+	    slen += slen1;
+	}
+    }
+    else {
+	const char *form = (step == (long)step ? "%.0f" : "%.1f");
+	snprintf(out, sizeout, form, val);
+    }
     return val;
 }
 
 int cplot_init_ticker_caveman(struct $ticker *this, double min, double max) {
     this->species = ticker_linear;
     this->get_tick = cplot_get_tick_linear;
-    this->get_multiplication = cplot_get_lintick_multiplication;
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
 	.nticks = 7,
 	.step = (max - min) / 6,
@@ -81,12 +90,12 @@ int cplot_init_ticker_default(struct $ticker *this, double min, double max) {
 
     this->species = ticker_linear;
     this->get_tick = cplot_get_tick_linear;
-    this->get_multiplication = cplot_get_lintick_multiplication;
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
 	.nticks = diff / best_step,
 	.step = best_step,
 	.min = best_step * (int)(min/best_step),
 	.base = base,
+	.baseten = maxpower,
     };
 
     return this->tickerdata.lin.nticks;
