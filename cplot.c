@@ -50,6 +50,8 @@ static inline float get_ticks_underlength(struct $ticks *tk) {
     return f * (f>0);
 }
 
+void cplot_get_axislabel_xy(struct $axistext *axistext, int xy[2]);
+
 #include "functions.c"
 #include "rotate.c"
 #include "rendering.c"
@@ -68,7 +70,7 @@ struct $axis* cplot_axis_alloc(struct $axes *axes) {
     return axis;
 }
 
-struct $ticks* cplot_ticks_alloc(struct $axis *axis, int have_labels) {
+struct $ticks* cplot_ticks_alloc(struct $axis *axis) {
     struct $ticks *ticks = calloc(1, sizeof(struct $ticks));
     ticks->axis = axis;
     ticks->color = fg;
@@ -80,11 +82,8 @@ struct $ticks* cplot_ticks_alloc(struct $axis *axis, int have_labels) {
     ticks->grid_pen.thickness = 1.0/1200;
     ticks->grid_pen.color = RGB(100, 100, 100);
 
-    if (have_labels) {
-	ticks->ttra = calloc(1, sizeof(struct ttra));
-	ttra_init(ticks->ttra);
-	ticks->rowheight = 2.4*ticks->length;
-    }
+    ticks->rowheight = 2.4*ticks->length;
+    ticks->have_labels = 1;
 
     if (axis->pos >= 0.5) {
 	ticks->crossaxis = 0;
@@ -109,13 +108,13 @@ struct $axes* cplot_axes_alloc() {
     axes->axis[0] = cplot_axis_alloc(axes);
     axes->axis[0]->x_or_y = 'x'; // bottom x-axis
     axes->axis[0]->pos = 1;
-    axes->axis[0]->ticks[0] = cplot_ticks_alloc(axes->axis[0], 1);
+    axes->axis[0]->ticks[0] = cplot_ticks_alloc(axes->axis[0]);
     axes->axis[0]->nticks++;
 
     axes->axis[1] = cplot_axis_alloc(axes);
     axes->axis[1]->x_or_y = 'y'; // left y-axis
     axes->axis[1]->pos = 0;
-    axes->axis[1]->ticks[0] = cplot_ticks_alloc(axes->axis[1], 1);
+    axes->axis[1]->ticks[0] = cplot_ticks_alloc(axes->axis[1]);
     axes->axis[1]->nticks++;
 
     axes->ttra = calloc(1, sizeof(struct ttra));
@@ -126,16 +125,19 @@ struct $axes* cplot_axes_alloc() {
 
 void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     char tick[32];
-    if (ticks->ttra) {
-	ticks->ttra->canvas = canvas;
-	ticks->ttra->realw = axeswidth;
-	ticks->ttra->realh = axesheight;
-	ticks->ttra->w = axeswidth;
-	ticks->ttra->h = axesheight;
-	ticks->ttra->fg_default = ticks->color;
-	ticks->ttra->bg_default = -1;
-	ttra_print(ticks->ttra, "\033[0m");
-	ttra_set_fontheight(ticks->ttra, ticks->rowheight*axesheight);
+    struct ttra *ttra = NULL;
+
+    if (ticks->have_labels) {
+	ttra = ticks->axis->axes->ttra;
+	ttra->canvas = canvas;
+	ttra->realw = axeswidth;
+	ttra->realh = axesheight;
+	ttra->w = ticks->ro_labelarea[2] - ticks->ro_labelarea[0];
+	ttra->h = ticks->ro_labelarea[3] - ticks->ro_labelarea[1];
+	ttra->fg_default = ticks->color;
+	ttra->bg_default = -1;
+	ttra_print(ttra, "\033[0m");
+	ttra_set_fontheight(ttra, ticks->rowheight*axesheight);
     }
 
     int isx = ticks->axis->x_or_y == 'x';
@@ -145,8 +147,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
     int nticks = ticks->ticker.init(&ticks->ticker, ticks->axis->min, ticks->axis->max); // turhaan init aina uudestaan
     float thickness = ticks->thickness < 0 ? ticks->axis->thickness * -ticks->thickness : ticks->thickness;
     thickness *= axesheight;
-    if (thickness > 1e-9 && thickness < 1)
-	thickness = 1;
+    if (thickness < 1) thickness = 1;
     int gridline[4];
     int *xywh = ticks->axis->axes->ro_inner_xywh;
     gridline[isx] = xywh[isx];
@@ -161,13 +162,23 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
 	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, ticks->ro_tot_area);
 	int area_text[4] = {0};
-	if (ticks->ttra && tick[0])
-	    put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
+	if (ttra && tick[0])
+	    put_text(ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
 	if (ticks->grid_on) {
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
-	    draw_thick_line_bresenham(canvas, axeswidth, gridline, ticks->grid_pen.color, ticks->grid_pen.thickness * axesheight, inner_area);
+	    int thickness = iroundpos(ticks->grid_pen.thickness * axesheight);
+	    if (thickness < 1) thickness = 1;
+	    draw_thick_line_bresenham(canvas, axeswidth, gridline, ticks->grid_pen.color, thickness, inner_area);
 	}
     }
+}
+
+void cplot_get_axislabel_xy(struct $axistext *axistext, int xy[2]) {
+    int coord = axistext->axis->x_or_y == 'y';
+    int *axis_tot_area = axistext->axis->ro_linetick_area;
+    int axislength = axis_tot_area[coord+2] - axis_tot_area[coord];
+    xy[coord] = iroundpos(axis_tot_area[coord] + axislength * axistext->pos);
+    xy[!coord] = axis_tot_area[!coord + 2*(axistext->axis->pos >= 0.5)];
 }
 
 void cplot_axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
@@ -175,6 +186,8 @@ void cplot_axistext_draw(struct $axistext *axistext, unsigned *canvas, int axesw
     ttra->canvas = canvas;
     ttra->realw = axeswidth;
     ttra->realh = axesheight;
+    ttra->w = axistext->ro_area[2] - axistext->ro_area[0];
+    ttra->h = axistext->ro_area[3] - axistext->ro_area[1];
     ttra->fg_default = axistext->axis->color;
     ttra->bg_default = -1;
     ttra_print(ttra, "\033[0m");
@@ -190,9 +203,14 @@ void cplot_axistext_draw(struct $axistext *axistext, unsigned *canvas, int axesw
 
 void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     float thickness = axis->thickness * axesheight;
-    if (thickness > 1e-9 && thickness < 1)
-	thickness = 1;
+    if (thickness < 1) thickness = 1;
     int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
+
+    int isx = axis->x_or_y == 'x';
+    area[isx+2] += (thickness+1)/2;
+    int WH[] = {axeswidth, axesheight};
+    if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
+
     draw_thick_line_bresenham(canvas, ystride, axis->ro_line, axis->color, thickness, area);
     for (int i=0; i<axis->nticks; i++)
 	cplot_ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride);
@@ -264,13 +282,8 @@ void $free_axis(struct $axis *axis) {
 	free(axis->text[i]);
     }
     free(axis->text);
-    for (int i=0; i<axis->nticks; i++) {
-	if (axis->ticks[i]->ttra) {
-	    ttra_destroy(axis->ticks[i]->ttra);
-	    free(axis->ticks[i]->ttra);
-	}
+    for (int i=0; i<axis->nticks; i++)
 	free(axis->ticks[i]);
-    }
     memset(axis, 0, sizeof(*axis));
     free(axis);
 }

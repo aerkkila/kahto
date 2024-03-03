@@ -91,7 +91,7 @@ struct $ticks {
     int grid_on;
     struct cplot_pen grid_pen;
 
-    struct ttra *ttra;
+    int have_labels;
     float hvalign_text[2];
     int ascending; // nimiöt tulevat suurempaan päähän
     float rowheight;

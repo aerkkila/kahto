@@ -47,17 +47,21 @@ static void get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheig
     int side = axis->pos >= 0.5;
     for (int itext=0; itext<axis->ntext; itext++) {
 	struct $axistext *axistext = axis->text[itext];
-	int area[4];
 	ttra_set_fontheight(ttra, axistext->rowheight * axesheight);
-	put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!coord], axistext->hvalign[coord], axistext->rotation100, area, 1);
-	float frac = area[coord+side*2] / (float)axesheight * (-1 + side*2);
+	int xy[2], *area = axistext->ro_area;
+	cplot_get_axislabel_xy(axistext, xy);
+	put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[!coord], axistext->hvalign[coord], axistext->rotation100, area, 1);
+	float frac = (area[coord+side*2] - xy[coord]) / (float)axesheight * (-1 + side*2);
 	update_max(lim2inout[side], old[side]+frac);
     }
 }
 
 void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, const int axis_xywh[4]) {
-    if (ticks->ttra)
-	ttra_set_fontheight(ticks->ttra, ticks->rowheight*axesheight);
+    struct ttra *ttra = NULL;
+    if (ticks->have_labels) {
+	ttra = ticks->axis->axes->ttra;
+	ttra_set_fontheight(ttra, ticks->rowheight*axesheight);
+    }
 
     int isx = ticks->axis->x_or_y == 'x';
     int line_px[4];
@@ -81,8 +85,8 @@ void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, con
 	    pos_rel = 1 - pos_rel;
 	line_px[!isx] = line_px[!isx+2] = minmaxpos[itick!=0] = axis_xywh[!isx] + iroundpos(pos_rel * axis_xywh[!isx+2]);
 	int area_text[4] = {0};
-	if (ticks->ttra && tick[0])
-	    if (put_text(ticks->ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx],
+	if (ttra && tick[0])
+	    if (put_text(ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx],
 		    ticks->hvalign_text[isx], 0, area_text, 1) >= 0) { // successful geometry
 		update_min(ticks->ro_labelarea[0], area_text[0]);
 		update_min(ticks->ro_labelarea[1], area_text[1]);
@@ -111,8 +115,11 @@ static void get_ticklabel_limits_round1(struct $axis *axis, int axeswidth, int a
     for (int i=0; i<axis->nticks; i++) {
 	struct $ticks *tk = axis->ticks[i];
 	float lim2[] = {get_ticks_underlength(tk), get_ticks_overlength(tk)};
-	if (!tk->ticker.init)
+	if (!tk->ticker.init && !tk->have_labels)
 	    goto endloop;
+
+	struct ttra *ttra = tk->axis->axes->ttra;
+	ttra_set_fontheight(ttra, tk->rowheight*axesheight);
 
 	int nlabels = tk->ticker.init(&tk->ticker, min, max);
 	char out[128];
@@ -128,12 +135,13 @@ static void get_ticklabel_limits_round1(struct $axis *axis, int axeswidth, int a
 	}
 
 	/* voinee siirtää silmukan ulkopuolelle */
+	if (tk->have_labels)
 	switch (axis->x_or_y) {
 	    case 'x':
-		lim2[tk->ascending] += (float)maxrows * tk->ttra->fontheight / axesheight; // alignment?
+		lim2[tk->ascending] += (float)maxrows * ttra->fontheight / axesheight; // alignment?
 		break;
 	    case 'y':
-		lim2[tk->ascending] += (float)maxcols * tk->ttra->fontwidth / axesheight;
+		lim2[tk->ascending] += (float)maxcols * ttra->fontwidth / axesheight;
 		break;
 	}
 
@@ -149,12 +157,14 @@ static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int a
     double axisdiff = axis->max - axis->min;
     for (int iticks=0; iticks<axis->nticks; iticks++) {
 	struct $ticks *tk = axis->ticks[iticks];
-	if (!tk->ticker.init)
+	if (!tk->ticker.init && !tk->have_labels)
 	    continue;
 	float min = axis->min,
 	      max = axis->max;
 
-	ttra_set_fontheight(tk->ttra, tk->rowheight * axesheight);
+	struct ttra *ttra = tk->axis->axes->ttra;
+	ttra_set_fontheight(ttra, tk->rowheight*axesheight);
+
 	int nlabels = tk->ticker.init(&tk->ticker, min, max);
 	char out[128];
 	int coord = axis->x_or_y == 'y';
@@ -163,7 +173,7 @@ static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int a
 	    double pos_data = tk->ticker.get_tick(&tk->ticker, i, out, 128);
 	    double pos_rel = (pos_data - axis->min) / axisdiff;
 	    int position_px = axis_xywh[coord] + iroundpos(pos_rel * (axis_xywh[coord+2]-1));
-	    ttra_get_textdims_pixels(tk->ttra, out, wh+0, wh+1);
+	    ttra_get_textdims_pixels(ttra, out, wh+0, wh+1);
 	    /* lower side */
 	    /* pyöräytystä ei ole huomioitu */
 	    int edge = position_px + wh[coord] * tk->hvalign_text[0];

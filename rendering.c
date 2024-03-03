@@ -168,6 +168,7 @@ static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignmen
     }
 
     ttra_set_xy0(ttra, x0, y0);
+    ttra->clean_line = 0;
     ttra_print(ttra, text);
     return 0;
 }
@@ -304,6 +305,7 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
 	init_circle(bmap, width, height);
 
     int line_thickness = iroundpos(data->line_thickness * axesheight);
+    if (line_thickness < 1) line_thickness = 1;
 
     double xpix_per_unit = xywh[2] / yxdiff[1]; // Used if x is not given.
 
