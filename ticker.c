@@ -90,10 +90,12 @@ int cplot_init_ticker_default(struct $ticker *this, double min, double max) {
 
     this->species = ticker_linear;
     this->get_tick = cplot_get_tick_linear;
+    double maxtick = best_step * (int)(max/best_step);
+    double mintick = best_step * (int)(min/best_step);
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
-	.nticks = diff / best_step,
+	.nticks = (maxtick - mintick) / best_step + 1,
 	.step = best_step,
-	.min = best_step * (int)(min/best_step),
+	.min = mintick,
 	.base = base,
 	.baseten = maxpower,
     };
