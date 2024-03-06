@@ -209,7 +209,7 @@ static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
 
 static inline void draw_datum(unsigned *canvas, int ystride,
     const unsigned char *bmap, int mapw, int maph,
-    int x, int y, const int *axis_xywh, unsigned char color)
+    int x, int y, const int *axis_xywh, unsigned color)
 {
     if (!bmap) {
 	if (0 <= x && x < axis_xywh[2] && 0 <= y && y < axis_xywh[3])
