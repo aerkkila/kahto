@@ -236,18 +236,18 @@ void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int 
 	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
 
-void cplot_axes_render(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_axes_render(struct $axes *axes, unsigned *canvas, int ystride) {
     unsigned bg = axes->background;
-    for (int j=0; j<axesheight; j++) {
+    for (int j=0; j<axes->height; j++) {
 	unsigned ind0 = j * ystride;
-	for (int i=0; i<axeswidth; i++)
+	for (int i=0; i<axes->width; i++)
 	    canvas[ind0+i] = bg;
     }
     for (int i=0; i<axes->naxis; i++)
-	cplot_axis_render(axes->axis[i], canvas, axeswidth, axesheight, ystride);
+	cplot_axis_render(axes->axis[i], canvas, axes->width, axes->height, ystride);
     for (int i=0; i<axes->ndata; i++)
-	cplot_data_render(axes->data[i], canvas, axeswidth, axesheight, ystride);
-    cplot_legend(axes, (struct cplot_drawarea){canvas, axeswidth, axesheight, ystride});
+	cplot_data_render(axes->data[i], canvas, axes->width, axes->height, ystride);
+    cplot_legend(axes, (struct cplot_drawarea){canvas, axes->width, axes->height, ystride});
 }
 
 static void init_datastyle(struct $data *data) {
@@ -354,8 +354,8 @@ struct $axes* $plot_args(struct cplot_args *args) {
 }
 
 void $axes_draw(struct $axes *axes, unsigned *canvas, int ystride) {
-    cplot_axes_commit(axes, axes->width, axes->height);
-    cplot_axes_render(axes, canvas, axes->width, axes->height, ystride);
+    cplot_axes_commit(axes);
+    cplot_axes_render(axes, canvas, ystride);
 }
 
 void $show(struct $axes *axes) {

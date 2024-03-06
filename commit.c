@@ -229,31 +229,31 @@ void commit_legend(struct $axes *axes, int axeswidth, int axesheight) {
 	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
 }
 
-void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight) {
+void cplot_axes_commit(struct $axes *axes) {
     $f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
 	    axis_update_range(axes->axis[iaxis]);
 
 	float over[2];
-	get_ticklabel_limits_round1(axes->axis[iaxis], axeswidth, axesheight, over);
+	get_ticklabel_limits_round1(axes->axis[iaxis], axes->width, axes->height, over);
 	int coord = axes->axis[iaxis]->x_or_y == 'x'; // ticks are orthogonal to this
 	overgoing[coord+0]  = max(overgoing[coord+0], over[0]);
 	overgoing[coord+2]  = max(overgoing[coord+2], over[1]);
     }
 
-    overgoing *= (float)axesheight; // to pixels
+    overgoing *= (float)axes->height; // to pixels
     int *axis_xywh = axes->ro_inner_xywh;
     axis_xywh[0] = iceil(overgoing[0]);
     axis_xywh[1] = iceil(overgoing[1]);
-    axis_xywh[2] = axeswidth - axis_xywh[0] - iceil(overgoing[2]);
-    axis_xywh[3] = axesheight - axis_xywh[1] - iceil(overgoing[3]);
+    axis_xywh[2] = axes->width - axis_xywh[0] - iceil(overgoing[2]);
+    axis_xywh[3] = axes->height - axis_xywh[1] - iceil(overgoing[3]);
 
     for (int iaxis=0; iaxis<axes->naxis; iaxis++)
-	get_ticklabel_limits_round2(axes->axis[iaxis], axeswidth, axesheight, axis_xywh);
+	get_ticklabel_limits_round2(axes->axis[iaxis], axes->width, axes->height, axis_xywh);
 
     for (int iaxis=0; iaxis<axes->naxis; iaxis++)
-	get_ticklabel_limits_round3(axes->axis[iaxis], axeswidth, axesheight, axis_xywh);
+	get_ticklabel_limits_round3(axes->axis[iaxis], axes->width, axes->height, axis_xywh);
 
-    commit_legend(axes, axeswidth, axesheight);
+    commit_legend(axes, axes->width, axes->height);
 }
