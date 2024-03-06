@@ -120,6 +120,9 @@ struct $axes* cplot_axes_alloc() {
     axes->ttra = calloc(1, sizeof(struct ttra));
     ttra_init(axes->ttra);
 
+    axes->legend.rowheight = 1.0 / 40;
+    axes->legend.symbolspace_per_rowheight = 1.25;
+
     return axes;
 }
 
@@ -325,6 +328,7 @@ void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axeshei
        Menee oikein, vaikka ensimmäisen kommitin poistaisi. */
     cplot_axes_commit(axes, axeswidth, axesheight);
     cplot_axes_render(axes, canvas, axeswidth, axesheight, ystride);
+    cplot_legend(axes, (struct cplot_drawarea){canvas, axeswidth, axesheight, ystride});
 }
 
 void $show(struct $axes *axes) {

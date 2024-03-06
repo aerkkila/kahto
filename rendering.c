@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <ttra.h>
 #include <err.h>
+#define using_cplot
+#include "cplot.h"
 
 #define Abs(a) ((a) < 0 ? -(a) : (a))
 
@@ -164,11 +166,11 @@ static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignmen
 	ttra->canvas = canvas;
 	ttra->realw = width0;
 	ttra->realh = height0;
+	ttra->clean_line = 0;
 	return 0;
     }
 
     ttra_set_xy0(ttra, x0, y0);
-    ttra->clean_line = 0;
     ttra_print(ttra, text);
     return 0;
 }
@@ -278,6 +280,22 @@ static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *
     }
 }
 
+static unsigned char* cplot_data_marker_bmap(struct $data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
+    *has_marker = 1;
+    if (data->literal_marker) {
+	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
+	ttra_set_fontheight(ttra, *height);
+	bmap = ttra_get_bitmap(ttra, data->marker, width, height);
+    }
+    else if (!data->marker || data->marker[0] == ' ')
+	*has_marker = 0;
+    else if (data->marker[0] == '.')
+	bmap = NULL;
+    else
+	init_circle(bmap, *width, *height);
+    return bmap;
+}
+
 static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     double yxmin[] = {data->yxaxis[0]->min, data->yxaxis[1]->min};
     double yxdiff[] = {data->yxaxis[0]->max - yxmin[0], data->yxaxis[1]->max - yxmin[1]};
@@ -286,23 +304,10 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
     const long npoints = 1024;
     short xypixels[npoints*2];
 
-    int width, height;
+    int width, height, marker;
     width = height = iroundpos(data->markersize * axeswidth);
     unsigned char bmap_buff[width*height];
-    unsigned char *bmap = bmap_buff;
-    int marker = 1;
-
-    if (data->literal_marker) {
-	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
-	ttra_set_fontheight(ttra, height);
-	bmap = ttra_get_bitmap(ttra, data->marker, &width, &height);
-    }
-    else if (!data->marker || data->marker[0] == ' ')
-	marker = 0;
-    else if (data->marker[0] == '.')
-	bmap = NULL;
-    else
-	init_circle(bmap, width, height);
+    unsigned char *bmap = cplot_data_marker_bmap(data, bmap_buff, &marker, &width, &height);
 
     int line_thickness = iroundpos(data->line_thickness * axesheight);
     if (line_thickness < 1) line_thickness = 1;
@@ -327,5 +332,48 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
 		connect_data_x(xypixels, istart, iend-istart, canvas, ystride, xywh, line_thickness, data->color, xpix_per_unit);
 	}
 	istart = iend;
+    }
+}
+
+void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols) {
+    *lines = *cols = 0;
+    for (int i=0; i<axes->ndata; i++)
+	if (axes->data[i]->label) {
+	    int w, h;
+	    ttra_get_textdims_chars(axes->data[i]->label, &w, &h);
+	    *lines += h;
+	    *cols = max(*cols, w);
+	}
+}
+
+static void legend_draw_marker(struct $data *data, struct cplot_drawarea area, int x0, int y0, int text_left) {
+    int width, height, marker;
+    width = height = iroundpos(data->markersize * area.axeswidth);
+    unsigned char bmap_buff[width*height];
+    unsigned char *bmap = cplot_data_marker_bmap(data, bmap_buff, &marker, &width, &height);
+    int *xywh = data->yxaxis[0]->axes->ro_inner_xywh;
+    x0 -= xywh[0];
+    y0 -= xywh[1];
+    if (marker)
+	draw_datum(area.canvas, area.ystride, bmap, width, height, x0, y0, xywh, data->color);
+    if (data->linestyle) {
+	short xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
+	int line_thickness = iroundpos(data->line_thickness * area.axesheight);
+	connect_data_xy(xypixels, 0, 2, area.canvas, area.ystride, xywh, line_thickness, data->color);
+    }
+}
+
+static void cplot_legend(struct $axes *axes, struct cplot_drawarea area) {
+    int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
+    int lines, cols;
+    cplot_get_legend_dims(axes, &lines, &cols);
+    int text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
+    int leg_x0 = axes->ro_inner_xywh[0],
+	leg_y0 = axes->ro_inner_xywh[3] + axes->ro_inner_xywh[1] - lines * rowh;
+    ttra_set_xy0(axes->ttra, leg_x0 + text_left, leg_y0);
+    for (int i=0; i<axes->ndata; i++) {
+	legend_draw_marker(axes->data[i], area, leg_x0 + text_left/2, leg_y0 + (i+0.5)*rowh, text_left);
+	if (axes->data[i]->label)
+	    ttra_printf(axes->ttra, "%s\n", axes->data[i]->label);
     }
 }

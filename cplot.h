@@ -19,18 +19,17 @@
 #define $plot_args	cplot_plot_args
 
 #define cplot_notype 0
-#define cplot_i1 11	// signed integer is enumerated as size + 10
-#define cplot_i2 12
-#define cplot_i4 14
-#define cplot_i8 18
-#define cplot_u1 1	// unsigned integer is enumerated as size
-#define cplot_u2 2
-#define cplot_u4 4
-#define cplot_u8 8
-#define cplot_f4 24	// floating point number is enumerated as size + 20
-#define cplot_f8 28
-#define cplot_f10 36 // f10 is likely to take 16 bytes due to padding bytes
-_Static_assert(sizeof(long double) == 16);
+#define cplot_i1 (10 + sizeof(char))
+#define cplot_i2 (10 + sizeof(short))
+#define cplot_i4 (10 + sizeof(int))
+#define cplot_i8 (10 + sizeof(long))
+#define cplot_u1 sizeof(unsigned char)
+#define cplot_u2 sizeof(unsigned short)
+#define cplot_u4 sizeof(unsigned int)
+#define cplot_u8 sizeof(unsigned long)
+#define cplot_f4 (20 + sizeof(float))
+#define cplot_f8 (20 + sizeof(double))
+#define cplot_f10 (20 + sizeof(long double))
 
 /* returns some of the enumerations above according to the data type */
 #define cplot_type(a) ((int)( \
@@ -135,6 +134,7 @@ struct $data {
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int owner[3];
+    char *label;
     /* style */
     const char* marker;
     int literal_marker;
@@ -153,6 +153,10 @@ struct $axes {
     int ro_inner_xywh[4];
     struct $data **data;
     int ndata, mem_data;
+
+    struct legend {
+	float rowheight, symbolspace_per_rowheight;
+    } legend;
 };
 
 struct cplot_args {
@@ -166,6 +170,7 @@ struct cplot_args {
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int yxzowner[3];
+    char *label;
 
     const char* marker;
     int literal_marker;
@@ -176,6 +181,11 @@ struct cplot_args {
 
     /* end struct $data */
     int copy[3]; // not used yet
+};
+
+struct cplot_drawarea {
+    unsigned *canvas;
+    int axeswidth, axesheight, ystride;
 };
 
 #define cplot_y(y, ...) $plot_inl((struct cplot_args){.ydata=(y), .ytype=cplot_type(*(y)), __VA_ARGS__})
