@@ -51,6 +51,9 @@ static inline float get_ticks_underlength(struct $ticks *tk) {
 }
 
 void cplot_get_axislabel_xy(struct $axistext *axistext, int xy[2]);
+void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols);
+void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight);
+
 
 #include "functions.c"
 #include "rotate.c"
@@ -122,6 +125,9 @@ struct $axes* cplot_axes_alloc() {
 
     axes->legend.rowheight = 1.0 / 40;
     axes->legend.symbolspace_per_rowheight = 1.25;
+    axes->legend.posx = 0;
+    axes->legend.posy = 1;
+    axes->legend.hvalign[1] = -1;
 
     return axes;
 }
@@ -241,6 +247,24 @@ static void init_datastyle(struct $data *data) {
 	data->marker = "o";
     if (!data->color)
 	data->color = RGB(0, 70, 185);
+}
+
+void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols) {
+    *lines = *cols = 0;
+    for (int i=0; i<axes->ndata; i++)
+	if (axes->data[i]->label) {
+	    int w, h;
+	    ttra_get_textdims_chars(axes->data[i]->label, &w, &h);
+	    *lines += h;
+	    *cols = max(*cols, w);
+	}
+}
+
+void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight) {
+    cplot_get_legend_dims(axes, y, x);
+    ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * axesheight));
+    *y *= axes->ttra->fontheight;
+    *x *= axes->ttra->fontwidth;
 }
 
 static void add_data(struct cplot_args *args) {

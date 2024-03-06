@@ -156,6 +156,8 @@ struct $axes {
 
     struct legend {
 	float rowheight, symbolspace_per_rowheight;
+	int ro_xywh[4], ro_text_left;
+	float posx, posy, hvalign[2];
     } legend;
 };
 

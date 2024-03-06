@@ -216,6 +216,22 @@ void get_ticklabel_limits_round3(struct $axis *axis, int axeswidth, int axesheig
     axis->ro_linetick_area[3] = max(axis->ro_line[3], axis->ro_tick_area[3]);
 }
 
+void commit_legend(struct $axes *axes, int axeswidth, int axesheight) {
+    int y, x;
+    cplot_get_legend_dims_px(axes, &y, &x, axesheight);
+    int rowh = axes->ttra->fontheight;
+    int text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
+    axes->legend.ro_text_left = text_left;
+    axes->legend.ro_xywh[2] = x + text_left;
+    axes->legend.ro_xywh[3] = y;
+    axes->legend.ro_xywh[0] =
+	axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
+	axes->legend.ro_xywh[2] * axes->legend.hvalign[0];
+    axes->legend.ro_xywh[1] =
+	axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
+	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
+}
+
 void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight) {
     $f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
@@ -241,4 +257,6 @@ void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight) {
 
     for (int iaxis=0; iaxis<axes->naxis; iaxis++)
 	get_ticklabel_limits_round3(axes->axis[iaxis], axeswidth, axesheight, axis_xywh);
+
+    commit_legend(axes, axeswidth, axesheight);
 }

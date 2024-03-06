@@ -335,17 +335,6 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
     }
 }
 
-void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols) {
-    *lines = *cols = 0;
-    for (int i=0; i<axes->ndata; i++)
-	if (axes->data[i]->label) {
-	    int w, h;
-	    ttra_get_textdims_chars(axes->data[i]->label, &w, &h);
-	    *lines += h;
-	    *cols = max(*cols, w);
-	}
-}
-
 static void legend_draw_marker(struct $data *data, struct cplot_drawarea area, int x0, int y0, int text_left) {
     int width, height, marker;
     width = height = iroundpos(data->markersize * area.axeswidth);
@@ -364,13 +353,12 @@ static void legend_draw_marker(struct $data *data, struct cplot_drawarea area, i
 }
 
 static void cplot_legend(struct $axes *axes, struct cplot_drawarea area) {
+    int leg_x0 = axes->legend.ro_xywh[0];
+    int leg_y0 = axes->legend.ro_xywh[1];
+
     int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
-    int lines, cols;
-    cplot_get_legend_dims(axes, &lines, &cols);
-    int text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
-    int leg_x0 = axes->ro_inner_xywh[0],
-	leg_y0 = axes->ro_inner_xywh[3] + axes->ro_inner_xywh[1] - lines * rowh;
-    ttra_set_xy0(axes->ttra, leg_x0 + text_left, leg_y0);
+    ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left, leg_y0);
+    int text_left = axes->legend.ro_text_left;
     for (int i=0; i<axes->ndata; i++) {
 	legend_draw_marker(axes->data[i], area, leg_x0 + text_left/2, leg_y0 + (i+0.5)*rowh, text_left);
 	if (axes->data[i]->label)
