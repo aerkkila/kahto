@@ -21,7 +21,7 @@ int main() {
 	ydata1[i] = cos(2*π/pit1*5 * i) * i * 0.0001;
 	xdata1[i] = sin(2*π/pit1*5 * i) * i * 0.1;
     }
-    cplot_yx(ydata1, xdata1, .len=pit1, .linestyle="-", .label="toinen", .line_thickness=1.0/800, .axes=axes, .color=0xffff0000);
+    cplot_yx(ydata1, xdata1, .len=pit1, .linestyle="-", .label="toinen", .line_thickness=1.0/800, .axes=axes);
 
     $axislabel($xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
     $axislabel($yaxis0(axes), "y-nimiö\njatkuu täällä");

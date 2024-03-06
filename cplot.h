@@ -49,6 +49,9 @@
 typedef float $f4si __attribute__((vector_size (16)));
 typedef float $f2si __attribute__((vector_size (8)));
 
+extern unsigned cplot_colorscheme[];
+extern int cplot_ncolors;
+
 struct $axis;
 struct $data;
 
@@ -152,7 +155,7 @@ struct $axes {
     struct ttra *ttra;
     int ro_inner_xywh[4];
     struct $data **data;
-    int ndata, mem_data;
+    int ndata, mem_data, icolor;
     int width, height;
 
     struct legend {

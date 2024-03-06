@@ -17,6 +17,13 @@
 #define RGB(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 #define xywh_to_area(xywh) {(xywh)[0], (xywh)[1], (xywh)[2]+(xywh)[0], (xywh)[3]+(xywh)[1]}
 
+unsigned cplot_colorscheme[] = {
+    0xffe41a1c, 0xff377eb8, 0xff4daf4a, 0xff984ea3,
+    0xffff7f00, 0xffffff33, 0xffa65628, 0xfff781bf, 0xff999999
+};
+
+int cplot_ncolors = arrlen(cplot_colorscheme);
+
 static inline int iround(float f) {
     int a = f;
     return a + (f-a >= 0.5) - (a-f > 0.5);
@@ -252,7 +259,7 @@ static void init_datastyle(struct $data *data) {
     if (!data->marker)
 	data->marker = "o";
     if (!data->color)
-	data->color = RGB(0, 70, 185);
+	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor++) % cplot_ncolors];
 }
 
 void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols) {
