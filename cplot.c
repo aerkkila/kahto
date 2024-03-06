@@ -7,6 +7,8 @@
 #define using_cplot
 #include "cplot.h"
 
+#include "png.c"
+
 #define min(a,b) ((a) < (b) ? a : (b))
 #define max(a,b) ((a) > (b) ? a : (b))
 #define update_min(a, b) ((a) = min(a,b))
@@ -119,6 +121,9 @@ struct $axes* cplot_axes_alloc() {
     axes->axis[1]->pos = 0;
     axes->axis[1]->ticks[0] = cplot_ticks_alloc(axes->axis[1]);
     axes->axis[1]->nticks++;
+
+    axes->width = 1200;
+    axes->height = 1000;
 
     axes->ttra = calloc(1, sizeof(struct ttra));
     ttra_init(axes->ttra);
@@ -238,6 +243,7 @@ void cplot_axes_render(struct $axes *axes, unsigned *canvas, int axeswidth, int 
 	cplot_axis_render(axes->axis[i], canvas, axeswidth, axesheight, ystride);
     for (int i=0; i<axes->ndata; i++)
 	cplot_data_render(axes->data[i], canvas, axeswidth, axesheight, ystride);
+    cplot_legend(axes, (struct cplot_drawarea){canvas, axeswidth, axesheight, ystride});
 }
 
 static void init_datastyle(struct $data *data) {
@@ -344,23 +350,24 @@ struct $axes* $plot_args(struct cplot_args *args) {
     return axes;
 }
 
-void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-    cplot_axes_commit(axes, axeswidth, axesheight);
-    cplot_axes_render(axes, canvas, axeswidth, axesheight, ystride);
-    /* Tässä on jotain vikaa. Vasta toisella piirrolla menee oikein.
-       Piirrettäköön siis tilapäisratkaisuna kahdesti, kunnes löydän vian ja korjaan sen.
-       Menee oikein, vaikka ensimmäisen kommitin poistaisi. */
-    cplot_axes_commit(axes, axeswidth, axesheight);
-    cplot_axes_render(axes, canvas, axeswidth, axesheight, ystride);
-    cplot_legend(axes, (struct cplot_drawarea){canvas, axeswidth, axesheight, ystride});
+void $axes_draw(struct $axes *axes, unsigned *canvas, int ystride) {
+    cplot_axes_commit(axes, axes->width, axes->height);
+    cplot_axes_render(axes, canvas, axes->width, axes->height, ystride);
 }
 
 void $show(struct $axes *axes) {
-    struct waylandhelper wlh = {0};
+    struct waylandhelper wlh = {
+	.xres = axes->width,
+	.yres = axes->height,
+	.xresmin = 20,
+	.yresmin = 20,
+    };
     wlh_init(&wlh);
     while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
 	if (wlh.redraw && wlh.can_redraw) {
-	    $axes_draw(axes, wlh.data, wlh.xres, wlh.yres, wlh.xres);
+	    axes->width = wlh.xres;
+	    axes->height = wlh.yres;
+	    $axes_draw(axes, wlh.data, axes->width);
 	    wlh_commit(&wlh);
 	}
 	usleep(10000);

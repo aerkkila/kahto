@@ -305,7 +305,7 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
     short xypixels[npoints*2];
 
     int width, height, marker;
-    width = height = iroundpos(data->markersize * axeswidth);
+    width = height = iroundpos(data->markersize * axesheight);
     unsigned char bmap_buff[width*height];
     unsigned char *bmap = cplot_data_marker_bmap(data, bmap_buff, &marker, &width, &height);
 
@@ -337,7 +337,7 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
 
 static void legend_draw_marker(struct $data *data, struct cplot_drawarea area, int x0, int y0, int text_left) {
     int width, height, marker;
-    width = height = iroundpos(data->markersize * area.axeswidth);
+    width = height = iroundpos(data->markersize * area.axesheight);
     unsigned char bmap_buff[width*height];
     unsigned char *bmap = cplot_data_marker_bmap(data, bmap_buff, &marker, &width, &height);
     int *xywh = data->yxaxis[0]->axes->ro_inner_xywh;

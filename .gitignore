@@ -1,5 +1,6 @@
 *.out
 *.o
+*.png
 core
 vgcore*
 ttra

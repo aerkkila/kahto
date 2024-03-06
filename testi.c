@@ -26,6 +26,7 @@ int main() {
     $axislabel($xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
     $axislabel($yaxis0(axes), "y-nimiö\njatkuu täällä");
 
+    cplot_write_png(axes, "testi.png");
     cplot_show(axes);
 
     $free(axes);

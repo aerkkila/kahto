@@ -153,6 +153,7 @@ struct $axes {
     int ro_inner_xywh[4];
     struct $data **data;
     int ndata, mem_data;
+    int width, height;
 
     struct legend {
 	float rowheight, symbolspace_per_rowheight;
@@ -205,7 +206,7 @@ static inline struct $axes* $plot_inl(struct cplot_args args) {
 }
 #define cplot_plot(...) $plot_inl((struct cplot_args){__VA_ARGS__})
 
-void $axes_draw(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride);
+void $axes_draw(struct $axes *axes, unsigned *canvas, int ystride);
 void $axislabel(struct $axis *axis, char *label);
 void $show(struct $axes *axes);
 void $free(struct $axes *axes);
@@ -214,6 +215,8 @@ void $free_axis(struct $axis *axis);
 void cplot_axes_render(struct $axes *axes, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axes_commit(struct $axes *axes, int axeswidth, int axesheight);
 void cplot_add_axistext(struct $axis *axis, struct $axistext *text);
+
+void cplot_write_png(struct $axes *axes, const char *name);
 
 static inline struct $axis* cplot_xaxis0(struct $axes *axes) {
     return axes->axis[0];
