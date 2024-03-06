@@ -111,8 +111,7 @@ struct $axis {
     float thickness;
     struct $axistext **text;
     int mem_text, ntext;
-    struct $ticks *ticks[3];
-    int nticks;
+    struct $ticks *ticks;
     int ro_line[4], ro_tick_area[4], ro_linetick_area[4];
 };
 

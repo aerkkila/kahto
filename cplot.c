@@ -120,14 +120,12 @@ struct $axes* cplot_axes_alloc() {
     axes->axis[0] = cplot_axis_alloc(axes);
     axes->axis[0]->x_or_y = 'x'; // bottom x-axis
     axes->axis[0]->pos = 1;
-    axes->axis[0]->ticks[0] = cplot_ticks_alloc(axes->axis[0]);
-    axes->axis[0]->nticks++;
+    axes->axis[0]->ticks = cplot_ticks_alloc(axes->axis[0]);
 
     axes->axis[1] = cplot_axis_alloc(axes);
     axes->axis[1]->x_or_y = 'y'; // left y-axis
     axes->axis[1]->pos = 0;
-    axes->axis[1]->ticks[0] = cplot_ticks_alloc(axes->axis[1]);
-    axes->axis[1]->nticks++;
+    axes->axis[1]->ticks = cplot_ticks_alloc(axes->axis[1]);
 
     axes->width = 1200;
     axes->height = 1000;
@@ -233,8 +231,7 @@ void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int 
     if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
     draw_thick_line_bresenham(canvas, ystride, axis->ro_line, axis->color, thickness, area);
-    for (int i=0; i<axis->nticks; i++)
-	cplot_ticks_draw(axis->ticks[i], canvas, axeswidth, axesheight, ystride);
+    cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
     for (int i=0; i<axis->ntext; i++)
 	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
@@ -307,7 +304,7 @@ void $axislabel(struct $axis *axis, char *label) {
 	.text = label,
 	.pos = 0.5,
 	.hvalign = {-0.5, -1 * (axis->pos < 0.5)},
-	.rowheight = (axis->nticks ? axis->ticks[0]->rowheight : 2.4/80) * 1.3,
+	.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
 	.axis = axis,
 	.rotation100 = 25 * (axis->x_or_y == 'y'),
 	.type = cplot_axistext_label,
@@ -322,8 +319,7 @@ void $free_axis(struct $axis *axis) {
 	free(axis->text[i]);
     }
     free(axis->text);
-    for (int i=0; i<axis->nticks; i++)
-	free(axis->ticks[i]);
+    free(axis->ticks);
     memset(axis, 0, sizeof(*axis));
     free(axis);
 }
