@@ -168,7 +168,6 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
     int nticks = ticks->ticker.init(&ticks->ticker, ticks->axis->min, ticks->axis->max); // turhaan init aina uudestaan
     float thickness = ticks->thickness < 0 ? ticks->axis->thickness * -ticks->thickness : ticks->thickness;
     thickness *= axesheight;
-    if (thickness < 1) thickness = 1;
     int gridline[4];
     int *xywh = ticks->axis->axes->ro_inner_xywh;
     gridline[isx] = xywh[isx];
@@ -187,8 +186,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	    put_text(ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
 	if (ticks->grid_on) {
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
-	    int thickness = iroundpos(ticks->grid_pen.thickness * axesheight);
-	    if (thickness < 1) thickness = 1;
+	    float thickness = ticks->grid_pen.thickness * axesheight;
 	    draw_thick_line(canvas, axeswidth, gridline, ticks->grid_pen.color, thickness, inner_area);
 	}
     }
@@ -224,7 +222,6 @@ void cplot_axistext_draw(struct $axistext *axistext, unsigned *canvas, int axesw
 
 void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     float thickness = axis->thickness * axesheight;
-    if (thickness < 1) thickness = 1;
     int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
 
     int isx = axis->x_or_y == 'x';

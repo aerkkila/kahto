@@ -140,7 +140,7 @@ static int check_line(int *line, const int *area) {
     return 0;
 }
 
-static void draw_thick_line(unsigned *canvas, int ystride, const int *xy_c, unsigned color, int thickness, int *axis_area) {
+static void draw_thick_line(unsigned *canvas, int ystride, const int *xy_c, unsigned color, float thickness, int *axis_area) {
     int xy[4];
     memcpy(xy, xy_c, sizeof(xy));
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
@@ -151,17 +151,21 @@ static void draw_thick_line(unsigned *canvas, int ystride, const int *xy_c, unsi
     int dx = xy[2+nosteep] - xy[nosteep];
     if (dx && dy) {
 	float x_per_y = (float)dx / dy;
-	thickness = iround(thickness * sqrt(1 + (x_per_y * x_per_y)));
+	thickness *= sqrt(1 + (x_per_y * x_per_y));
     }
 
-    xy[nosteep+0] -= thickness/2;
-    xy[nosteep+2] -= thickness/2;
+    if (thickness < 1)
+	thickness = 1;
+    int halfthickness = iroundpos(thickness/2);
+    int ithickness = iroundpos(thickness);
+    xy[nosteep+0] -= halfthickness;
+    xy[nosteep+2] -= halfthickness;
 
     if (!check_line(xy, axis_area))
 	draw_line_xiaolin(canvas, ystride, xy, color);
     xy[nosteep+0]++;
     xy[nosteep+2]++;
-    for (int p=1; p<thickness-1; p++) {
+    for (int p=1; p<ithickness-1; p++) {
 	if (!check_line(xy, axis_area))
 	    draw_line_bresenham(canvas, ystride, xy, color);
 	xy[nosteep+0]++;
