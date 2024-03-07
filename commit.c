@@ -166,26 +166,28 @@ static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int a
 
     int nlabels = tk->ticker.init(&tk->ticker, min, max);
     char out[128];
-    int coord = axis->x_or_y == 'y';
+    int isy = axis->x_or_y == 'y';
     for (int i=0; i<nlabels; i++) {
 	int wh[2];
 	double pos_data = tk->ticker.get_tick(&tk->ticker, i, out, 128);
 	double pos_rel = (pos_data - axis->min) / axisdiff;
-	int position_px = axis_xywh[coord] + iroundpos(pos_rel * (axis_xywh[coord+2]-1));
+	int position_px = isy ?
+	    axis_xywh[isy] + iroundpos((1-pos_rel) * (axis_xywh[isy+2]-1)) :
+	    axis_xywh[isy] + iroundpos(pos_rel * (axis_xywh[isy+2]-1));
 	ttra_get_textdims_pixels(ttra, out, wh+0, wh+1);
 	/* lower side */
 	/* pyöräytystä ei ole huomioitu */
-	int edge = position_px + wh[coord] * tk->hvalign_text[0];
+	int edge = position_px + wh[isy] * tk->hvalign_text[0];
 	if (edge < 0) {
-	    axis_xywh[coord] += -edge;
-	    axis_xywh[coord+2] -= -edge;
-	    position_px = axis_xywh[coord] + iroundpos(pos_rel * (axis_xywh[coord+2]-1));
+	    axis_xywh[isy] += -edge;
+	    axis_xywh[isy+2] -= -edge;
+	    position_px = axis_xywh[isy] + iroundpos(pos_rel * (axis_xywh[isy+2]-1));
 	}
 	/* higher side */
-	edge = position_px + wh[coord] * (1 + tk->hvalign_text[0]);
+	edge = position_px + wh[isy] * (1 + tk->hvalign_text[0]);
 	int WH[] = {axeswidth, axesheight};
-	if (edge >= WH[coord])
-	    axis_xywh[coord+2] = (WH[coord] - axis_xywh[coord] - wh[coord] * (1 + tk->hvalign_text[0])) / pos_rel;
+	if (edge >= WH[isy])
+	    axis_xywh[isy+2] = (WH[isy] - axis_xywh[isy] - wh[isy] * (1 + tk->hvalign_text[0])) / pos_rel;
     }
 }
 
