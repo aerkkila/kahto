@@ -5,7 +5,19 @@
 #define using_cplot
 #include "cplot.h"
 
-#define Abs(a) ((a) < 0 ? -(a) : (a))
+static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
+    int eulav = 255 - value;
+    int fg2 = color >> 16 & 0xff,
+	fg1 = color >> 8 & 0xff,
+	fg0 = color >> 0 & 0xff,
+	bg2 = *ptr >> 16 & 0xff,
+	bg1 = *ptr >> 8 & 0xff,
+	bg0 = *ptr >> 0 & 0xff;
+    int c2 = (fg2 * value + bg2 * eulav) / 255,
+	c1 = (fg1 * value + bg1 * eulav) / 255,
+	c0 = (fg0 * value + bg0 * eulav) / 255;
+    *ptr = *ptr>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
+}
 
 /* https://en.wikipedia.org/wiki/Bresenham's_line_algorithm */
 /* This method is nice because it uses only integers. */
@@ -33,6 +45,36 @@ static void draw_line_bresenham(unsigned *canvas, int ystride, const int *xy, un
 	    n0 += D > 0 ? n_add : 0;
 	    D  += D > 0 ? D_add1 : D_add0;
 	}
+}
+
+/* anti-aliased line */
+static void draw_line_xiaolin(unsigned *canvas_, int ystride, const int *xy, unsigned color) {
+    unsigned (*canvas)[ystride] = (void*)canvas_;
+    int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
+    int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
+    int    m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep];
+    float fn1=xy[2*!backwards+nosteep], fn0=xy[2*backwards+nosteep];
+
+    const float slope = (fn1 - fn0) / (m1 - m0);
+
+    if (nosteep) { // (m,n) = (x,y)
+	for (; m0<=m1; m0++) {
+	    int n0 = fn0;
+	    int level = iroundpos((fn0 - n0) * 255);
+	    tocanvas(&canvas[n0][m0], 255-level, color);
+	    tocanvas(&canvas[n0+1][m0], level, color);
+	    fn0 += slope;
+	}
+    }
+    else { // (m,n) = (y,x)
+	for (; m0<=m1; m0++) {
+	    int n0 = fn0;
+	    int level = iroundpos((fn0 - n0) * 255);
+	    tocanvas(&canvas[m0][n0], 255-level, color);
+	    tocanvas(&canvas[m0][n0+1], level, color);
+	    fn0 += slope;
+	}
+    }
 }
 
 static int check_line(int *line, const int *area) {
@@ -98,7 +140,7 @@ static int check_line(int *line, const int *area) {
     return 0;
 }
 
-static void draw_thick_line_bresenham(unsigned *canvas, int ystride, const int *xy_c, unsigned color, int thickness, int *axis_area) {
+static void draw_thick_line(unsigned *canvas, int ystride, const int *xy_c, unsigned color, int thickness, int *axis_area) {
     int xy[4];
     memcpy(xy, xy_c, sizeof(xy));
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
@@ -115,13 +157,18 @@ static void draw_thick_line_bresenham(unsigned *canvas, int ystride, const int *
     xy[nosteep+0] -= thickness/2;
     xy[nosteep+2] -= thickness/2;
 
-    for (int p=0; p<thickness; p++) {
+    if (!check_line(xy, axis_area))
+	draw_line_xiaolin(canvas, ystride, xy, color);
+    xy[nosteep+0]++;
+    xy[nosteep+2]++;
+    for (int p=1; p<thickness-1; p++) {
+	if (!check_line(xy, axis_area))
+	    draw_line_bresenham(canvas, ystride, xy, color);
 	xy[nosteep+0]++;
 	xy[nosteep+2]++;
-	if (check_line(xy, axis_area))
-	    continue;
-	draw_line_bresenham(canvas, ystride, xy, color);
     }
+    if (!check_line(xy, axis_area))
+	draw_line_xiaolin(canvas, ystride, xy, color);
 }
 
 static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
@@ -193,20 +240,6 @@ static void init_circle(unsigned char *to, int tow, int toh) {
     }
 }
 
-static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
-    int eulav = 255 - value;
-    int fg2 = color >> 16 & 0xff,
-	fg1 = color >> 8 & 0xff,
-	fg0 = color >> 0 & 0xff,
-	bg2 = *ptr >> 16 & 0xff,
-	bg1 = *ptr >> 8 & 0xff,
-	bg0 = *ptr >> 0 & 0xff;
-    int c2 = (fg2 * value + bg2 * eulav) / 255,
-	c1 = (fg1 * value + bg1 * eulav) / 255,
-	c0 = (fg0 * value + bg0 * eulav) / 255;
-    *ptr = *ptr>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
-}
-
 static inline void draw_datum(unsigned *canvas, int ystride,
     const unsigned char *bmap, int mapw, int maph,
     int x, int y, const int *axis_xywh, unsigned color)
@@ -261,7 +294,7 @@ static void connect_data_x(const short *xypixels, long x0, long len, unsigned *c
 	    iroundpos((x0+i+1) * xpix_per_unit) + axis_xywh[0],
 	    xypixels[3],
 	};
-	draw_thick_line_bresenham(canvas, ystride, xy, color, thickness, axis_area);
+	draw_thick_line(canvas, ystride, xy, color, thickness, axis_area);
 	xypixels += 2;
     }
 }
@@ -275,7 +308,7 @@ static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *
 	    xypixels[2] + axis_xywh[0],
 	    xypixels[3] + axis_xywh[1],
 	};
-	draw_thick_line_bresenham(canvas, ystride, xy, color, thickness, axis_area);
+	draw_thick_line(canvas, ystride, xy, color, thickness, axis_area);
 	xypixels += 2;
     }
 }

@@ -16,6 +16,8 @@
 #define arrlen(a) (sizeof(a) / sizeof(*(a)))
 #define RGB(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 #define xywh_to_area(xywh) {(xywh)[0], (xywh)[1], (xywh)[2]+(xywh)[0], (xywh)[3]+(xywh)[1]}
+#define Abs(a) ((a) < 0 ? -(a) : (a))
+#define Sign(a) ((a) < 0 ? -1 : 1 * ((a)>0))
 
 unsigned cplot_colorscheme[] = {
     0xffe41a1c, 0xff377eb8, 0xff4daf4a, 0xff984ea3,
@@ -179,7 +181,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
 	line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-	draw_thick_line_bresenham(canvas, ystride, line_px, ticks->color, thickness, ticks->ro_tot_area);
+	draw_thick_line(canvas, ystride, line_px, ticks->color, thickness, ticks->ro_tot_area);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
 	    put_text(ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
@@ -187,7 +189,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
 	    int thickness = iroundpos(ticks->grid_pen.thickness * axesheight);
 	    if (thickness < 1) thickness = 1;
-	    draw_thick_line_bresenham(canvas, axeswidth, gridline, ticks->grid_pen.color, thickness, inner_area);
+	    draw_thick_line(canvas, axeswidth, gridline, ticks->grid_pen.color, thickness, inner_area);
 	}
     }
 }
@@ -230,7 +232,7 @@ void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int 
     int WH[] = {axeswidth, axesheight};
     if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
-    draw_thick_line_bresenham(canvas, ystride, axis->ro_line, axis->color, thickness, area);
+    draw_thick_line(canvas, ystride, axis->ro_line, axis->color, thickness, area);
     cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
     for (int i=0; i<axis->ntext; i++)
 	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);

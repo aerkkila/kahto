@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-#define Sign(a) ((a) < 0 ? -1 : ((a) > 0) * 1)
-
 const char *cplot_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
 double cplot_get_tick_linear(struct $ticker *this, int ind, char *out, int sizeout) {
