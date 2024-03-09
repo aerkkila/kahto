@@ -9,7 +9,6 @@
 #define $tickerdata cplot_tickerdata
 #define $axes	cplot_axes
 #define $data	cplot_data
-#define $axes_draw	cplot_axes_draw
 #define $axislabel	cplot_axislabel
 #define $show	cplot_show
 #define $free	cplot_free
@@ -51,6 +50,7 @@ typedef float $f2si __attribute__((vector_size (8)));
 
 extern unsigned cplot_colorscheme[];
 extern int cplot_ncolors;
+extern int cplot_default_width, cplot_default_height;
 
 struct $axis;
 struct $data;
@@ -146,22 +146,38 @@ struct $data {
     float line_thickness;
 };
 
+enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
+
 struct $axes {
-    $f4si borders; // not used yet
+    /* Shared between axes and layout. Order matters here. */
+    enum cplot_whatisthis whatisthis;
+    int width, height;
+    unsigned background;
+    /* end shared */
+    int startcanvas;
     struct $axis **axis;
     int naxis, mem_axis;
-    unsigned background;
     struct ttra *ttra;
     int ro_inner_xywh[4];
     struct $data **data;
     int ndata, mem_data, icolor;
-    int width, height;
 
     struct legend {
 	float rowheight, symbolspace_per_rowheight;
 	int ro_xywh[4], ro_text_left;
 	float posx, posy, hvalign[2];
     } legend;
+};
+
+struct cplot_layout {
+    /* Shared between axes and layout. Order matters here. */
+    enum cplot_whatisthis whatisthis;	// must be first
+    int width, height;			// must be second
+    unsigned background;
+    /* end shared */
+    struct cplot_axes **axes;
+    float (*xywh)[4];
+    int naxes;
 };
 
 struct cplot_args {
@@ -202,31 +218,32 @@ struct cplot_drawarea {
     __VA_ARGS__							\
     })
 
+struct cplot_layout* cplot_layout_new(int nrows, int ncols);
 struct $axes* $plot_args(struct cplot_args *args);
 static inline struct $axes* $plot_inl(struct cplot_args args) {
     return $plot_args(&args);
 }
 #define cplot_plot(...) $plot_inl((struct cplot_args){__VA_ARGS__})
 
-void $axes_draw(struct $axes *axes, unsigned *canvas, int ystride);
-void $axislabel(struct $axis *axis, char *label);
-void $show(struct $axes *axes);
-void $free(struct $axes *axes);
-void $free_axis(struct $axis *axis);
+void cplot_axislabel(struct $axis *axis, char *label);
+void cplot_show(void *axes_or_layout);
+void cplot_free(void *axes_or_layout);
+void cplot_free_axis(struct $axis *axis);
+void cplot_fini();
+void cplot_add_axistext(struct $axis *axis, struct $axistext *text);
+void cplot_write_png(void *axes_or_layout, const char *name);
 
+static inline struct $axis* cplot_xaxis0(struct $axes *axes) { return axes->axis[0]; }
+static inline struct $axis* cplot_yaxis0(struct $axes *axes) { return axes->axis[1]; }
+
+/* Käyttäjä tuskin tarvitsee näitä. */
 void cplot_axes_render(struct $axes *axes, unsigned *canvas, int ystride);
 void cplot_axes_commit(struct $axes *axes);
-void cplot_add_axistext(struct $axis *axis, struct $axistext *text);
+void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride);
 
-void cplot_write_png(struct $axes *axes, const char *name);
-
-static inline struct $axis* cplot_xaxis0(struct $axes *axes) {
-    return axes->axis[0];
-}
-
-static inline struct $axis* cplot_yaxis0(struct $axes *axes) {
-    return axes->axis[1];
-}
+/* Käyttäjä ei tarvitse näitä. */
+void cplot_layout_to_axes(struct cplot_layout *layout);
+void cplot_axes_draw(struct $axes *axes, unsigned *canvas, int ystride);
 
 #ifndef using_cplot
 #undef $f2si
@@ -237,7 +254,6 @@ static inline struct $axis* cplot_yaxis0(struct $axes *axes) {
 #undef $tickerdata
 #undef $axes
 #undef $data
-#undef $axes_draw
 #undef $axislabel
 #undef $show
 #undef $free

@@ -34,8 +34,14 @@ int main() {
     $axislabel($xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
     $axislabel($yaxis0(axes), "y-nimiö\njatkuu täällä");
 
-    cplot_write_png(axes, "testi.png");
-    cplot_show(axes);
+    struct cplot_layout *layout = cplot_layout_new(2, 2);
+    layout->background = 0;
+    layout->axes[0] = axes;
+    layout->axes[3] = cplot_y(ydata1, .linestyle="-", .len=pit1);
 
-    $free(axes);
+    cplot_write_png(layout, "testi.png");
+    cplot_show(layout);
+
+    $free(layout);
+    cplot_fini();
 }

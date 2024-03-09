@@ -26,6 +26,8 @@ unsigned cplot_colorscheme[] = {
 
 int cplot_ncolors = arrlen(cplot_colorscheme);
 
+int cplot_default_width = 1200, cplot_default_height = 1000;
+
 static inline int iround(float f) {
     int a = f;
     return a + (f-a >= 0.5) - (a-f > 0.5);
@@ -113,9 +115,9 @@ struct $ticks* cplot_ticks_alloc(struct $axis *axis) {
     return ticks;
 }
 
-struct $axes* cplot_axes_alloc() {
+struct $axes* cplot_axes_new() {
     struct $axes *axes = calloc(1, sizeof(struct $axes));
-    axes->borders = ($f4si){0, 0, 1, 1};
+    axes->whatisthis = cplot_axes_e;
     axes->background = -1;
 
     axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
@@ -129,8 +131,8 @@ struct $axes* cplot_axes_alloc() {
     axes->axis[1]->pos = 0;
     axes->axis[1]->ticks = cplot_ticks_alloc(axes->axis[1]);
 
-    axes->width = 1200;
-    axes->height = 1000;
+    axes->width = cplot_default_width;
+    axes->height = cplot_default_height;
 
     axes->ttra = calloc(1, sizeof(struct ttra));
     ttra_init(axes->ttra);
@@ -144,6 +146,38 @@ struct $axes* cplot_axes_alloc() {
     return axes;
 }
 
+void cplot_layout_put_rows_and_cols(struct cplot_layout *layout, int nrows, int ncols) {
+    float height = 1.0 / nrows,
+	  width = 1.0 / ncols;
+    float x[ncols];
+    for (int i=0; i<ncols; i++)
+	x[i] = i * width;
+    float y0 = 0;
+    for (int j=0; j<nrows; j++) {
+	float y1 = (j+1) * height;
+	for (int i=0; i<ncols; i++) {
+	    layout->xywh[j*ncols+i][0] = x[i];
+	    layout->xywh[j*ncols+i][1] = y0;
+	    layout->xywh[j*ncols+i][2] = width;
+	    layout->xywh[j*ncols+i][3] = height;
+	}
+	y0 = y1;
+    }
+}
+
+struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
+    struct cplot_layout *layout = calloc(1, sizeof(struct cplot_layout));
+    layout->whatisthis = cplot_layout_e;
+    layout->axes = calloc(ncols*nrows, sizeof(void*));
+    layout->xywh = calloc(ncols*nrows, sizeof(float[4]));
+    layout->naxes = ncols * nrows;
+    layout->width = cplot_default_width;
+    layout->height = cplot_default_height;
+    layout->background = -1;
+    cplot_layout_put_rows_and_cols(layout, nrows, ncols);
+    return layout;
+}
+
 void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     char tick[32];
     struct ttra *ttra = NULL;
@@ -151,7 +185,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
     if (ticks->have_labels) {
 	ttra = ticks->axis->axes->ttra;
 	ttra->canvas = canvas;
-	ttra->realw = axeswidth;
+	ttra->realw = ystride;
 	ttra->realh = axesheight;
 	ttra->w = ticks->ro_labelarea[2] - ticks->ro_labelarea[0];
 	ttra->h = ticks->ro_labelarea[3] - ticks->ro_labelarea[1];
@@ -187,7 +221,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	if (ticks->grid_on) {
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
 	    float thickness = ticks->grid_pen.thickness * axesheight;
-	    draw_thick_line(canvas, axeswidth, gridline, ticks->grid_pen.color, thickness, inner_area);
+	    draw_thick_line(canvas, ystride, gridline, ticks->grid_pen.color, thickness, inner_area);
 	}
     }
 }
@@ -203,7 +237,7 @@ void cplot_get_axislabel_xy(struct $axistext *axistext, int xy[2]) {
 void cplot_axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     struct ttra *ttra = axistext->axis->axes->ttra;
     ttra->canvas = canvas;
-    ttra->realw = axeswidth;
+    ttra->realw = ystride;
     ttra->realh = axesheight;
     ttra->w = axistext->ro_area[2] - axistext->ro_area[0];
     ttra->h = axistext->ro_area[3] - axistext->ro_area[1];
@@ -323,7 +357,7 @@ void $free_axis(struct $axis *axis) {
     free(axis);
 }
 
-void $free(struct $axes *axes) {
+void cplot_free_axes(struct $axes *axes) {
     for (int i=0; i<axes->naxis; i++)
 	$free_axis(axes->axis[i]);
     free(axes->axis);
@@ -344,20 +378,86 @@ void $free(struct $axes *axes) {
     free(axes);
 }
 
+void cplot_fini() {
+    ttra_fini();
+}
+
+void cplot_free(void *axes_or_layout) {
+    struct cplot_layout *layout = axes_or_layout;
+    if (layout->whatisthis == cplot_axes_e)
+	return cplot_free_axes(axes_or_layout);
+    for (int i=0; i<layout->naxes; i++)
+	if (layout->axes[i])
+	    cplot_free_axes(layout->axes[i]);
+    free(layout->axes);
+    free(layout->xywh);
+    free(layout);
+}
+
 struct $axes* $plot_args(struct cplot_args *args) {
-    struct $axes *axes = args->axes ? args->axes : cplot_axes_alloc();
+    struct $axes *axes = args->axes ? args->axes : cplot_axes_new();
     args->axes = axes;
     if (args->ydata)
 	add_data(args);
     return axes;
 }
 
-void $axes_draw(struct $axes *axes, unsigned *canvas, int ystride) {
+void cplot_axes_draw(struct $axes *axes, unsigned *canvas, int ystride) {
     cplot_axes_commit(axes);
-    cplot_axes_render(axes, canvas, ystride);
+    cplot_axes_render(axes, canvas+axes->startcanvas, ystride);
 }
 
-void $show(struct $axes *axes) {
+void cplot_xywh_to_pixels(struct cplot_layout *layout, int islot, int px[4]) {
+    px[0] = iroundpos(layout->xywh[islot][0] * layout->width);
+    px[1] = iroundpos(layout->xywh[islot][1] * layout->height);
+    px[2] = iroundpos(layout->width * layout->xywh[islot][2]);
+    px[3] = iroundpos(layout->height * layout->xywh[islot][3]);
+    if (px[0] + px[2] > layout->width)
+	px[2] = layout->width - px[0];
+    if (px[1] + px[3] > layout->height)
+	px[3] = layout->height - px[1];
+}
+
+void cplot_layout_to_axes(struct cplot_layout *layout) {
+    for (int i=0; i<layout->naxes; i++) {
+	if (!layout->axes[i])
+	    continue;
+	int xywh_px[4];
+	cplot_xywh_to_pixels(layout, i, xywh_px);
+	layout->axes[i]->width = xywh_px[2];
+	layout->axes[i]->height = xywh_px[3];
+	layout->axes[i]->startcanvas = xywh_px[1] * layout->width + xywh_px[0];
+    }
+}
+
+void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride) {
+    int xywh[4];
+    cplot_xywh_to_pixels(layout, islot, xywh);
+    const int area[] = xywh_to_area(xywh);
+    unsigned color = layout->background;
+    for (int j=area[1]; j<area[3]; j++) {
+	int ind0 = j * ystride;
+	for (int i=area[0]; i<area[2]; i++)
+	    canvas[ind0+i] = color;
+    }
+}
+
+void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
+    if (((struct cplot_axes*)vplot)->whatisthis == cplot_axes_e)
+	cplot_axes_draw(vplot, canvas, ystride);
+    else {
+	struct cplot_layout *layout = vplot;
+	cplot_layout_to_axes(layout);
+	for (int i=0; i<layout->naxes; i++)
+	    if (layout->axes[i])
+		cplot_axes_draw(layout->axes[i], canvas, ystride);
+	    else
+		cplot_clear_slot(layout, i, canvas, ystride);
+    }
+}
+
+void $show(void *vplot) {
+    struct cplot_axes *axes = vplot;
     struct waylandhelper wlh = {
 	.xres = axes->width,
 	.yres = axes->height,
@@ -369,7 +469,7 @@ void $show(struct $axes *axes) {
 	if (wlh.redraw && wlh.can_redraw) {
 	    axes->width = wlh.xres;
 	    axes->height = wlh.yres;
-	    $axes_draw(axes, wlh.data, axes->width);
+	    cplot_draw(axes, wlh.data, axes->width);
 	    wlh_commit(&wlh);
 	}
 	usleep(10000);
