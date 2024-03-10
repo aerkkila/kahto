@@ -11,8 +11,6 @@
 #define $data	cplot_data
 #define $axislabel	cplot_axislabel
 #define $show	cplot_show
-#define $free	cplot_free
-#define $free_axis	cplot_free_axis
 #define $plot	cplot_plot
 #define $plot_inl	cplot_plot_inl
 #define $plot_args	cplot_plot_args
@@ -109,7 +107,7 @@ struct $axis {
     int range_isset;
     unsigned color;
     float thickness;
-    struct $axistext **text;
+    struct cplot_axistext **text;
     int mem_text, ntext;
     struct $ticks *ticks;
     int ro_line[4], ro_tick_area[4], ro_linetick_area[4];
@@ -117,7 +115,7 @@ struct $axis {
 
 enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};
 
-struct $axistext {
+struct cplot_axistext {
     struct $axis *axis;
     char *text;
     enum axistext_type type;
@@ -209,8 +207,8 @@ struct cplot_drawarea {
     int axeswidth, axesheight, ystride;
 };
 
-#define cplot_y(y, ...) $plot_inl((struct cplot_args){.ydata=(y), .ytype=cplot_type(*(y)), __VA_ARGS__})
-#define cplot_yx(y, x, ...) $plot_inl((struct cplot_args){	\
+#define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){.ydata=(y), .ytype=cplot_type(*(y)), __VA_ARGS__})
+#define cplot_yx(y, x, ...) cplot_plot_inl((struct cplot_args){	\
     .ydata=(y),							\
     .xdata=(x),							\
     .ytype=cplot_type(*(y)),					\
@@ -218,8 +216,10 @@ struct cplot_drawarea {
     __VA_ARGS__							\
     })
 
+struct cplot_ticks* cplot_ticks_new(struct $axis *axis);
+struct cplot_axis* cplot_axis_new(struct $axes *axes, int x_or_y);
 struct cplot_layout* cplot_layout_new(int nrows, int ncols);
-struct $axes* $plot_args(struct cplot_args *args);
+struct cplot_axes* $plot_args(struct cplot_args *args);
 static inline struct $axes* $plot_inl(struct cplot_args args) {
     return $plot_args(&args);
 }
@@ -227,14 +227,17 @@ static inline struct $axes* $plot_inl(struct cplot_args args) {
 
 void cplot_axislabel(struct $axis *axis, char *label);
 void cplot_show(void *axes_or_layout);
-void cplot_free(void *axes_or_layout);
-void cplot_free_axis(struct $axis *axis);
+void cplot_destroy(void *axes_or_layout);
+void cplot_destroy_axis(struct $axis *axis);
 void cplot_fini();
-void cplot_add_axistext(struct $axis *axis, struct $axistext *text);
+void cplot_add_axistext(struct $axis *axis, struct cplot_axistext *text);
 void cplot_write_png(void *axes_or_layout, const char *name);
 
-static inline struct $axis* cplot_xaxis0(struct $axes *axes) { return axes->axis[0]; }
-static inline struct $axis* cplot_yaxis0(struct $axes *axes) { return axes->axis[1]; }
+#define cplot_ix0axis 0
+#define cplot_iy0axis 1
+
+static inline struct $axis* cplot_xaxis0(struct $axes *axes) { return axes->axis[cplot_ix0axis]; }
+static inline struct $axis* cplot_yaxis0(struct $axes *axes) { return axes->axis[cplot_iy0axis]; }
 
 /* Käyttäjä tuskin tarvitsee näitä. */
 void cplot_axes_render(struct $axes *axes, unsigned *canvas, int ystride);
@@ -256,8 +259,6 @@ void cplot_axes_draw(struct $axes *axes, unsigned *canvas, int ystride);
 #undef $data
 #undef $axislabel
 #undef $show
-#undef $free
-#undef $free_axis
 #undef $plot
 #undef $plot_inl
 #undef $plot_args

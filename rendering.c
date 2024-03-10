@@ -294,9 +294,9 @@ static void connect_data_x(const short *xypixels, long x0, long len, unsigned *c
     for (int i=0; i<len-1; i++) {
 	int xy[] = {
 	    iroundpos((x0+i) * xpix_per_unit) + axis_xywh[0],
-	    xypixels[1],
+	    xypixels[1] + axis_xywh[1],
 	    iroundpos((x0+i+1) * xpix_per_unit) + axis_xywh[0],
-	    xypixels[3],
+	    xypixels[3] + axis_xywh[1],
 	};
 	draw_thick_line(canvas, ystride, xy, color, thickness, axis_area);
 	xypixels += 2;

@@ -46,7 +46,7 @@ static void get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheig
     memcpy(old, lim2inout, sizeof(old));
     int side = axis->pos >= 0.5;
     for (int itext=0; itext<axis->ntext; itext++) {
-	struct $axistext *axistext = axis->text[itext];
+	struct cplot_axistext *axistext = axis->text[itext];
 	ttra_set_fontheight(ttra, axistext->rowheight * axesheight);
 	int xy[2], *area = axistext->ro_area;
 	cplot_get_axislabel_xy(axistext, xy);
@@ -76,6 +76,7 @@ void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, con
     memcpy(ticks->ro_labelarea, ticks->axis->ro_line, sizeof(ticks->ro_labelarea));
     int nticks = ticks->ticker.init(&ticks->ticker, ticks->axis->min, ticks->axis->max); // turhaan init aina uudestaan
     char tick[500];
+    int side = ticks->axis->pos >= 0.5;
 
     /* Silmukan käyminen takaperin muuttaisi minmaxpos-muuttujaa. */
     for (int itick=0; itick<nticks; itick++) {
@@ -86,7 +87,7 @@ void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, con
 	line_px[!isx] = line_px[!isx+2] = minmaxpos[itick!=0] = axis_xywh[!isx] + iroundpos(pos_rel * axis_xywh[!isx+2]);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
-	    if (put_text(ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx],
+	    if (put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx],
 		    ticks->hvalign_text[isx], 0, area_text, 1) >= 0) { // successful geometry
 		update_min(ticks->ro_labelarea[0], area_text[0]);
 		update_min(ticks->ro_labelarea[1], area_text[1]);
@@ -207,7 +208,8 @@ void get_ticklabel_limits_round3(struct $axis *axis, int axeswidth, int axesheig
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
     axis->ro_tick_area[1] = axis->ro_tick_area[3] = axis->ro_line[1];
 
-    cplot_ticks_commit(axis->ticks, axeswidth, axesheight, axis_xywh);
+    if (axis->ticks)
+	cplot_ticks_commit(axis->ticks, axeswidth, axesheight, axis_xywh);
 
     axis->ro_linetick_area[0] = min(axis->ro_line[0], axis->ro_tick_area[0]);
     axis->ro_linetick_area[1] = min(axis->ro_line[1], axis->ro_tick_area[1]);

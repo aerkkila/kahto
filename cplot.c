@@ -63,10 +63,9 @@ static inline float get_ticks_underlength(struct $ticks *tk) {
     return f * (f>0);
 }
 
-void cplot_get_axislabel_xy(struct $axistext *axistext, int xy[2]);
+void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]);
 void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight);
-
 
 #include "functions.c"
 #include "rotate.c"
@@ -75,18 +74,22 @@ void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight
 #include "commit.c"
 #include "wayland_helper/waylandhelper.h"
 
-struct $axis* cplot_axis_alloc(struct $axes *axes) {
+struct cplot_axis* cplot_axis_new(struct $axes *axes, int x_or_y) {
     struct $axis *axis = calloc(1, sizeof(struct $axis));
     axis->axes = axes;
-    axes->naxis++;
+    if (axes->mem_axis < axes->naxis+1)
+	axes->axis = realloc(axes->axis, (axes->mem_axis+=2) * sizeof(void*));
+    axes->axis[axes->naxis++] = axis;
+    memset(axes->axis + axes->naxis, 0, (axes->mem_axis - axes->naxis) * sizeof(void*));
     axis->color = fg;
     axis->thickness = 1.0 / 400;
     axis->min = 0;
     axis->max = 1;
+    axis->x_or_y = x_or_y;
     return axis;
 }
 
-struct $ticks* cplot_ticks_alloc(struct $axis *axis) {
+struct cplot_ticks* cplot_ticks_new(struct $axis *axis) {
     struct $ticks *ticks = calloc(1, sizeof(struct $ticks));
     ticks->axis = axis;
     ticks->color = fg;
@@ -94,7 +97,6 @@ struct $ticks* cplot_ticks_alloc(struct $axis *axis) {
     ticks->length = 1.0 / 80;
     ticks->thickness = -1; // same as axis
     ticks->hvalign_text[0] = -0.5;
-    ticks->grid_on = 1;
     ticks->grid_pen.thickness = 1.0/1200;
     ticks->grid_pen.color = RGB(100, 100, 100);
 
@@ -121,15 +123,15 @@ struct $axes* cplot_axes_new() {
     axes->background = -1;
 
     axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
-    axes->axis[0] = cplot_axis_alloc(axes);
-    axes->axis[0]->x_or_y = 'x'; // bottom x-axis
-    axes->axis[0]->pos = 1;
-    axes->axis[0]->ticks = cplot_ticks_alloc(axes->axis[0]);
+    axes->axis[0] = cplot_axis_new(axes, 'x');
+    axes->axis[0]->pos = 1; // bottom x-axis
+    axes->axis[0]->ticks = cplot_ticks_new(axes->axis[0]);
+    axes->axis[0]->ticks->grid_on = 1;
 
-    axes->axis[1] = cplot_axis_alloc(axes);
-    axes->axis[1]->x_or_y = 'y'; // left y-axis
-    axes->axis[1]->pos = 0;
-    axes->axis[1]->ticks = cplot_ticks_alloc(axes->axis[1]);
+    axes->axis[1] = cplot_axis_new(axes, 'y');
+    axes->axis[1]->pos = 0; // left y-axis
+    axes->axis[1]->ticks = cplot_ticks_new(axes->axis[1]);
+    axes->axis[1]->ticks->grid_on = 1;
 
     axes->width = cplot_default_width;
     axes->height = cplot_default_height;
@@ -207,6 +209,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
     gridline[isx] = xywh[isx];
     gridline[isx+2] = xywh[isx] + xywh[isx+2];
     int inner_area[] = xywh_to_area(xywh);
+    int side = ticks->axis->pos >= 0.5;
 
     for (int itick=0; itick<nticks; itick++) {
 	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, tick, 32);
@@ -217,7 +220,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
 	draw_thick_line(canvas, ystride, line_px, ticks->color, thickness, ticks->ro_tot_area);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
-	    put_text(ttra, tick, line_px[0], line_px[3], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
+	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
 	if (ticks->grid_on) {
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
 	    float thickness = ticks->grid_pen.thickness * axesheight;
@@ -226,7 +229,7 @@ void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int
     }
 }
 
-void cplot_get_axislabel_xy(struct $axistext *axistext, int xy[2]) {
+void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]) {
     int coord = axistext->axis->x_or_y == 'y';
     int *axis_tot_area = axistext->axis->ro_linetick_area;
     int axislength = axis_tot_area[coord+2] - axis_tot_area[coord];
@@ -234,7 +237,7 @@ void cplot_get_axislabel_xy(struct $axistext *axistext, int xy[2]) {
     xy[!coord] = axis_tot_area[!coord + 2*(axistext->axis->pos >= 0.5)];
 }
 
-void cplot_axistext_draw(struct $axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     struct ttra *ttra = axistext->axis->axes->ttra;
     ttra->canvas = canvas;
     ttra->realw = ystride;
@@ -264,7 +267,8 @@ void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int 
     if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
     draw_thick_line(canvas, ystride, axis->ro_line, axis->color, thickness, area);
-    cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
+    if (axis->ticks)
+	cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
     for (int i=0; i<axis->ntext; i++)
 	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
@@ -285,7 +289,7 @@ void cplot_axes_render(struct $axes *axes, unsigned *canvas, int ystride) {
 
 static void init_datastyle(struct $data *data) {
     if (data->markersize == 0)
-	data->markersize = 1.0 / 150;
+	data->markersize = 1.0 / 120;
     if (!data->marker)
 	data->marker = "o";
     if (!data->color)
@@ -325,15 +329,15 @@ static void add_data(struct cplot_args *args) {
     init_datastyle(data);
 }
 
-void cplot_add_axistext(struct $axis *axis, struct $axistext *text) {
+void cplot_add_axistext(struct $axis *axis, struct cplot_axistext *text) {
     if (axis->ntext >= axis->mem_text)
 	axis->text = realloc(axis->text, (axis->mem_text = axis->ntext + 2) * sizeof(void*));
     axis->text[axis->ntext++] = text;
 }
 
-void $axislabel(struct $axis *axis, char *label) {
-    struct $axistext *text = malloc(sizeof(struct $axistext));
-    *text = (struct $axistext) {
+void cplot_axislabel(struct $axis *axis, char *label) {
+    struct cplot_axistext *text = malloc(sizeof(struct cplot_axistext));
+    *text = (struct cplot_axistext) {
 	.text = label,
 	.pos = 0.5,
 	.hvalign = {-0.5, -1 * (axis->pos < 0.5)},
@@ -345,7 +349,7 @@ void $axislabel(struct $axis *axis, char *label) {
     cplot_add_axistext(axis, text);
 }
 
-void $free_axis(struct $axis *axis) {
+void cplot_destroy_axis(struct $axis *axis) {
     for (int i=axis->ntext-1; i>=0; i--) {
 	if (axis->text[i]->owner)
 	    free(axis->text[i]->text);
@@ -357,9 +361,9 @@ void $free_axis(struct $axis *axis) {
     free(axis);
 }
 
-void cplot_free_axes(struct $axes *axes) {
+void cplot_destroy_axes(struct $axes *axes) {
     for (int i=0; i<axes->naxis; i++)
-	$free_axis(axes->axis[i]);
+	cplot_destroy_axis(axes->axis[i]);
     free(axes->axis);
     //free(axes->text);
     ttra_destroy(axes->ttra);
@@ -382,20 +386,24 @@ void cplot_fini() {
     ttra_fini();
 }
 
-void cplot_free(void *axes_or_layout) {
+void cplot_destroy(void *axes_or_layout) {
     struct cplot_layout *layout = axes_or_layout;
     if (layout->whatisthis == cplot_axes_e)
-	return cplot_free_axes(axes_or_layout);
+	return cplot_destroy_axes(axes_or_layout);
     for (int i=0; i<layout->naxes; i++)
 	if (layout->axes[i])
-	    cplot_free_axes(layout->axes[i]);
+	    cplot_destroy_axes(layout->axes[i]);
     free(layout->axes);
     free(layout->xywh);
     free(layout);
 }
 
 struct $axes* $plot_args(struct cplot_args *args) {
-    struct $axes *axes = args->axes ? args->axes : cplot_axes_new();
+    struct $axes *axes =
+	args->axes ? args->axes :
+	args->yaxis ? args->yaxis->axes :
+	args->xaxis ? args->xaxis->axes :
+	cplot_axes_new();
     args->axes = axes;
     if (args->ydata)
 	add_data(args);

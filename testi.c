@@ -1,4 +1,3 @@
-#define using_cplot
 #include "cplot.h"
 #include <stdlib.h>
 #include <math.h>
@@ -13,7 +12,7 @@ int main() {
 	ydata[i] = cos(2*π/pit*10 * i) * i * 0.0001;
 	xdata[i] = sin(2*π/pit*10 * i) * i * 0.1;
     }
-    struct $axes *axes = cplot_yx(ydata, xdata, .len=pit, .linestyle="-", .line_thickness=1.0/500, .label="nimiö");
+    struct cplot_axes *axes = cplot_yx(ydata, xdata, .len=pit, .linestyle="-", .line_thickness=1.0/500, .label="nimiö");
 
     const int pit1 = 45;
     float ydata1[pit1], xdata1[pit1];
@@ -31,17 +30,29 @@ int main() {
     }
     cplot_yx(ydata2, xdata2, .len=pit2, .marker="+", .literal_marker=1, .axes=axes, .markersize=1.0/50);
 
-    $axislabel($xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
-    $axislabel($yaxis0(axes), "y-nimiö\njatkuu täällä");
+    cplot_axislabel(cplot_xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
+    cplot_axislabel(cplot_yaxis0(axes), "y-nimiö\njatkuu täällä");
 
     struct cplot_layout *layout = cplot_layout_new(2, 2);
     layout->background = 0;
     layout->axes[0] = axes;
-    layout->axes[3] = cplot_y(ydata1, .linestyle="-", .len=pit1);
+    layout->axes[3] = cplot_y(ydata1, .linestyle="-", .len=pit1, .label = "testi");
+
+    struct cplot_axis *y1axis = cplot_axis_new(layout->axes[3], 'y');
+    y1axis->pos = 1;
+    y1axis->ticks = cplot_ticks_new(y1axis);
+    struct cplot_axis *x1axis = cplot_axis_new(layout->axes[3], 'x');
+    x1axis->ticks = cplot_ticks_new(x1axis);
+    cplot_yx(ydata2, xdata2, .len=pit2, .xaxis=x1axis, .yaxis=y1axis, .linestyle="-", .markersize=1.0/40);
+    cplot_axislabel(x1axis, "x-akseli ylhäällä");
+    cplot_axislabel(y1axis, "oikia");
+    y1axis->text[y1axis->ntext-1]->rotation100 = 0;
+    cplot_axislabel(cplot_xaxis0(layout->axes[3]), "x-akseli alhaalla");
+    cplot_axislabel(cplot_yaxis0(layout->axes[3]), "y-akseli vasemmalla");
 
     cplot_write_png(layout, "testi.png");
     cplot_show(layout);
 
-    $free(layout);
+    cplot_destroy(layout);
     cplot_fini();
 }
