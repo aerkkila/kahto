@@ -135,7 +135,7 @@ enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
 struct cplot_axes {
     /* Shared between axes and layout. Order matters here. */
     enum cplot_whatisthis whatisthis;
-    int width, height;
+    int wh[2];
     unsigned background;
     /* end shared */
     int startcanvas;
@@ -155,8 +155,8 @@ struct cplot_axes {
 
 struct cplot_layout {
     /* Shared between axes and layout. Order matters here. */
-    enum cplot_whatisthis whatisthis;	// must be first
-    int width, height;			// must be second
+    enum cplot_whatisthis whatisthis;
+    int wh[2];
     unsigned background;
     /* end shared */
     struct cplot_axes **axes;

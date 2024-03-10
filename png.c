@@ -58,23 +58,23 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
 
 void cplot_write_png(void *axes_or_layout, const char *name) {
     struct cplot_layout *layout = axes_or_layout;
-    unsigned *argb = malloc(layout->width * layout->height * sizeof(unsigned));
+    unsigned *argb = malloc(layout->wh[0] * layout->wh[1] * sizeof(unsigned));
 
     if (layout->whatisthis == cplot_axes_e)
-	cplot_axes_draw(axes_or_layout, argb, layout->width);
+	cplot_axes_draw(axes_or_layout, argb, layout->wh[0]);
     else {
 	cplot_layout_to_axes(layout);
 	for (int i=0; i<layout->naxes; i++)
 	    if (layout->axes[i])
-		cplot_axes_draw(layout->axes[i], argb, layout->width);
+		cplot_axes_draw(layout->axes[i], argb, layout->wh[0]);
 	    else
-		cplot_clear_slot(layout, i, argb, layout->width);
+		cplot_clear_slot(layout, i, argb, layout->wh[0]);
     }
 
-    unsigned char *bgr  = malloc(layout->width * layout->height * 3);
-    argb_to_bgr(argb, bgr, layout->width * layout->height);
+    unsigned char *bgr  = malloc(layout->wh[0] * layout->wh[1] * 3);
+    argb_to_bgr(argb, bgr, layout->wh[0] * layout->wh[1]);
     free(argb);
-    write_png(bgr, name, layout->width, layout->height);
+    write_png(bgr, name, layout->wh[0], layout->wh[1]);
     free(bgr);
 }
 

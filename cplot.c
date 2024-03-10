@@ -130,8 +130,8 @@ struct cplot_axes* cplot_axes_new() {
     axes->axis[1]->ticks = cplot_ticks_new(axes->axis[1]);
     axes->axis[1]->ticks->grid_on = 1;
 
-    axes->width = cplot_default_width;
-    axes->height = cplot_default_height;
+    axes->wh[0] = cplot_default_width;
+    axes->wh[1] = cplot_default_height;
 
     axes->ttra = calloc(1, sizeof(struct ttra));
     ttra_init(axes->ttra);
@@ -170,8 +170,8 @@ struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
     layout->axes = calloc(ncols*nrows, sizeof(void*));
     layout->xywh = calloc(ncols*nrows, sizeof(float[4]));
     layout->naxes = ncols * nrows;
-    layout->width = cplot_default_width;
-    layout->height = cplot_default_height;
+    layout->wh[0] = cplot_default_width;
+    layout->wh[1] = cplot_default_height;
     layout->background = -1;
     cplot_layout_put_rows_and_cols(layout, nrows, ncols);
     return layout;
@@ -260,6 +260,11 @@ void cplot_axis_render(struct cplot_axis *axis, unsigned *canvas, int axeswidth,
 
     int isx = axis->x_or_y == 'x';
     area[isx+2] += (thickness+1)/2;
+    area[isx] -= (thickness+1)/2;
+    if (area[isx] < 0) area[isx] = 0;
+    if (area[isx+2] > axis->axes->wh[isx])
+	area[isx+2] = axis->axes->wh[isx];
+
     int WH[] = {axeswidth, axesheight};
     if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
@@ -272,16 +277,16 @@ void cplot_axis_render(struct cplot_axis *axis, unsigned *canvas, int axeswidth,
 
 void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
     unsigned bg = axes->background;
-    for (int j=0; j<axes->height; j++) {
+    for (int j=0; j<axes->wh[1]; j++) {
 	unsigned ind0 = j * ystride;
-	for (int i=0; i<axes->width; i++)
+	for (int i=0; i<axes->wh[0]; i++)
 	    canvas[ind0+i] = bg;
     }
     for (int i=0; i<axes->naxis; i++)
-	cplot_axis_render(axes->axis[i], canvas, axes->width, axes->height, ystride);
+	cplot_axis_render(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
     for (int i=0; i<axes->ndata; i++)
-	cplot_data_render(axes->data[i], canvas, axes->width, axes->height, ystride);
-    cplot_legend(axes, (struct cplot_drawarea){canvas, axes->width, axes->height, ystride});
+	cplot_data_render(axes->data[i], canvas, axes->wh[0], axes->wh[1], ystride);
+    cplot_legend(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
 }
 
 static void init_datastyle(struct cplot_data *data) {
@@ -413,14 +418,14 @@ void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 }
 
 void cplot_xywh_to_pixels(struct cplot_layout *layout, int islot, int px[4]) {
-    px[0] = iroundpos(layout->xywh[islot][0] * layout->width);
-    px[1] = iroundpos(layout->xywh[islot][1] * layout->height);
-    px[2] = iroundpos(layout->width * layout->xywh[islot][2]);
-    px[3] = iroundpos(layout->height * layout->xywh[islot][3]);
-    if (px[0] + px[2] > layout->width)
-	px[2] = layout->width - px[0];
-    if (px[1] + px[3] > layout->height)
-	px[3] = layout->height - px[1];
+    px[0] = iroundpos(layout->xywh[islot][0] * layout->wh[0]);
+    px[1] = iroundpos(layout->xywh[islot][1] * layout->wh[1]);
+    px[2] = iroundpos(layout->wh[0] * layout->xywh[islot][2]);
+    px[3] = iroundpos(layout->wh[1] * layout->xywh[islot][3]);
+    if (px[0] + px[2] > layout->wh[0])
+	px[2] = layout->wh[0] - px[0];
+    if (px[1] + px[3] > layout->wh[1])
+	px[3] = layout->wh[1] - px[1];
 }
 
 void cplot_layout_to_axes(struct cplot_layout *layout) {
@@ -429,9 +434,9 @@ void cplot_layout_to_axes(struct cplot_layout *layout) {
 	    continue;
 	int xywh_px[4];
 	cplot_xywh_to_pixels(layout, i, xywh_px);
-	layout->axes[i]->width = xywh_px[2];
-	layout->axes[i]->height = xywh_px[3];
-	layout->axes[i]->startcanvas = xywh_px[1] * layout->width + xywh_px[0];
+	layout->axes[i]->wh[0] = xywh_px[2];
+	layout->axes[i]->wh[1] = xywh_px[3];
+	layout->axes[i]->startcanvas = xywh_px[1] * layout->wh[0] + xywh_px[0];
     }
 }
 
@@ -464,17 +469,17 @@ void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
 void cplot_show(void *vplot) {
     struct cplot_axes *axes = vplot;
     struct waylandhelper wlh = {
-	.xres = axes->width,
-	.yres = axes->height,
+	.xres = axes->wh[0],
+	.yres = axes->wh[1],
 	.xresmin = 20,
 	.yresmin = 20,
     };
     wlh_init(&wlh);
     while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
 	if (wlh.redraw && wlh.can_redraw) {
-	    axes->width = wlh.xres;
-	    axes->height = wlh.yres;
-	    cplot_draw(axes, wlh.data, axes->width);
+	    axes->wh[0] = wlh.xres;
+	    axes->wh[1] = wlh.yres;
+	    cplot_draw(axes, wlh.data, axes->wh[0]);
 	    wlh_commit(&wlh);
 	}
 	usleep(10000);
