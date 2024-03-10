@@ -1,20 +1,6 @@
 #ifndef __cplot_h__
 #define __cplot_h__
 
-#define $f2si	cplot_f2si
-#define $f4si	cplot_f4si
-#define $axis	cplot_axis
-#define $ticks	cplot_ticks
-#define $ticker	cplot_ticker
-#define $tickerdata cplot_tickerdata
-#define $axes	cplot_axes
-#define $data	cplot_data
-#define $axislabel	cplot_axislabel
-#define $show	cplot_show
-#define $plot	cplot_plot
-#define $plot_inl	cplot_plot_inl
-#define $plot_args	cplot_plot_args
-
 #define cplot_notype 0
 #define cplot_i1 (10 + sizeof(char))
 #define cplot_i2 (10 + sizeof(short))
@@ -43,15 +29,15 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-typedef float $f4si __attribute__((vector_size (16)));
-typedef float $f2si __attribute__((vector_size (8)));
+typedef float cplot_f4si __attribute__((vector_size (16)));
+typedef float cplot_f2si __attribute__((vector_size (8)));
 
 extern unsigned cplot_colorscheme[];
 extern int cplot_ncolors;
 extern int cplot_default_width, cplot_default_height;
 
-struct $axis;
-struct $data;
+struct cplot_axis;
+struct cplot_data;
 
 struct cplot_pen {
     unsigned color;
@@ -64,27 +50,27 @@ struct cplot_tickerdata_linear {
     double step, min, base;
 };
 
-union $tickerdata {
+union cplot_tickerdata {
     struct cplot_tickerdata_linear lin;
     /* for future use */
 };
 
 enum cplot_tickere {ticker_linear};
 
-struct $ticker {
+struct cplot_ticker {
     enum cplot_tickere species;
-    int (*init)(struct $ticker *this, double min, double max); // returns the number of ticks
-    double (*get_tick)(struct $ticker *this, int ind, char *out, int sizeout);
-    union $tickerdata tickerdata;
+    int (*init)(struct cplot_ticker *this, double min, double max); // returns the number of ticks
+    double (*get_tick)(struct cplot_ticker *this, int ind, char *out, int sizeout);
+    union cplot_tickerdata tickerdata;
 };
 
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
  *	1: Ticks end at the axis i.e. are left or above.
  */
-struct $ticks {
-    struct $axis *axis;
-    struct $ticker ticker;
+struct cplot_ticks {
+    struct cplot_axis *axis;
+    struct cplot_ticker ticker;
     unsigned color;
     float crossaxis, length, thickness;
 
@@ -99,8 +85,8 @@ struct $ticks {
     int ro_lines[2], ro_labelarea[4], ro_tot_area[4];
 };
 
-struct $axis {
-    struct $axes *axes;
+struct cplot_axis {
+    struct cplot_axes *axes;
     int x_or_y;
     float pos;
     double min, max;
@@ -109,14 +95,14 @@ struct $axis {
     float thickness;
     struct cplot_axistext **text;
     int mem_text, ntext;
-    struct $ticks *ticks;
+    struct cplot_ticks *ticks;
     int ro_line[4], ro_tick_area[4], ro_linetick_area[4];
 };
 
 enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};
 
 struct cplot_axistext {
-    struct $axis *axis;
+    struct cplot_axis *axis;
     char *text;
     enum axistext_type type;
     int owner;
@@ -126,11 +112,11 @@ struct cplot_axistext {
 };
 
 /* If changed, cplot_args must be changed similarily. */
-struct $data {
+struct cplot_data {
     void *yxzdata[3];
     int yxztype[3];
     long length;
-    struct $axis *yxaxis[2];
+    struct cplot_axis *yxaxis[2];
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int owner[3];
@@ -146,18 +132,18 @@ struct $data {
 
 enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
 
-struct $axes {
+struct cplot_axes {
     /* Shared between axes and layout. Order matters here. */
     enum cplot_whatisthis whatisthis;
     int width, height;
     unsigned background;
     /* end shared */
     int startcanvas;
-    struct $axis **axis;
+    struct cplot_axis **axis;
     int naxis, mem_axis;
     struct ttra *ttra;
     int ro_inner_xywh[4];
-    struct $data **data;
+    struct cplot_data **data;
     int ndata, mem_data, icolor;
 
     struct legend {
@@ -179,13 +165,13 @@ struct cplot_layout {
 };
 
 struct cplot_args {
-    struct $axes *axes;
+    struct cplot_axes *axes;
 
-    /* struct $data inlined. ydata must stay first */
+    /* struct cplot_data inlined. ydata must stay first */
     void *ydata, *xdata, *zdata;
     int ytype, xtype, ztype;
     long len;
-    struct $axis *yaxis, *xaxis;
+    struct cplot_axis *yaxis, *xaxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int yxzowner[3];
@@ -198,7 +184,7 @@ struct cplot_args {
     const char *linestyle;
     float line_thickness;
 
-    /* end struct $data */
+    /* end struct cplot_data */
     int copy[3]; // not used yet
 };
 
@@ -216,57 +202,36 @@ struct cplot_drawarea {
     __VA_ARGS__							\
     })
 
-struct cplot_ticks* cplot_ticks_new(struct $axis *axis);
-struct cplot_axis* cplot_axis_new(struct $axes *axes, int x_or_y);
+struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
+struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y);
 struct cplot_layout* cplot_layout_new(int nrows, int ncols);
-struct cplot_axes* $plot_args(struct cplot_args *args);
-static inline struct $axes* $plot_inl(struct cplot_args args) {
-    return $plot_args(&args);
+struct cplot_axes* cplot_plot_args(struct cplot_args *args);
+static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
+    return cplot_plot_args(&args);
 }
-#define cplot_plot(...) $plot_inl((struct cplot_args){__VA_ARGS__})
+#define cplot_plot(...) cplot_plot_inl((struct cplot_args){__VA_ARGS__})
 
-void cplot_axislabel(struct $axis *axis, char *label);
+void cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_show(void *axes_or_layout);
 void cplot_destroy(void *axes_or_layout);
-void cplot_destroy_axis(struct $axis *axis);
+void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_fini();
-void cplot_add_axistext(struct $axis *axis, struct cplot_axistext *text);
+void cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void cplot_write_png(void *axes_or_layout, const char *name);
 
 #define cplot_ix0axis 0
 #define cplot_iy0axis 1
 
-static inline struct $axis* cplot_xaxis0(struct $axes *axes) { return axes->axis[cplot_ix0axis]; }
-static inline struct $axis* cplot_yaxis0(struct $axes *axes) { return axes->axis[cplot_iy0axis]; }
+static inline struct cplot_axis* cplot_xaxis0(struct cplot_axes *axes) { return axes->axis[cplot_ix0axis]; }
+static inline struct cplot_axis* cplot_yaxis0(struct cplot_axes *axes) { return axes->axis[cplot_iy0axis]; }
 
 /* Käyttäjä tuskin tarvitsee näitä. */
-void cplot_axes_render(struct $axes *axes, unsigned *canvas, int ystride);
-void cplot_axes_commit(struct $axes *axes);
+void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride);
+void cplot_axes_commit(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride);
 
 /* Käyttäjä ei tarvitse näitä. */
 void cplot_layout_to_axes(struct cplot_layout *layout);
-void cplot_axes_draw(struct $axes *axes, unsigned *canvas, int ystride);
-
-#ifndef using_cplot
-#undef $f2si
-#undef $f4si
-#undef $axis
-#undef $ticks
-#undef $ticker
-#undef $tickerdata
-#undef $axes
-#undef $data
-#undef $axislabel
-#undef $show
-#undef $plot
-#undef $plot_inl
-#undef $plot_args
-
-#else
-#define $xaxis0 cplot_xaxis0
-#define $yaxis0 cplot_yaxis0
-#define $type	cplot_type
-#endif
+void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride);
 
 #endif

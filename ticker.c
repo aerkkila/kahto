@@ -2,7 +2,7 @@
 
 const char *cplot_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
-double cplot_get_tick_linear(struct $ticker *this, int ind, char *out, int sizeout) {
+double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char *out, int sizeout) {
     double step = this->tickerdata.lin.step,
 	   base = this->tickerdata.lin.base,
 	   min = this->tickerdata.lin.min;
@@ -32,7 +32,7 @@ double cplot_get_tick_linear(struct $ticker *this, int ind, char *out, int sizeo
     return val;
 }
 
-int cplot_init_ticker_caveman(struct $ticker *this, double min, double max) {
+int cplot_init_ticker_caveman(struct cplot_ticker *this, double min, double max) {
     this->species = ticker_linear;
     this->get_tick = cplot_get_tick_linear;
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
@@ -44,7 +44,7 @@ int cplot_init_ticker_caveman(struct $ticker *this, double min, double max) {
     return this->tickerdata.lin.nticks;
 }
 
-int cplot_init_ticker_default(struct $ticker *this, double min, double max) {
+int cplot_init_ticker_default(struct cplot_ticker *this, double min, double max) {
     double step_opts[] = {1, 1.5, 2, 2.5, 3, 4, 5};
 
     int maxsign = Sign(max);

@@ -317,7 +317,7 @@ static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *
     }
 }
 
-static unsigned char* cplot_data_marker_bmap(struct $data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
+static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
     *has_marker = 1;
     if (data->literal_marker) {
 	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
@@ -333,7 +333,7 @@ static unsigned char* cplot_data_marker_bmap(struct $data *data, unsigned char *
     return bmap;
 }
 
-static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     double yxmin[] = {data->yxaxis[0]->min, data->yxaxis[1]->min};
     double yxdiff[] = {data->yxaxis[0]->max - yxmin[0], data->yxaxis[1]->max - yxmin[1]};
     const int *xywh = data->yxaxis[0]->axes->ro_inner_xywh;
@@ -372,7 +372,7 @@ static void cplot_data_render(struct $data *data, unsigned *canvas, int axeswidt
     }
 }
 
-static void legend_draw_marker(struct $data *data, struct cplot_drawarea area, int x0, int y0, int text_left) {
+static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea area, int x0, int y0, int text_left) {
     int width, height, marker;
     width = height = iroundpos(data->markersize * area.axesheight);
     unsigned char bmap_buff[width*height];
@@ -389,7 +389,7 @@ static void legend_draw_marker(struct $data *data, struct cplot_drawarea area, i
     }
 }
 
-static void cplot_legend(struct $axes *axes, struct cplot_drawarea area) {
+static void cplot_legend(struct cplot_axes *axes, struct cplot_drawarea area) {
     int leg_x0 = axes->legend.ro_xywh[0];
     int leg_y0 = axes->legend.ro_xywh[1];
 

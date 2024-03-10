@@ -1,9 +1,9 @@
-static void axis_update_range(struct $axis *axis) {
+static void axis_update_range(struct cplot_axis *axis) {
     int isx = axis->x_or_y == 'x';
     axis->min = DBL_MAX;
     axis->max = -DBL_MIN;
     for (int idata=0; idata<axis->axes->ndata; idata++) {
-	struct $data *data = axis->axes->data[idata];
+	struct cplot_data *data = axis->axes->data[idata];
 	if (data->yxaxis[isx] != axis)
 	    continue;
 
@@ -39,7 +39,7 @@ static void axis_update_range(struct $axis *axis) {
     axis->range_isset = minbit | maxbit;
 }
 
-static void get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheight, float lim2inout[2]) {
+static void get_axislabel_limits(struct cplot_axis *axis, int axeswidth, int axesheight, float lim2inout[2]) {
     struct ttra *ttra = axis->axes->ttra;
     int coord = axis->x_or_y == 'x';
     float old[2];
@@ -56,7 +56,7 @@ static void get_axislabel_limits(struct $axis *axis, int axeswidth, int axesheig
     }
 }
 
-void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, const int axis_xywh[4]) {
+void cplot_ticks_commit(struct cplot_ticks *ticks, int axeswidth, int axesheight, const int axis_xywh[4]) {
     struct ttra *ttra = NULL;
     if (ticks->have_labels) {
 	ttra = ticks->axis->axes->ttra;
@@ -101,7 +101,7 @@ void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, con
     ticks->ro_tot_area[!isx+0] = min(ticks->ro_labelarea[!isx+0], minmaxpos[0]);
     ticks->ro_tot_area[!isx+2] = max(ticks->ro_labelarea[!isx+2], minmaxpos[1]);
 
-    struct $axis *a = ticks->axis;
+    struct cplot_axis *a = ticks->axis;
     update_min(a->ro_tick_area[0], ticks->ro_tot_area[0]);
     update_min(a->ro_tick_area[1], ticks->ro_tot_area[1]);
     update_max(a->ro_tick_area[2], ticks->ro_tot_area[2]);
@@ -109,11 +109,11 @@ void cplot_ticks_commit(struct $ticks *ticks, int axeswidth, int axesheight, con
 }
 
 /* Akselia kohtisuoraan */
-static void get_ticklabel_limits_round1(struct $axis *axis, int axeswidth, int axesheight, float lim2out[2]) {
+static void get_ticklabel_limits_round1(struct cplot_axis *axis, int axeswidth, int axesheight, float lim2out[2]) {
     memset(lim2out, 0, 2*sizeof(float));
     float min = axis->min,
 	  max = axis->max;
-    struct $ticks *tk = axis->ticks;
+    struct cplot_ticks *tk = axis->ticks;
     lim2out[0] = lim2out[1] = 0;
     if (!tk)
 	return;
@@ -154,8 +154,8 @@ end:
 }
 
 /* Akselin suuntaan */
-static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int axesheight, int axis_xywh[4]) {
-    struct $ticks *tk = axis->ticks;
+static void get_ticklabel_limits_round2(struct cplot_axis *axis, int axeswidth, int axesheight, int axis_xywh[4]) {
+    struct cplot_ticks *tk = axis->ticks;
     if (!tk || (!tk->ticker.init && !tk->have_labels))
 	return;
     double axisdiff = axis->max - axis->min;
@@ -193,8 +193,8 @@ static void get_ticklabel_limits_round2(struct $axis *axis, int axeswidth, int a
 }
 
 /* axis_xywh on nyt tiedossa ja tikkien lopulliset alueet voidaan määrittää */
-void get_ticklabel_limits_round3(struct $axis *axis, int axeswidth, int axesheight, const int axis_xywh[4]) {
-    $f4si line = axis_get_line(axis);
+void get_ticklabel_limits_round3(struct cplot_axis *axis, int axeswidth, int axesheight, const int axis_xywh[4]) {
+    cplot_f4si line = axis_get_line(axis);
     {
 	int tmp[] = {
 	    axis_xywh[0] + line[0] * (axis_xywh[2]-1),
@@ -217,7 +217,7 @@ void get_ticklabel_limits_round3(struct $axis *axis, int axeswidth, int axesheig
     axis->ro_linetick_area[3] = max(axis->ro_line[3], axis->ro_tick_area[3]);
 }
 
-void commit_legend(struct $axes *axes, int axeswidth, int axesheight) {
+void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
     int y, x;
     cplot_get_legend_dims_px(axes, &y, &x, axesheight);
     int rowh = axes->ttra->fontheight;
@@ -233,8 +233,8 @@ void commit_legend(struct $axes *axes, int axeswidth, int axesheight) {
 	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
 }
 
-void cplot_axes_commit(struct $axes *axes) {
-    $f4si overgoing = {0};
+void cplot_axes_commit(struct cplot_axes *axes) {
+    cplot_f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
 	    axis_update_range(axes->axis[iaxis]);

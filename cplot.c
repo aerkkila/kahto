@@ -3,10 +3,7 @@
 #include <string.h>
 #include <ttra.h>
 #include <float.h>
-
-#define using_cplot
 #include "cplot.h"
-
 #include "png.c"
 
 #define min(a,b) ((a) < (b) ? a : (b))
@@ -45,27 +42,27 @@ static inline int iceil(float f) {
     return a + (a != f);
 }
 
-static inline $f4si axis_get_line(struct $axis *axis) {
+static inline cplot_f4si axis_get_line(struct cplot_axis *axis) {
     switch (axis->x_or_y) {
-	case 'x': return ($f4si){0, axis->pos, 1, axis->pos};
-	case 'y': return ($f4si){axis->pos, 0, axis->pos, 1};
+	case 'x': return (cplot_f4si){0, axis->pos, 1, axis->pos};
+	case 'y': return (cplot_f4si){axis->pos, 0, axis->pos, 1};
 	default: __builtin_unreachable();
     }
 }
 
-static inline float get_ticks_overlength(struct $ticks *tk) {
+static inline float get_ticks_overlength(struct cplot_ticks *tk) {
     float f = tk->length * (1 + tk->crossaxis) + tk->axis->pos - 1;
     return f * (f>0);
 }
 
-static inline float get_ticks_underlength(struct $ticks *tk) {
+static inline float get_ticks_underlength(struct cplot_ticks *tk) {
     float f = -(tk->crossaxis*tk->length + tk->axis->pos);
     return f * (f>0);
 }
 
 void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]);
-void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols);
-void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight);
+void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols);
+void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
 
 #include "functions.c"
 #include "rotate.c"
@@ -74,8 +71,8 @@ void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight
 #include "commit.c"
 #include "wayland_helper/waylandhelper.h"
 
-struct cplot_axis* cplot_axis_new(struct $axes *axes, int x_or_y) {
-    struct $axis *axis = calloc(1, sizeof(struct $axis));
+struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
+    struct cplot_axis *axis = calloc(1, sizeof(struct cplot_axis));
     axis->axes = axes;
     if (axes->mem_axis < axes->naxis+1)
 	axes->axis = realloc(axes->axis, (axes->mem_axis+=2) * sizeof(void*));
@@ -89,8 +86,8 @@ struct cplot_axis* cplot_axis_new(struct $axes *axes, int x_or_y) {
     return axis;
 }
 
-struct cplot_ticks* cplot_ticks_new(struct $axis *axis) {
-    struct $ticks *ticks = calloc(1, sizeof(struct $ticks));
+struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
+    struct cplot_ticks *ticks = calloc(1, sizeof(struct cplot_ticks));
     ticks->axis = axis;
     ticks->color = fg;
     ticks->ticker.init = cplot_init_ticker_default;
@@ -117,8 +114,8 @@ struct cplot_ticks* cplot_ticks_new(struct $axis *axis) {
     return ticks;
 }
 
-struct $axes* cplot_axes_new() {
-    struct $axes *axes = calloc(1, sizeof(struct $axes));
+struct cplot_axes* cplot_axes_new() {
+    struct cplot_axes *axes = calloc(1, sizeof(struct cplot_axes));
     axes->whatisthis = cplot_axes_e;
     axes->background = -1;
 
@@ -180,7 +177,7 @@ struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
     return layout;
 }
 
-void cplot_ticks_draw(struct $ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     char tick[32];
     struct ttra *ttra = NULL;
 
@@ -257,7 +254,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
     put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[coord], axistext->hvalign[!coord], axistext->rotation100, axistext->ro_area, 0);
 }
 
-void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_axis_render(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     float thickness = axis->thickness * axesheight;
     int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
 
@@ -273,7 +270,7 @@ void cplot_axis_render(struct $axis *axis, unsigned *canvas, int axeswidth, int 
 	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
 
-void cplot_axes_render(struct $axes *axes, unsigned *canvas, int ystride) {
+void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
     unsigned bg = axes->background;
     for (int j=0; j<axes->height; j++) {
 	unsigned ind0 = j * ystride;
@@ -287,7 +284,7 @@ void cplot_axes_render(struct $axes *axes, unsigned *canvas, int ystride) {
     cplot_legend(axes, (struct cplot_drawarea){canvas, axes->width, axes->height, ystride});
 }
 
-static void init_datastyle(struct $data *data) {
+static void init_datastyle(struct cplot_data *data) {
     if (data->markersize == 0)
 	data->markersize = 1.0 / 120;
     if (!data->marker)
@@ -296,7 +293,7 @@ static void init_datastyle(struct $data *data) {
 	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor++) % cplot_ncolors];
 }
 
-void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols) {
+void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols) {
     *lines = *cols = 0;
     for (int i=0; i<axes->ndata; i++)
 	if (axes->data[i]->label) {
@@ -307,7 +304,7 @@ void cplot_get_legend_dims(struct $axes *axes, int *lines, int *cols) {
 	}
 }
 
-void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight) {
+void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight) {
     cplot_get_legend_dims(axes, y, x);
     ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * axesheight));
     *y *= axes->ttra->fontheight;
@@ -317,25 +314,25 @@ void cplot_get_legend_dims_px(struct $axes *axes, int *y, int *x, int axesheight
 static void add_data(struct cplot_args *args) {
     if (args->axes->mem_data < args->axes->ndata+1)
 	args->axes->data = realloc(args->axes->data, (args->axes->mem_data = args->axes->ndata+3) * sizeof(void*));
-    struct $data *data;
-    args->axes->data[args->axes->ndata++] = data = malloc(sizeof(struct $data));
-    memcpy(data, &args->ydata, sizeof(struct $data));
+    struct cplot_data *data;
+    args->axes->data[args->axes->ndata++] = data = malloc(sizeof(struct cplot_data));
+    memcpy(data, &args->ydata, sizeof(struct cplot_data));
     if (!data->yxaxis[0])
-	data->yxaxis[0] = $yaxis0(args->axes);
+	data->yxaxis[0] = cplot_yaxis0(args->axes);
     if (!data->yxaxis[1])
-	data->yxaxis[1] = $xaxis0(args->axes);
+	data->yxaxis[1] = cplot_xaxis0(args->axes);
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;
     init_datastyle(data);
 }
 
-void cplot_add_axistext(struct $axis *axis, struct cplot_axistext *text) {
+void cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text) {
     if (axis->ntext >= axis->mem_text)
 	axis->text = realloc(axis->text, (axis->mem_text = axis->ntext + 2) * sizeof(void*));
     axis->text[axis->ntext++] = text;
 }
 
-void cplot_axislabel(struct $axis *axis, char *label) {
+void cplot_axislabel(struct cplot_axis *axis, char *label) {
     struct cplot_axistext *text = malloc(sizeof(struct cplot_axistext));
     *text = (struct cplot_axistext) {
 	.text = label,
@@ -349,7 +346,7 @@ void cplot_axislabel(struct $axis *axis, char *label) {
     cplot_add_axistext(axis, text);
 }
 
-void cplot_destroy_axis(struct $axis *axis) {
+void cplot_destroy_axis(struct cplot_axis *axis) {
     for (int i=axis->ntext-1; i>=0; i--) {
 	if (axis->text[i]->owner)
 	    free(axis->text[i]->text);
@@ -361,7 +358,7 @@ void cplot_destroy_axis(struct $axis *axis) {
     free(axis);
 }
 
-void cplot_destroy_axes(struct $axes *axes) {
+void cplot_destroy_axes(struct cplot_axes *axes) {
     for (int i=0; i<axes->naxis; i++)
 	cplot_destroy_axis(axes->axis[i]);
     free(axes->axis);
@@ -370,7 +367,7 @@ void cplot_destroy_axes(struct $axes *axes) {
     free(axes->ttra);
 
     for (int i=0; i<axes->ndata; i++) {
-	struct $data *data = axes->data[i];
+	struct cplot_data *data = axes->data[i];
 	for (int j=0; j<3; j++)
 	    if (data->owner[j])
 		free(data->yxzdata[j]);
@@ -398,8 +395,8 @@ void cplot_destroy(void *axes_or_layout) {
     free(layout);
 }
 
-struct $axes* $plot_args(struct cplot_args *args) {
-    struct $axes *axes =
+struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
+    struct cplot_axes *axes =
 	args->axes ? args->axes :
 	args->yaxis ? args->yaxis->axes :
 	args->xaxis ? args->xaxis->axes :
@@ -410,7 +407,7 @@ struct $axes* $plot_args(struct cplot_args *args) {
     return axes;
 }
 
-void cplot_axes_draw(struct $axes *axes, unsigned *canvas, int ystride) {
+void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride) {
     cplot_axes_commit(axes);
     cplot_axes_render(axes, canvas+axes->startcanvas, ystride);
 }
@@ -464,7 +461,7 @@ void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
     }
 }
 
-void $show(void *vplot) {
+void cplot_show(void *vplot) {
     struct cplot_axes *axes = vplot;
     struct waylandhelper wlh = {
 	.xres = axes->width,
