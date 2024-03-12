@@ -91,7 +91,7 @@ int cplot_init_ticker_default(struct cplot_ticker *this, double min, double max)
     double maxtick = best_step * (int)(max/best_step);
     double mintick = best_step * (int)(min/best_step);
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
-	.nticks = (maxtick - mintick) / best_step + 1,
+	.nticks = iroundpos((maxtick - mintick) / best_step) + 1,
 	.step = best_step,
 	.min = mintick,
 	.base = base,
