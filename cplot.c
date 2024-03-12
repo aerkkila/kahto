@@ -367,9 +367,11 @@ void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols) {
 
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight) {
     cplot_get_legend_dims(axes, y, x);
-    ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * axesheight));
+    int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * axesheight));
+    axes->legend.ro_text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
     *y *= axes->ttra->fontheight;
     *x *= axes->ttra->fontwidth;
+    *x += axes->legend.ro_text_left;
 }
 
 static void add_data(struct cplot_args *args) {
@@ -469,7 +471,8 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 }
 
 void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride) {
-    cplot_axes_commit(axes);
+    if (cplot_axes_commit(axes))
+	return; // too small window to draw
     cplot_axes_render(axes, canvas+axes->startcanvas, ystride);
 }
 

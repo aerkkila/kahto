@@ -220,10 +220,7 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, int axeswidth, int axe
 void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
     int height, width;
     cplot_get_legend_dims_px(axes, &height, &width, axesheight);
-    int rowh = axes->ttra->fontheight;
-    int text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
-    axes->legend.ro_text_left = text_left;
-    axes->legend.ro_xywh[2] = width + text_left;
+    axes->legend.ro_xywh[2] = width + axes->legend.ro_text_left;
     axes->legend.ro_xywh[3] = height;
     axes->legend.ro_xywh[0] =
 	axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
@@ -243,7 +240,7 @@ void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
     } while (0);
 }
 
-void cplot_axes_commit(struct cplot_axes *axes) {
+int cplot_axes_commit(struct cplot_axes *axes) {
     cplot_f4si overgoing = {0};
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
@@ -262,12 +259,20 @@ void cplot_axes_commit(struct cplot_axes *axes) {
     axis_xywh[1] = iceil(overgoing[1]);
     axis_xywh[2] = axes->wh[0] - axis_xywh[0] - iceil(overgoing[2]);
     axis_xywh[3] = axes->wh[1] - axis_xywh[1] - iceil(overgoing[3]);
+    if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0)
+	return 1;
 
     for (int iaxis=0; iaxis<axes->naxis; iaxis++)
 	get_ticklabel_limits_round2(axes->axis[iaxis], axes->wh[0], axes->wh[1], axis_xywh);
+
+    /* axis_xywh is constant from now on */
+
+    if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0)
+	return 1;
 
     for (int iaxis=0; iaxis<axes->naxis; iaxis++)
 	get_ticklabel_limits_round3(axes->axis[iaxis], axes->wh[0], axes->wh[1], axis_xywh);
 
     commit_legend(axes, axes->wh[0], axes->wh[1]);
+    return 0;
 }

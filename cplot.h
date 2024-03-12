@@ -227,7 +227,7 @@ static inline struct cplot_axis* cplot_yaxis0(struct cplot_axes *axes) { return 
 
 /* Käyttäjä tuskin tarvitsee näitä. */
 void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride);
-void cplot_axes_commit(struct cplot_axes *axes);
+int  cplot_axes_commit(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride);
 
 /* Käyttäjä ei tarvitse näitä. */
