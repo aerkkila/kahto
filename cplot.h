@@ -148,7 +148,7 @@ struct cplot_axes {
 
     struct legend {
 	float rowheight, symbolspace_per_rowheight;
-	int ro_xywh[4], ro_text_left;
+	int ro_xywh[4], ro_text_left, automatic_placement;
 	float posx, posy, hvalign[2];
     } legend;
 };

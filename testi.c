@@ -20,7 +20,7 @@ int main() {
 	ydata1[i] = cos(2*π/pit1*5 * i) * i * 0.0001;
 	xdata1[i] = sin(2*π/pit1*5 * i) * i * 0.1;
     }
-    cplot_yx(ydata1, xdata1, .len=pit1, .linestyle="-", .label="toinen", .line_thickness=1.0/800, .axes=axes);
+    cplot_yx(ydata1, xdata1, .len=pit1, .linestyle="-", .label="toinen nimi", .line_thickness=1.0/800, .axes=axes);
 
     const int pit2 = 20;
     float xdata2[pit2], ydata2[pit2];

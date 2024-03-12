@@ -218,19 +218,29 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, int axeswidth, int axe
 }
 
 void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
-    int y, x;
-    cplot_get_legend_dims_px(axes, &y, &x, axesheight);
+    int height, width;
+    cplot_get_legend_dims_px(axes, &height, &width, axesheight);
     int rowh = axes->ttra->fontheight;
     int text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
     axes->legend.ro_text_left = text_left;
-    axes->legend.ro_xywh[2] = x + text_left;
-    axes->legend.ro_xywh[3] = y;
+    axes->legend.ro_xywh[2] = width + text_left;
+    axes->legend.ro_xywh[3] = height;
     axes->legend.ro_xywh[0] =
 	axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
 	axes->legend.ro_xywh[2] * axes->legend.hvalign[0];
     axes->legend.ro_xywh[1] =
 	axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
 	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
+    do {
+	if (!axes->legend.automatic_placement)
+	    break;
+	int iplace, jplace;
+	cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace);
+	if (iplace < 0)
+	    break;
+	axes->legend.ro_xywh[0] = iplace;
+	axes->legend.ro_xywh[1] = jplace;
+    } while (0);
 }
 
 void cplot_axes_commit(struct cplot_axes *axes) {

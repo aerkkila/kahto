@@ -397,6 +397,8 @@ static void cplot_legend(struct cplot_axes *axes, struct cplot_drawarea area) {
     ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left, leg_y0);
     int text_left = axes->legend.ro_text_left;
     for (int i=0; i<axes->ndata; i++) {
+	if (!axes->data[i]->label)
+	    continue;
 	legend_draw_marker(axes->data[i], area, leg_x0 + text_left/2, leg_y0 + (i+0.5)*rowh, text_left);
 	if (axes->data[i]->label)
 	    ttra_printf(axes->ttra, "%s\n", axes->data[i]->label);

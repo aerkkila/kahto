@@ -63,6 +63,7 @@ static inline float get_ticks_underlength(struct cplot_ticks *tk) {
 void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]);
 void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
+void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout);
 
 #include "functions.c"
 #include "rotate.c"
@@ -141,6 +142,7 @@ struct cplot_axes* cplot_axes_new() {
     axes->legend.posx = 0;
     axes->legend.posy = 1;
     axes->legend.hvalign[1] = -1;
+    axes->legend.automatic_placement = 1;
 
     return axes;
 }
@@ -175,6 +177,60 @@ struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
     layout->background = -1;
     cplot_layout_put_rows_and_cols(layout, nrows, ncols);
     return layout;
+}
+
+void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout) {
+    int width = axes->wh[0],
+	height = axes->wh[1];
+    unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
+    for (int i=0; i<axes->ndata; i++)
+	cplot_data_render(axes->data[i], (void*)image, width, height, width);
+
+    int x0 = axes->ro_inner_xywh[0],
+	y0 = axes->ro_inner_xywh[1],
+	w = axes->ro_inner_xywh[2],
+	h = axes->ro_inner_xywh[3];
+    int x1 = x0 + w,
+	y1 = y0 + h;
+
+    short (*spaceright)[w] = malloc(w*h * sizeof(short));
+    for (int j=h-1; j>=0; j--)
+	spaceright[j][w-1] = !image[j+y0][x1-1];
+    for (int j=h-1; j>=0; j--)
+	for (int i=w-2; i>=0; i--)
+	    spaceright[j][i] = (spaceright[j][i+1] + 1) * !image[j+y0][i+x0];
+
+    short (*spacedown)[w] = malloc(w*h * sizeof(short));
+    for (int i=w-1; i>=0; i--)
+	spacedown[h-1][i] = !image[y1-1][i+x0];
+    for (int j=h-2; j>=0; j--)
+	for (int i=w-1; i>=0; i--)
+	    spacedown[j][i] = (spacedown[j+1][i] + 1) * !image[j+y0][i+x0];
+
+    *xout = *yout = -1;
+    for (int j=0; j<h-rheight; j++)
+	for (int i=0; i<w-rwidth;) {
+	    int jj, ii;
+	    for (jj=0; jj<rheight; jj++)
+		if (spaceright[j+jj][i] < rwidth) {
+		    i += spaceright[j+jj][i] + 1;
+		    goto not_here;
+		}
+	    for (ii=0; ii<rwidth; ii++)
+		if (spacedown[j][i+ii] < rheight) {
+		    i += ii + 1;
+		    goto not_here;
+		}
+	    *yout = j + y0;
+	    *xout = i + x0;
+	    goto end;
+not_here:;
+	}
+
+end:
+    free(image);
+    free(spacedown);
+    free(spaceright);
 }
 
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
