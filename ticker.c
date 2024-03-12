@@ -25,6 +25,10 @@ double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char *out, int 
 	    slen += slen1;
 	}
     }
+    else if (base < 1) {
+	const char *form = (step == (long)step ? "%.1f" : "%.2f");
+	snprintf(out, sizeout, form, val);
+    }
     else {
 	const char *form = (step == (long)step ? "%.0f" : "%.1f");
 	snprintf(out, sizeout, form, val);
