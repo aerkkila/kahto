@@ -1,62 +1,30 @@
-static void axis_update_range(struct cplot_axis *axis) {
-    int isx = axis->x_or_y == 'x';
-    axis->min = DBL_MAX;
-    axis->max = -DBL_MIN;
-    for (int idata=0; idata<axis->axes->ndata; idata++) {
-	struct cplot_data *data = axis->axes->data[idata];
-	if (data->yxaxis[isx] != axis)
-	    continue;
+#include "cplot.h"
+#include <ttra.h>
 
-	if (data->yxztype[isx] == cplot_notype)
-	    switch (data->have_minmax[isx]) {
-		case 0: data->minmax[isx][0] = 0;
-			data->minmax[isx][1] = data->length-1;
-			break;
-		case maxbit: data->minmax[isx][0] = 0; break;
-		case minbit: data->minmax[isx][1] = data->length-1; break;
-		default: break;
-	    }
-	else
-	    switch (data->have_minmax[isx]) {
-		case 0:
-		    get_minmax[data->yxztype[isx]](data->yxzdata[isx], data->length, data->minmax[isx]);
-		    break;
-		case maxbit:
-		    data->minmax[isx][0] = get_min[data->yxztype[isx]](data->yxzdata[isx], data->length);
-		    break;
-		case minbit:
-		    data->minmax[isx][1] = get_max[data->yxztype[isx]](data->yxzdata[isx], data->length);
-		    break;
-		default: break;
-	    }
-
-	data->have_minmax[isx] = minbit | maxbit;
-	if (!(axis->range_isset & minbit))
-	    update_min(axis->min, data->minmax[isx][0]);
-	if (!(axis->range_isset & maxbit))
-	    update_max(axis->max, data->minmax[isx][1]);
-    }
-    axis->range_isset = minbit | maxbit;
+void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
+    int height, width;
+    cplot_get_legend_dims_px(axes, &height, &width, axesheight);
+    axes->legend.ro_xywh[2] = width + axes->legend.ro_text_left;
+    axes->legend.ro_xywh[3] = height;
+    axes->legend.ro_xywh[0] =
+	axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
+	axes->legend.ro_xywh[2] * axes->legend.hvalign[0];
+    axes->legend.ro_xywh[1] =
+	axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
+	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
+    do {
+	if (!axes->legend.automatic_placement)
+	    break;
+	int iplace, jplace;
+	cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace);
+	if (iplace < 0)
+	    break;
+	axes->legend.ro_xywh[0] = iplace;
+	axes->legend.ro_xywh[1] = jplace;
+    } while (0);
 }
 
-static void get_axislabel_limits(struct cplot_axis *axis, int axeswidth, int axesheight, float lim2inout[2]) {
-    struct ttra *ttra = axis->axes->ttra;
-    int coord = axis->x_or_y == 'x';
-    float old[2];
-    memcpy(old, lim2inout, sizeof(old));
-    int side = axis->pos >= 0.5;
-    for (int itext=0; itext<axis->ntext; itext++) {
-	struct cplot_axistext *axistext = axis->text[itext];
-	ttra_set_fontheight(ttra, axistext->rowheight * axesheight);
-	int xy[2], *area = axistext->ro_area;
-	cplot_get_axislabel_xy(axistext, xy);
-	put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[!coord], axistext->hvalign[coord], axistext->rotation100, area, 1);
-	float frac = (area[coord+side*2] - xy[coord]) / (float)axesheight * (-1 + side*2);
-	update_max(lim2inout[side], old[side]+frac);
-    }
-}
-
-void cplot_ticks_commit(struct cplot_ticks *ticks, int axeswidth, int axesheight, const int axis_xywh[4]) {
+void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axis_xywh[4]) {
     struct ttra *ttra = NULL;
     if (ticks->have_labels) {
 	ttra = ticks->axis->axes->ttra;
@@ -108,93 +76,12 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axeswidth, int axesheight
     update_max(a->ro_tick_area[3], ticks->ro_tot_area[3]);
 }
 
-/* Akselia kohtisuoraan */
-static void get_ticklabel_limits_round1(struct cplot_axis *axis, int axeswidth, int axesheight, float lim2out[2]) {
-    memset(lim2out, 0, 2*sizeof(float));
-    float min = axis->min,
-	  max = axis->max;
-    struct cplot_ticks *tk = axis->ticks;
-    lim2out[0] = lim2out[1] = 0;
-    if (!tk)
-	return;
-    float lim2[] = {get_ticks_underlength(tk), get_ticks_overlength(tk)};
-    if (!tk->ticker.init && !tk->have_labels)
-	goto end;
-
-    struct ttra *ttra = tk->axis->axes->ttra;
-    ttra_set_fontheight(ttra, tk->rowheight*axesheight);
-
-    int nlabels = tk->ticker.init(&tk->ticker, min, max);
-    char out[128];
-    int maxcols=0, maxrows=0;
-    int width, height;
-    for (int i=0; i<nlabels; i++) {
-	tk->ticker.get_tick(&tk->ticker, i, out, 128);
-	ttra_get_textdims_chars(out, &width, &height);
-	if (height > maxrows)
-	    maxrows = height;
-	if (width > maxcols)
-	    maxcols = width;
-    }
-
-    if (tk->have_labels)
-	switch (axis->x_or_y) {
-	    case 'x':
-		lim2[tk->ascending] += (float)maxrows * ttra->fontheight / axesheight; // alignment?
-		break;
-	    case 'y':
-		lim2[tk->ascending] += (float)maxcols * ttra->fontwidth / axesheight;
-		break;
-	}
-
-end:
-    lim2out[0] = max(lim2[0], lim2out[0]);
-    lim2out[1] = max(lim2[1], lim2out[1]);
-    get_axislabel_limits(axis, axeswidth, axesheight, lim2out);
-}
-
-/* Akselin suuntaan */
-static void get_ticklabel_limits_round2(struct cplot_axis *axis, int axeswidth, int axesheight, int axis_xywh[4]) {
-    struct cplot_ticks *tk = axis->ticks;
-    if (!tk || (!tk->ticker.init && !tk->have_labels))
-	return;
-    double axisdiff = axis->max - axis->min;
-    float min = axis->min,
-	  max = axis->max;
-
-    struct ttra *ttra = tk->axis->axes->ttra;
-    ttra_set_fontheight(ttra, tk->rowheight*axesheight);
-
-    int nlabels = tk->ticker.init(&tk->ticker, min, max);
-    char out[128];
-    int isy = axis->x_or_y == 'y';
-    for (int i=0; i<nlabels; i++) {
-	int wh[2];
-	double pos_data = tk->ticker.get_tick(&tk->ticker, i, out, 128);
-	double pos_rel = (pos_data - axis->min) / axisdiff;
-	int position_px = isy ?
-	    axis_xywh[isy] + iroundpos((1-pos_rel) * (axis_xywh[isy+2]-1)) :
-	    axis_xywh[isy] + iroundpos(pos_rel * (axis_xywh[isy+2]-1));
-	ttra_get_textdims_pixels(ttra, out, wh+0, wh+1);
-	/* lower side */
-	/* pyöräytystä ei ole huomioitu */
-	int edge = position_px + wh[isy] * tk->hvalign_text[0];
-	if (edge < 0) {
-	    axis_xywh[isy] += -edge;
-	    axis_xywh[isy+2] -= -edge;
-	    position_px = axis_xywh[isy] + iroundpos(pos_rel * (axis_xywh[isy+2]-1));
-	}
-	/* higher side */
-	edge = position_px + wh[isy] * (1 + tk->hvalign_text[0]);
-	int WH[] = {axeswidth, axesheight};
-	if (edge >= WH[isy])
-	    axis_xywh[isy+2] = (WH[isy] - axis_xywh[isy] - wh[isy] * (1 + tk->hvalign_text[0])) / pos_rel;
-    }
-}
-
 /* axis_xywh on nyt tiedossa ja tikkien lopulliset alueet voidaan määrittää */
-void get_ticklabel_limits_round3(struct cplot_axis *axis, int axeswidth, int axesheight, const int axis_xywh[4]) {
+void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], int axesheight, const int axis_xywh[4]) {
     cplot_f4si line = axis_get_line(axis);
+    int side = axis->pos >= 0.5;
+    int isx = axis->x_or_y == 'x';
+    int iover[] = {iroundpos(overgoing[0] * axesheight), iroundpos(overgoing[1] * axesheight)};
     {
 	int tmp[] = {
 	    axis_xywh[0] + line[0] * (axis_xywh[2]-1),
@@ -203,13 +90,31 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, int axeswidth, int axe
 	    axis_xywh[1] + line[3] * (axis_xywh[3]-1),
 	};
 	memcpy(axis->ro_line, tmp, sizeof(tmp));
+	if (side) {
+	    axis->ro_line[isx] += iover[!side];
+	    axis->ro_line[isx+2] += iover[!side];
+	}
+	else {
+	    axis->ro_line[isx] -= iover[!side];
+	    axis->ro_line[isx+2] -= iover[!side];
+	}
     }
 
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
     axis->ro_tick_area[1] = axis->ro_tick_area[3] = axis->ro_line[1];
+    int halfthickness = iroundpos(axis->thickness/2 * axesheight);
+    if (side) {
+	axis->ro_tick_area[isx] += halfthickness;
+	axis->ro_tick_area[isx+2] += halfthickness;
+    }
+    else {
+	axis->ro_tick_area[isx] -= halfthickness;
+	axis->ro_tick_area[isx+2] -= halfthickness;
+    }
 
-    if (axis->ticks)
-	cplot_ticks_commit(axis->ticks, axeswidth, axesheight, axis_xywh);
+    if (axis->ticks) {
+	cplot_ticks_commit(axis->ticks, axesheight, axis_xywh);
+    }
 
     axis->ro_linetick_area[0] = min(axis->ro_line[0], axis->ro_tick_area[0]);
     axis->ro_linetick_area[1] = min(axis->ro_line[1], axis->ro_tick_area[1]);
@@ -217,61 +122,140 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, int axeswidth, int axe
     axis->ro_linetick_area[3] = max(axis->ro_line[3], axis->ro_tick_area[3]);
 }
 
-void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
-    int height, width;
-    cplot_get_legend_dims_px(axes, &height, &width, axesheight);
-    axes->legend.ro_xywh[2] = width + axes->legend.ro_text_left;
-    axes->legend.ro_xywh[3] = height;
-    axes->legend.ro_xywh[0] =
-	axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
-	axes->legend.ro_xywh[2] * axes->legend.hvalign[0];
-    axes->legend.ro_xywh[1] =
-	axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
-	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
-    do {
-	if (!axes->legend.automatic_placement)
-	    break;
-	int iplace, jplace;
-	cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace);
-	if (iplace < 0)
-	    break;
-	axes->legend.ro_xywh[0] = iplace;
-	axes->legend.ro_xywh[1] = jplace;
-    } while (0);
+/* This function may need to be called multiple times until nothing changes anymore. */
+int cplot_axis_commit_parallel(struct cplot_axis *axis, float *out[2], int xywh[4]) {
+    struct cplot_ticks *tk = axis->ticks;
+    struct ttra *ttra = axis->axes->ttra;
+    int isx = axis->x_or_y == 'x', change = 0;
+
+    if (tk && tk->have_labels) {
+	ttra_set_fontheight(ttra, iroundpos(tk->rowheight * axis->axes->wh[1]));
+	int nlabels = tk->ticker.init(&tk->ticker, axis->min, axis->max), // turhaan init uudestaan
+	    area[4], max01[2] = {0}, pos_xy[2] = {0}, size=xywh[!isx+2];
+	char lab[128];
+	for (int ilab=0; ilab<nlabels; ilab++) {
+	    double pos_data = tk->ticker.get_tick(&tk->ticker, ilab, lab, sizeof(lab));
+	    double pos_rel = (pos_data - axis->min) / (axis->max - axis->min);
+	    if (!isx)
+		pos_rel = 1 - pos_rel;
+	    pos_xy[!isx] = iroundpos(pos_rel * xywh[!isx+2]);
+	    put_text(ttra, lab, pos_xy[0], pos_xy[1], tk->hvalign_text[!isx], tk->hvalign_text[isx], 0, area, 1);
+	    if (-area[!isx] > max01[0])
+		max01[0] = -area[isx];
+	    if (area[!isx+2] - size > max01[1])
+		max01[1] = area[!isx+2] - size;
+	}
+	float fmax01[] = {
+	    (float)max01[0] / ttra->fontheight * tk->rowheight,
+	    (float)max01[1] / ttra->fontheight * tk->rowheight,
+	};
+	if (*out[0] < fmax01[0]) change = 1, *out[0] = fmax01[0];
+	if (*out[1] < fmax01[1]) change = 1, *out[1] = fmax01[1];
+    }
+
+    /* axistext? */
+
+    return change;
+}
+
+/* out is in height units */
+void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
+    out[0] = axis->thickness / 2;
+    out[1] = axis->thickness / 2;
+
+    struct cplot_ticks *tk = axis->ticks;
+    if (tk && tk->ticker.init) {
+	out[0] += get_ticks_underaxislength(tk);
+	out[1] += get_ticks_overaxislength(tk);
+    }
+
+    struct ttra *ttra = axis->axes->ttra;
+    ttra_set_fontheight(ttra, 50);
+    int isx = axis->x_or_y == 'x';
+    int side = axis->pos >= 0.5;
+
+    if (tk->have_labels) {
+	int nlabels = tk->ticker.init(&tk->ticker, axis->min, axis->max),
+	    area[4], max01[2] = {0};
+	char lab[128];
+	for (int i=0; i<nlabels; i++) {
+	    tk->ticker.get_tick(&tk->ticker, i, lab, 128);
+	    put_text(ttra, lab, 0, 0, tk->hvalign_text[!isx], tk->hvalign_text[isx], 0, area, 1);
+	    if (-area[isx] > max01[0])
+		max01[0] = -area[isx];
+	    if (area[isx+2] > max01[1])
+		max01[1] = area[isx+2];
+	}
+	float fmax01[] = {
+	    (float)max01[0] / ttra->fontheight * tk->rowheight,
+	    (float)max01[1] / ttra->fontheight * tk->rowheight,
+	};
+	int asc = !!tk->ascending;
+	out[asc] += fmax01[asc];
+	float other = fmax01[!asc] - out[!asc];
+	out[!asc] += other * (other > 0);
+    }
+
+    float max_negpos[2] = {0};
+    for (int itext=0; itext<axis->ntext; itext++) {
+	if (!axis->text[itext])
+	    continue;
+	struct cplot_axistext *axistext = axis->text[itext];
+	int *area = axistext->ro_area;
+	put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!isx], axistext->hvalign[isx], axistext->rotation100, area, 1);
+	float frac = (float)area[isx+2] / ttra->fontheight * axistext->rowheight;
+	update_max(max_negpos[1], frac);
+	frac = -(float)area[isx] / ttra->fontheight * axistext->rowheight;
+	update_max(max_negpos[0], frac);
+    }
+    out[side] += max_negpos[side];
+    float other = max_negpos[!side] - out[side];
+    if (other > out[!side])
+	out[!side] = other;
+}
+
+static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2]) {
+    float ratio = (float)axes->wh[0] / axes->wh[1];
+    int *axis_xywh = axes->ro_inner_xywh;
+    axis_xywh[0] = iroundpos((overgoing[0][0][0] + overgoing[0][0][1]) * axes->wh[1]);
+    axis_xywh[1] = iroundpos((overgoing[1][0][0] + overgoing[1][0][1]) * axes->wh[1]);
+    axis_xywh[2] = iroundpos((ratio - overgoing[0][1][0] - overgoing[0][1][1]) * axes->wh[1]) - axis_xywh[0];
+    axis_xywh[3] = iroundpos((1 - overgoing[1][1][0] - overgoing[1][1][1]) * axes->wh[1]) - axis_xywh[1];
 }
 
 int cplot_axes_commit(struct cplot_axes *axes) {
-    cplot_f4si overgoing = {0};
-    for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
-	if (axes->axis[iaxis]->range_isset != (minbit | maxbit))
-	    axis_update_range(axes->axis[iaxis]);
+    float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
+    for (int i=0; i<axes->naxis; i++) {
+	struct cplot_axis *axis = axes->axis[i];
+	if (axis->range_isset != (minbit | maxbit))
+	    axis_update_range(axis);
+	if (axis->pos != (int)axis->pos)
+	    continue;
+	cplot_axis_commit_orthogonal(axis, overgoing[axis->x_or_y=='x'][axis->pos==1]);
+    }
+    update_xywh(axes, overgoing);
 
-	float over[2];
-	get_ticklabel_limits_round1(axes->axis[iaxis], axes->wh[0], axes->wh[1], over);
-	int coord = axes->axis[iaxis]->x_or_y == 'x'; // ticks are orthogonal to this
-	overgoing[coord+0]  = max(overgoing[coord+0], over[0]);
-	overgoing[coord+2]  = max(overgoing[coord+2], over[1]);
+    for (int iloop=0; iloop<axes->naxis*20; iloop++) { // while (1) but prevent theoretical infinite loop
+	for (int i=0; i<axes->naxis; i++) {
+	    struct cplot_axis *axis = axes->axis[i];
+	    int isx = axis->x_or_y == 'x';
+	    float *ends[] = {&overgoing[!isx][0][0], &overgoing[!isx][1][1]};
+	    if (cplot_axis_commit_parallel(axis, ends, axes->ro_inner_xywh))
+		goto parallel_again;
+	}
+	break;
+parallel_again:
+	update_xywh(axes, overgoing);
     }
 
-    overgoing *= (float)axes->wh[1]; // to pixels
     int *axis_xywh = axes->ro_inner_xywh;
-    axis_xywh[0] = iceil(overgoing[0]);
-    axis_xywh[1] = iceil(overgoing[1]);
-    axis_xywh[2] = axes->wh[0] - axis_xywh[0] - iceil(overgoing[2]);
-    axis_xywh[3] = axes->wh[1] - axis_xywh[1] - iceil(overgoing[3]);
-    if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0)
+    if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0 || axis_xywh[0] >= axes->wh[0] || axis_xywh[1] >= axes->wh[1])
 	return 1;
 
-    for (int iaxis=0; iaxis<axes->naxis; iaxis++)
-	get_ticklabel_limits_round2(axes->axis[iaxis], axes->wh[0], axes->wh[1], axis_xywh);
-
-    /* axis_xywh is constant from now on */
-
-    if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0)
-	return 1;
-
-    for (int iaxis=0; iaxis<axes->naxis; iaxis++)
-	get_ticklabel_limits_round3(axes->axis[iaxis], axes->wh[0], axes->wh[1], axis_xywh);
+    for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
+	struct cplot_axis *axis = axes->axis[iaxis];
+	get_ticklabel_limits_round3(axis, overgoing[axis->x_or_y=='x'][axis->pos==1], axes->wh[1], axis_xywh);
+    }
 
     commit_legend(axes, axes->wh[0], axes->wh[1]);
     return 0;

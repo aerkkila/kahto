@@ -49,7 +49,7 @@ int cplot_init_ticker_caveman(struct cplot_ticker *this, double min, double max)
 }
 
 int cplot_init_ticker_default(struct cplot_ticker *this, double min, double max) {
-    double step_opts[] = {1, 1.5, 2, 2.5, 3, 4, 5};
+    double step_opts[] = {1, 1.5, 2, 2.5, 5};
 
     int maxsign = Sign(max);
     max *= maxsign; // absolute value

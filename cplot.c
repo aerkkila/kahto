@@ -60,10 +60,19 @@ static inline float get_ticks_underlength(struct cplot_ticks *tk) {
     return f * (f>0);
 }
 
+static inline float get_ticks_overaxislength(struct cplot_ticks *tk) {
+    return tk->length * (1 + tk->crossaxis);
+}
+
+static inline float get_ticks_underaxislength(struct cplot_ticks *tk) {
+    return -(tk->crossaxis*tk->length);
+}
+
 void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]);
 void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
 void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout);
+static void axis_update_range(struct cplot_axis*);
 
 #include "functions.c"
 #include "rotate.c"
@@ -177,6 +186,47 @@ struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
     layout->background = -1;
     cplot_layout_put_rows_and_cols(layout, nrows, ncols);
     return layout;
+}
+
+static void axis_update_range(struct cplot_axis *axis) {
+    int isx = axis->x_or_y == 'x';
+    axis->min = DBL_MAX;
+    axis->max = -DBL_MIN;
+    for (int idata=0; idata<axis->axes->ndata; idata++) {
+	struct cplot_data *data = axis->axes->data[idata];
+	if (data->yxaxis[isx] != axis)
+	    continue;
+
+	if (data->yxztype[isx] == cplot_notype)
+	    switch (data->have_minmax[isx]) {
+		case 0: data->minmax[isx][0] = 0;
+			data->minmax[isx][1] = data->length-1;
+			break;
+		case maxbit: data->minmax[isx][0] = 0; break;
+		case minbit: data->minmax[isx][1] = data->length-1; break;
+		default: break;
+	    }
+	else
+	    switch (data->have_minmax[isx]) {
+		case 0:
+		    get_minmax[data->yxztype[isx]](data->yxzdata[isx], data->length, data->minmax[isx]);
+		    break;
+		case maxbit:
+		    data->minmax[isx][0] = get_min[data->yxztype[isx]](data->yxzdata[isx], data->length);
+		    break;
+		case minbit:
+		    data->minmax[isx][1] = get_max[data->yxztype[isx]](data->yxzdata[isx], data->length);
+		    break;
+		default: break;
+	    }
+
+	data->have_minmax[isx] = minbit | maxbit;
+	if (!(axis->range_isset & minbit))
+	    update_min(axis->min, data->minmax[isx][0]);
+	if (!(axis->range_isset & maxbit))
+	    update_max(axis->max, data->minmax[isx][1]);
+    }
+    axis->range_isset = minbit | maxbit;
 }
 
 void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout) {

@@ -33,6 +33,8 @@ int main() {
     cplot_axislabel(cplot_xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
     cplot_axislabel(cplot_yaxis0(axes), "y-nimiö\njatkuu täällä");
 
+    /* ----------------------- */
+
     struct cplot_layout *layout = cplot_layout_new(2, 2);
     layout->background = 0;
     layout->axes[0] = axes;
@@ -49,6 +51,18 @@ int main() {
     y1axis->text[y1axis->ntext-1]->rotation100 = 0;
     cplot_axislabel(cplot_xaxis0(layout->axes[3]), "x-akseli alhaalla");
     cplot_axislabel(cplot_yaxis0(layout->axes[3]), "y-akseli vasemmalla");
+
+    /* ------------------------- */
+
+    {
+	int pit = 21;
+	float *y = malloc(pit * sizeof(float));
+	for (int i=0; i<pit; i++) {
+	    y[i] = i-pit/2;
+	    y[i] *= y[i];
+	}
+	layout->axes[1] = cplot_y(y, .len=pit, .linestyle="-", .yxzowner[0]=1);
+    }
 
     cplot_write_png(layout, "testi.png");
     cplot_show(layout);
