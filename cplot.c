@@ -229,6 +229,30 @@ static void axis_update_range(struct cplot_axis *axis) {
     axis->range_isset = minbit | maxbit;
 }
 
+static int rectangle_nexti(int j, int i, int rwidth, int rheight, const short (*right)[], const short (*down)[], int w, int h) {
+    const short (*spaceright)[w] = right;
+    const short (*spacedown)[w] = down;
+    for (int jj=0; jj<rheight; jj++)
+	if (spaceright[j+jj][i] < rwidth)
+	    return i + spaceright[j+jj][i] + 1;
+    for (int ii=0; ii<rwidth; ii++)
+	if (spacedown[j][i+ii] < rheight)
+	    return i + ii + 1;
+    return -1;
+}
+
+static int rectangle_nextj(int j, int i, int rwidth, int rheight, const short (*right)[], const short (*down)[], int w, int h) {
+    const short (*spaceright)[w] = right;
+    const short (*spacedown)[w] = down;
+    for (int ii=0; ii<rwidth; ii++)
+	if (spacedown[j][i+ii] < rheight)
+	    return j + spacedown[j][i+ii] + 1;
+    for (int jj=0; jj<rheight; jj++)
+	if (spaceright[j+jj][i] < rwidth)
+	    return j + jj + 1;
+    return -1;
+}
+
 void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout) {
     int width = axes->wh[0],
 	height = axes->wh[1];
@@ -257,26 +281,46 @@ void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight
 	for (int i=w-1; i>=0; i--)
 	    spacedown[j][i] = (spacedown[j+1][i] + 1) * !image[j+y0][i+x0];
 
-    *xout = *yout = -1;
-    for (int j=0; j<h-rheight; j++)
-	for (int i=0; i<w-rwidth;) {
-	    int jj, ii;
-	    for (jj=0; jj<rheight; jj++)
-		if (spaceright[j+jj][i] < rwidth) {
-		    i += spaceright[j+jj][i] + 1;
-		    goto not_here;
-		}
-	    for (ii=0; ii<rwidth; ii++)
-		if (spacedown[j][i+ii] < rheight) {
-		    i += ii + 1;
-		    goto not_here;
-		}
-	    *yout = j + y0;
-	    *xout = i + x0;
-	    goto end;
-not_here:;
-	}
+    *xout = x0, *yout = y0;
+    int jpos, ipos, nextpos;
 
+    /* Corners */
+    for (int n=0; n<4; n++) {
+	jpos = !!(n/2) * (h - rheight);
+	ipos = !!(n%2) * (w - rwidth);
+	if (rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h) < 0)
+	    goto found;
+    }
+
+    /* Edges */
+    jpos=0;
+    for (ipos=0; ipos<=w-rwidth; ipos=nextpos)
+	if ((nextpos = rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h)) < 0)
+	    goto found;
+    jpos = h - rheight;
+    for (ipos=0; ipos<=w-rwidth; ipos=nextpos)
+	if ((nextpos = rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h)) < 0)
+	    goto found;
+    ipos = 0;
+    for (jpos=0; jpos<=h-rheight; jpos=nextpos)
+	if ((nextpos = rectangle_nextj(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h)) < 0)
+	    goto found;
+    ipos = w - rwidth;
+    for (jpos=0; jpos<=h-rheight; jpos=nextpos)
+	if ((nextpos = rectangle_nextj(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h)) < 0)
+	    goto found;
+
+    /* All positions */
+    for (jpos=0; jpos<=h-rheight; jpos++)
+	for (ipos=0; ipos<=w-rwidth; ipos=nextpos)
+	    if ((nextpos = rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h)) < 0)
+		goto found;
+
+    goto end;
+
+found:
+    *yout = jpos + y0;
+    *xout = ipos + x0;
 end:
     free(image);
     free(spacedown);
@@ -392,7 +436,7 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 	cplot_axis_render(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
     for (int i=0; i<axes->ndata; i++)
 	cplot_data_render(axes->data[i], canvas, axes->wh[0], axes->wh[1], ystride);
-    cplot_legend(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
+    cplot_legend_draw(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
 }
 
 static void init_datastyle(struct cplot_data *data) {

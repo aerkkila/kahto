@@ -389,7 +389,7 @@ static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea ar
     }
 }
 
-static void cplot_legend(struct cplot_axes *axes, struct cplot_drawarea area) {
+static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
     int leg_x0 = axes->legend.ro_xywh[0];
     int leg_y0 = axes->legend.ro_xywh[1];
 
