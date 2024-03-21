@@ -39,10 +39,15 @@ extern int cplot_default_width, cplot_default_height;
 struct cplot_axis;
 struct cplot_data;
 
-struct cplot_pen {
+enum cplot_linestyle_e {cplot_line_none_e, cplot_line_normal_e, cplot_line_dashed_e};
+
+struct cplot_linestyle {
+    enum cplot_linestyle_e style;
     unsigned color;
     float thickness;
-    /* linestyle? */
+    float *pattern;
+    unsigned *colors; // for future use
+    int patternlen;
 };
 
 struct cplot_tickerdata_linear {
@@ -74,8 +79,7 @@ struct cplot_ticks {
     unsigned color;
     float crossaxis, length, thickness;
 
-    int grid_on;
-    struct cplot_pen grid_pen;
+    struct cplot_linestyle gridstyle;
 
     int have_labels;
     float hvalign_text[2];
@@ -91,8 +95,7 @@ struct cplot_axis {
     float pos;
     double min, max;
     int range_isset;
-    unsigned color;
-    float thickness;
+    struct cplot_linestyle linestyle;
     struct cplot_axistext **text;
     int mem_text, ntext;
     struct cplot_ticks *ticks;
@@ -126,8 +129,7 @@ struct cplot_data {
     int literal_marker;
     float markersize;
     unsigned color;
-    const char *linestyle;
-    float line_thickness;
+    struct cplot_linestyle linestyle;
 };
 
 enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
@@ -181,8 +183,7 @@ struct cplot_args {
     int literal_marker;
     float markersize;
     unsigned color;
-    const char *linestyle;
-    float line_thickness;
+    struct cplot_linestyle linestyle;
 
     /* end struct cplot_data */
     int copy[3]; // not used yet

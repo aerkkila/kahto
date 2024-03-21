@@ -25,24 +25,24 @@ int cplot_ncolors = arrlen(cplot_colorscheme);
 
 int cplot_default_width = 1200, cplot_default_height = 1000;
 
-static inline int iround(float f) {
+static inline int __attribute__((const)) iround(float f) {
     int a = f;
     return a + (f-a >= 0.5) - (a-f > 0.5);
 }
 
 static unsigned fg = 0xff<<24;
 
-static inline int iroundpos(float f) {
+static inline int __attribute__((const)) iroundpos(float f) {
     int a = f;
     return a + (f-a >= 0.5);
 }
 
-static inline int iceil(float f) {
+static inline int __attribute__((const)) iceil(float f) {
     int a = f;
     return a + (a != f);
 }
 
-static inline cplot_f4si axis_get_line(struct cplot_axis *axis) {
+static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *axis) {
     switch (axis->x_or_y) {
 	case 'x': return (cplot_f4si){0, axis->pos, 1, axis->pos};
 	case 'y': return (cplot_f4si){axis->pos, 0, axis->pos, 1};
@@ -50,21 +50,21 @@ static inline cplot_f4si axis_get_line(struct cplot_axis *axis) {
     }
 }
 
-static inline float get_ticks_overlength(struct cplot_ticks *tk) {
+static inline float __attribute__((pure)) get_ticks_overlength(struct cplot_ticks *tk) {
     float f = tk->length * (1 + tk->crossaxis) + tk->axis->pos - 1;
     return f * (f>0);
 }
 
-static inline float get_ticks_underlength(struct cplot_ticks *tk) {
+static inline float __attribute__((pure)) get_ticks_underlength(struct cplot_ticks *tk) {
     float f = -(tk->crossaxis*tk->length + tk->axis->pos);
     return f * (f>0);
 }
 
-static inline float get_ticks_overaxislength(struct cplot_ticks *tk) {
+static inline float __attribute__((pure)) get_ticks_overaxislength(struct cplot_ticks *tk) {
     return tk->length * (1 + tk->crossaxis);
 }
 
-static inline float get_ticks_underaxislength(struct cplot_ticks *tk) {
+static inline float __attribute__((pure)) get_ticks_underaxislength(struct cplot_ticks *tk) {
     return -(tk->crossaxis*tk->length);
 }
 
@@ -88,8 +88,9 @@ struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
 	axes->axis = realloc(axes->axis, (axes->mem_axis+=2) * sizeof(void*));
     axes->axis[axes->naxis++] = axis;
     memset(axes->axis + axes->naxis, 0, (axes->mem_axis - axes->naxis) * sizeof(void*));
-    axis->color = fg;
-    axis->thickness = 1.0 / 400;
+    axis->linestyle.color = fg;
+    axis->linestyle.thickness = 1.0 / 400;
+    axis->linestyle.style = 1;
     axis->min = 0;
     axis->max = 1;
     axis->x_or_y = x_or_y;
@@ -104,8 +105,9 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->length = 1.0 / 80;
     ticks->thickness = -1; // same as axis
     ticks->hvalign_text[0] = -0.5;
-    ticks->grid_pen.thickness = 1.0/1200;
-    ticks->grid_pen.color = RGB(100, 100, 100);
+
+    ticks->gridstyle.thickness = 1.0 / 1200;
+    ticks->gridstyle.color = RGB(100, 100, 100);
 
     ticks->rowheight = 2.4*ticks->length;
     ticks->have_labels = 1;
@@ -133,12 +135,12 @@ struct cplot_axes* cplot_axes_new() {
     axes->axis[0] = cplot_axis_new(axes, 'x');
     axes->axis[0]->pos = 1; // bottom x-axis
     axes->axis[0]->ticks = cplot_ticks_new(axes->axis[0]);
-    axes->axis[0]->ticks->grid_on = 1;
+    axes->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
 
     axes->axis[1] = cplot_axis_new(axes, 'y');
     axes->axis[1]->pos = 0; // left y-axis
     axes->axis[1]->ticks = cplot_ticks_new(axes->axis[1]);
-    axes->axis[1]->ticks->grid_on = 1;
+    axes->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
 
     axes->wh[0] = cplot_default_width;
     axes->wh[1] = cplot_default_height;
@@ -349,7 +351,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     line_px[isx+0] = ticks->ro_lines[0];
     line_px[isx+2] = ticks->ro_lines[1];
     int nticks = ticks->ticker.init(&ticks->ticker, ticks->axis->min, ticks->axis->max); // turhaan init aina uudestaan
-    float thickness = ticks->thickness < 0 ? ticks->axis->thickness * -ticks->thickness : ticks->thickness;
+    float thickness = ticks->thickness < 0 ? ticks->axis->linestyle.thickness * -ticks->thickness : ticks->thickness;
     thickness *= axesheight;
     int gridline[4];
     int *xywh = ticks->axis->axes->ro_inner_xywh;
@@ -364,14 +366,13 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
 	line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-	draw_thick_line(canvas, ystride, line_px, ticks->color, thickness, ticks->ro_tot_area);
+	draw_line(canvas, ystride, line_px, ticks->ro_tot_area, &ticks->gridstyle, axesheight, 0);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
 	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
-	if (ticks->grid_on) {
+	if (ticks->gridstyle.style) {
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
-	    float thickness = ticks->grid_pen.thickness * axesheight;
-	    draw_thick_line(canvas, ystride, gridline, ticks->grid_pen.color, thickness, inner_area);
+	    draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axesheight, 0);
 	}
     }
 }
@@ -391,7 +392,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
     ttra->realh = axesheight;
     ttra->w = axistext->ro_area[2] - axistext->ro_area[0];
     ttra->h = axistext->ro_area[3] - axistext->ro_area[1];
-    ttra->fg_default = axistext->axis->color;
+    ttra->fg_default = axistext->axis->linestyle.color;
     ttra->bg_default = -1;
     ttra_print(ttra, "\033[0m");
     ttra_set_fontheight(ttra, axistext->rowheight*axesheight);
@@ -405,7 +406,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
 }
 
 void cplot_axis_render(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-    float thickness = axis->thickness * axesheight;
+    float thickness = axis->linestyle.thickness * axesheight;
     int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
 
     int isx = axis->x_or_y == 'x';
@@ -418,7 +419,7 @@ void cplot_axis_render(struct cplot_axis *axis, unsigned *canvas, int axeswidth,
     int WH[] = {axeswidth, axesheight};
     if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
-    draw_thick_line(canvas, ystride, axis->ro_line, axis->color, thickness, area);
+    draw_line(canvas, ystride, axis->ro_line, area, &axis->linestyle, axesheight, 0);
     if (axis->ticks)
 	cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
     for (int i=0; i<axis->ntext; i++)
@@ -441,11 +442,15 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 
 static void init_datastyle(struct cplot_data *data) {
     if (data->markersize == 0)
-	data->markersize = 1.0 / 120;
+	data->markersize = 1.0 / 90;
     if (!data->marker)
 	data->marker = "o";
     if (!data->color)
 	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor++) % cplot_ncolors];
+    if (!data->linestyle.color)
+	data->linestyle.color = data->color;
+    if (!data->linestyle.thickness)
+	data->linestyle.thickness = 1.0 / 600;
 }
 
 void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols) {

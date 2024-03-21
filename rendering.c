@@ -25,7 +25,7 @@ static void draw_line_bresenham(unsigned *canvas, int ystride, const int *xy, un
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
     int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
     int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
-	n1=xy[2*!backwards+nosteep],  n0=xy[2*backwards+nosteep];
+	n1=xy[2*!backwards+nosteep],  n0=xy[2*backwards+nosteep]; // Δm ≥ Δn
 
     const int n_add = n1 > n0 ? 1 : -1;
     const int dm = m1 - m0;
@@ -45,6 +45,71 @@ static void draw_line_bresenham(unsigned *canvas, int ystride, const int *xy, un
 	    n0 += D > 0 ? n_add : 0;
 	    D  += D > 0 ? D_add1 : D_add0;
 	}
+}
+
+struct _cplot_dashed_line_args {
+    unsigned *canvas, color;
+    int ystride, *xy, ithickness, *axis_area, nosteep, patternlength, axesheight;
+    float *pattern;
+};
+
+struct _cplot_line_args {
+    const short *xypixels;
+    long x0, len;
+    unsigned *canvas;
+    const int ystride, *axis_xywh, axesheight;
+};
+
+static unsigned draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args, unsigned carry) {
+    int nosteep		= args->nosteep,
+	axesheight	= args->axesheight,
+	ystride		= args->ystride;
+    unsigned *canvas	= args->canvas,
+	     color	= args->color;
+
+    int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
+    int m1=args->xy[2*!backwards+!nosteep], m0=args->xy[2*backwards+!nosteep],
+	n1=args->xy[2*!backwards+nosteep],  n0=args->xy[2*backwards+nosteep]; // Δm ≥ Δn
+
+    const int n_add = n1 > n0 ? 1 : -1;
+    const int dm = m1 - m0;
+    const int dn = n1 > n0 ? n1 - n0 : n0 - n1;
+    const int D_add0 = 2 * dn;
+    const int D_add1 = 2 * (dn - dm);
+    int D = 2*dn - dm;
+    const float coef = dm / sqrt(dm*dm + dn*dn); // m-yksikön pituus = coef * hypotenuusa
+    unsigned short ipat = carry>>16, try = (carry & 0xffff) + m0;
+    if (nosteep) { // (m,n) = (x,y)
+	while (1) {
+	    int end = min(m1+1, try);
+	    for (; m0<end; m0++) {
+		if (ipat % 2 == 0)
+		    canvas[n0*ystride + m0] = color; // only this line differs
+		n0 += D > 0 ? n_add : 0;
+		D  += D > 0 ? D_add1 : D_add0;
+	    }
+	    if (m0 > m1)
+		break;
+	    ipat = (ipat + 1) % args->patternlength;
+	    try = m0 + iroundpos(args->pattern[ipat]*axesheight * coef);
+	}
+    }
+    else { // (m,n) = (y,x)
+	while (1) {
+	    int end = min(m1+1, try);
+	    for (; m0<=end; m0++) {
+		if (ipat % 2 == 0)
+		    canvas[m0*ystride + n0] = color; // only this line differs
+		n0 += D > 0 ? n_add : 0;
+		D  += D > 0 ? D_add1 : D_add0;
+	    }
+	    if (m0 > m1)
+		break;
+	    ipat = (ipat + 1) % args->patternlength;
+	    try = m0 + iroundpos(args->pattern[ipat] * coef);
+	}
+    }
+    return ipat<<16 | (try-m0);
 }
 
 /* anti-aliased line */
@@ -75,6 +140,61 @@ static void draw_line_xiaolin(unsigned *canvas_, int ystride, const int *xy, uns
 	    fn0 += slope;
 	}
     }
+}
+
+static unsigned draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, unsigned carry) {
+    int nosteep = args->nosteep,
+	axesheight = args->axesheight;
+    unsigned (*canvas)[args->ystride] = (void*)args->canvas,
+	     color = args->color;
+
+    int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
+    int m1=args->xy[2*!backwards+!nosteep], m0=args->xy[2*backwards+!nosteep];
+    float fn1=args->xy[2*!backwards+nosteep], fn0=args->xy[2*backwards+nosteep]; // Δm ≥ Δn
+
+    int dm = m1 - m0;
+    float dn = fn1 - fn0;
+    const float slope = dn / dm;
+    const float coef = dm / sqrt(dm*dm + dn*dn); // m-yksikön pituus = coef * hypotenuusa
+    unsigned short ipat = carry>>16, try = (carry & 0xffff) + m0;
+
+    if (nosteep) { // (m,n) = (x,y)
+	while (1) {
+	    int end = min(m1+1, try);
+	    for (; m0<end; m0++) {
+		int n0 = fn0;
+		int level = iroundpos((fn0 - n0) * 255);
+		if (ipat % 2 == 0) {
+		    tocanvas(&canvas[n0][m0], 255-level, color);	// only these lines differ
+		    tocanvas(&canvas[n0+1][m0], level, color);		// only these lines differ
+		}
+		fn0 += slope;
+	    }
+	    if (m0 > m1)
+		break;
+	    ipat = (ipat + 1) % args->patternlength;
+	    try = m0 + iroundpos(args->pattern[ipat]*axesheight * coef);
+	}
+    }
+    else { // (m,n) = (y,x)
+	while (1) {
+	    int end = min(m1+1, try);
+	    for (; m0<end; m0++) {
+		int n0 = fn0;
+		int level = iroundpos((fn0 - n0) * 255);
+		if (ipat % 2 == 0) {
+		    tocanvas(&canvas[m0][n0], 255-level, color);	// only these lines differ
+		    tocanvas(&canvas[m0][n0+1], level, color);		// only these lines differ
+		}
+		fn0 += slope;
+	    }
+	    if (m0 > m1)
+		break;
+	    ipat = (ipat + 1) % args->patternlength;
+	    try = m0 + iroundpos(args->pattern[ipat]*axesheight * coef);
+	}
+    }
+    return ipat<<16 | (try-m0);
 }
 
 static int check_line(int *line, const int *area) {
@@ -140,10 +260,43 @@ static int check_line(int *line, const int *area) {
     return 0;
 }
 
-static void draw_thick_line(unsigned *canvas, int ystride, const int *xy_c, unsigned color, float thickness, int *axis_area) {
+static void _draw_thick_line(unsigned *canvas, int ystride, int xy[4], unsigned color, int ithickness, int *axis_area, int nosteep) {
+    if (!check_line(xy, axis_area))
+	draw_line_xiaolin(canvas, ystride, xy, color);
+    xy[nosteep+0]++;
+    xy[nosteep+2]++;
+    for (int p=1; p<ithickness-1; p++) {
+	if (!check_line(xy, axis_area))
+	    draw_line_bresenham(canvas, ystride, xy, color);
+	xy[nosteep+0]++;
+	xy[nosteep+2]++;
+    }
+    if (!check_line(xy, axis_area))
+	draw_line_xiaolin(canvas, ystride, xy, color);
+}
+
+static unsigned _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, unsigned carry) {
+    unsigned new_carry = carry;
+    if (!check_line(args->xy, args->axis_area))
+	new_carry = draw_line_xiaolin_dashed(args, carry);
+    args->xy[args->nosteep+0]++;
+    args->xy[args->nosteep+2]++;
+    for (int p=1; p<args->ithickness-1; p++) {
+	if (!check_line(args->xy, args->axis_area))
+	    new_carry = draw_line_bresenham_dashed(args, carry);
+	args->xy[args->nosteep+0]++;
+	args->xy[args->nosteep+2]++;
+    }
+    if (!check_line(args->xy, args->axis_area))
+	new_carry = draw_line_xiaolin_dashed(args, carry);
+    return new_carry;
+}
+
+static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *area, struct cplot_linestyle *style, int axesheight, unsigned carry) {
     int xy[4];
     memcpy(xy, xy_c, sizeof(xy));
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
+    float thickness = style->thickness * axesheight;
 
     /* Vinon viivan leveys vaakasuunnassa on eri.
        Yhtälö on johdettu kynällä ja paperilla yhdenmuotoisista kolmioista. */
@@ -161,18 +314,24 @@ static void draw_thick_line(unsigned *canvas, int ystride, const int *xy_c, unsi
     xy[nosteep+0] -= halfthickness;
     xy[nosteep+2] -= halfthickness;
 
-    if (!check_line(xy, axis_area))
-	draw_line_xiaolin(canvas, ystride, xy, color);
-    xy[nosteep+0]++;
-    xy[nosteep+2]++;
-    for (int p=1; p<ithickness-1; p++) {
-	if (!check_line(xy, axis_area))
-	    draw_line_bresenham(canvas, ystride, xy, color);
-	xy[nosteep+0]++;
-	xy[nosteep+2]++;
+    switch (style->style) {
+	case cplot_line_dashed_e:
+	    if (!style->pattern) {
+		style->pattern = (static float[]){1.0/60, 1.0/60};
+		style->patternlen = 2;
+	    }
+	    struct _cplot_dashed_line_args args = {
+		canvas, style->color, ystride, xy, ithickness, area, nosteep,
+		style->patternlen, axesheight, style->pattern };
+	    carry = _draw_thick_line_dashed(&args, carry);
+	    break;
+	case cplot_line_normal_e:
+	    _draw_thick_line(canvas, ystride, xy, style->color, ithickness, area, nosteep);
+	    break;
+	case cplot_line_none_e:
+	    break;
     }
-    if (!check_line(xy, axis_area))
-	draw_line_xiaolin(canvas, ystride, xy, color);
+    return carry;
 }
 
 static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
@@ -289,31 +448,35 @@ static void draw_data_xy(const short *xypixels, long x0, int len,
     }
 }
 
-static void connect_data_x(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, const int *axis_xywh, int thickness, unsigned color, double xpix_per_unit) {
-    int axis_area[] = xywh_to_area(axis_xywh);
-    for (int i=0; i<len-1; i++) {
+static void connect_data_x(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle, double xpix_per_unit) {
+    int axis_area[] = xywh_to_area(args->axis_xywh);
+    unsigned carry = 0;
+    for (int i=0; i<args->len-1; i++) {
 	int xy[] = {
-	    iroundpos((x0+i) * xpix_per_unit) + axis_xywh[0],
-	    xypixels[1] + axis_xywh[1],
-	    iroundpos((x0+i+1) * xpix_per_unit) + axis_xywh[0],
-	    xypixels[3] + axis_xywh[1],
+	    iroundpos((args->x0+i) * xpix_per_unit) + args->axis_xywh[0],
+	    args->xypixels[1] + args->axis_xywh[1],
+	    iroundpos((args->x0+i+1) * xpix_per_unit) + args->axis_xywh[0],
+	    args->xypixels[3] + args->axis_xywh[1],
 	};
-	draw_thick_line(canvas, ystride, xy, color, thickness, axis_area);
-	xypixels += 2;
+	carry = draw_line(args->canvas, args->ystride, xy, axis_area, linestyle, args->axesheight, carry);
+	args->xypixels += 2;
     }
 }
 
-static void connect_data_xy(const short *xypixels, long x0, long len, unsigned *canvas, int ystride, const int *axis_xywh, int thickness, unsigned color) {
-    int axis_area[] = xywh_to_area(axis_xywh);
-    for (int i=0; i<len-1; i++) {
+/* huomio: datan liittäminen kahden tämän funktion kutsun välillä on toteuttamatta */
+static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
+    int axis_area[] = xywh_to_area(args->axis_xywh);
+
+    unsigned carry = 0;
+    for (int i=0; i<args->len-1; i++) {
 	int xy[] = {
-	    xypixels[0] + axis_xywh[0],
-	    xypixels[1] + axis_xywh[1],
-	    xypixels[2] + axis_xywh[0],
-	    xypixels[3] + axis_xywh[1],
+	    args->xypixels[0] + args->axis_xywh[0],
+	    args->xypixels[1] + args->axis_xywh[1],
+	    args->xypixels[2] + args->axis_xywh[0],
+	    args->xypixels[3] + args->axis_xywh[1],
 	};
-	draw_thick_line(canvas, ystride, xy, color, thickness, axis_area);
-	xypixels += 2;
+	carry = draw_line(args->canvas, args->ystride, xy, axis_area, linestyle, args->axesheight, carry);
+	args->xypixels += 2;
     }
 }
 
@@ -346,7 +509,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
     unsigned char bmap_buff[width*height];
     unsigned char *bmap = cplot_data_marker_bmap(data, bmap_buff, &marker, &width, &height);
 
-    int line_thickness = iroundpos(data->line_thickness * axesheight);
+    int line_thickness = iroundpos(data->linestyle.thickness * axesheight);
     if (line_thickness < 1) line_thickness = 1;
 
     double xpix_per_unit = xywh[2] / yxdiff[1]; // Used if x is not given.
@@ -362,11 +525,20 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	    else
 		draw_data_x(xypixels, istart, iend-istart, canvas, ystride, xywh, bmap, width, height, data->color, xpix_per_unit);
 	}
-	if (data->linestyle) {
+	if (data->linestyle.style) {
+	    struct _cplot_line_args args = {
+		.xypixels = xypixels,
+		.x0 = istart,
+		.len = iend-istart,
+		.canvas = canvas,
+		.ystride = ystride,
+		.axis_xywh = xywh,
+		.axesheight = axesheight,
+	    };
 	    if (data->yxzdata[1])
-		connect_data_xy(xypixels, istart, iend-istart, canvas, ystride, xywh, line_thickness, data->color);
+		connect_data_xy(&args, &data->linestyle);
 	    else
-		connect_data_x(xypixels, istart, iend-istart, canvas, ystride, xywh, line_thickness, data->color, xpix_per_unit);
+		connect_data_x(&args, &data->linestyle, xpix_per_unit);
 	}
 	istart = iend;
     }
@@ -382,10 +554,17 @@ static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea ar
     y0 -= xywh[1];
     if (marker)
 	draw_datum(area.canvas, area.ystride, bmap, width, height, x0, y0, xywh, data->color);
-    if (data->linestyle) {
+    if (data->linestyle.style) {
 	short xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
-	int line_thickness = iroundpos(data->line_thickness * area.axesheight);
-	connect_data_xy(xypixels, 0, 2, area.canvas, area.ystride, xywh, line_thickness, data->color);
+	struct _cplot_line_args args = {
+	    .xypixels = xypixels,
+	    .x0 = 0, .len = 2,
+	    .canvas = area.canvas,
+	    .ystride = area.ystride,
+	    .axis_xywh = xywh,
+	    .axesheight = area.axesheight,
+	};
+	connect_data_xy(&args, &data->linestyle);
     }
 }
 
@@ -396,10 +575,11 @@ static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea are
     int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
     ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left, leg_y0);
     int text_left = axes->legend.ro_text_left;
+    int rownumber = 0;
     for (int i=0; i<axes->ndata; i++) {
 	if (!axes->data[i]->label)
 	    continue;
-	legend_draw_marker(axes->data[i], area, leg_x0 + text_left/2, leg_y0 + (i+0.5)*rowh, text_left);
+	legend_draw_marker(axes->data[i], area, leg_x0 + text_left/2, leg_y0 + (rownumber+++0.5)*rowh, text_left);
 	if (axes->data[i]->label)
 	    ttra_printf(axes->ttra, "%s\n", axes->data[i]->label);
     }

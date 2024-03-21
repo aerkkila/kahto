@@ -102,7 +102,7 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], in
 
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
     axis->ro_tick_area[1] = axis->ro_tick_area[3] = axis->ro_line[1];
-    int halfthickness = iroundpos(axis->thickness/2 * axesheight);
+    int halfthickness = iroundpos(axis->linestyle.thickness/2 * axesheight);
     if (side) {
 	axis->ro_tick_area[isx] += halfthickness;
 	axis->ro_tick_area[isx+2] += halfthickness;
@@ -160,8 +160,8 @@ int cplot_axis_commit_parallel(struct cplot_axis *axis, float *out[2], int xywh[
 
 /* out is in height units */
 void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
-    out[0] = axis->thickness / 2;
-    out[1] = axis->thickness / 2;
+    out[0] = axis->linestyle.thickness / 2;
+    out[1] = axis->linestyle.thickness / 2;
 
     struct cplot_ticks *tk = axis->ticks;
     if (tk && tk->ticker.init) {
