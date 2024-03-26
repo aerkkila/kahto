@@ -37,6 +37,11 @@ static inline int __attribute__((const)) iroundpos(float f) {
     return a + (f-a >= 0.5);
 }
 
+static inline int __attribute__((const)) iround1(float f) {
+    int a = iroundpos(f);
+    return a + (f != 0 && a == 0);
+}
+
 static inline int __attribute__((const)) iceil(float f) {
     int a = f;
     return a + (a != f);
@@ -154,6 +159,9 @@ struct cplot_axes* cplot_axes_new() {
     axes->legend.posy = 1;
     axes->legend.hvalign[1] = -1;
     axes->legend.automatic_placement = 1;
+    axes->legend.borderstyle.thickness = 1.0/500;
+    axes->legend.borderstyle.style = cplot_line_normal_e;
+    axes->legend.borderstyle.color = 0xff<<24;
 
     return axes;
 }
@@ -471,6 +479,9 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesh
     *y *= axes->ttra->fontheight;
     *x *= axes->ttra->fontwidth;
     *x += axes->legend.ro_text_left;
+    int linewidth = iround1(axes->legend.borderstyle.thickness * axesheight);
+    *y += linewidth * 2;
+    *x += linewidth * 2;
 }
 
 static void add_data(struct cplot_args *args) {

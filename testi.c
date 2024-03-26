@@ -51,6 +51,9 @@ int main() {
     y1axis->text[y1axis->ntext-1]->rotation100 = 0;
     cplot_axislabel(cplot_xaxis0(layout->axes[3]), "x-akseli alhaalla");
     cplot_axislabel(cplot_yaxis0(layout->axes[3]), "y-akseli vasemmalla");
+    layout->axes[3]->legend.borderstyle.style = 1;
+    layout->axes[3]->legend.borderstyle.thickness = 1.0/100;
+    layout->axes[3]->legend.borderstyle.color = 0xffaadf49;
 
     /* ------------------------- */
 

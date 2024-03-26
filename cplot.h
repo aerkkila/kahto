@@ -152,6 +152,7 @@ struct cplot_axes {
 	float rowheight, symbolspace_per_rowheight;
 	int ro_xywh[4], ro_text_left, automatic_placement;
 	float posx, posy, hvalign[2];
+	struct cplot_linestyle borderstyle;
     } legend;
 };
 

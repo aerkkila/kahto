@@ -4,7 +4,7 @@
 void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
     int height, width;
     cplot_get_legend_dims_px(axes, &height, &width, axesheight);
-    axes->legend.ro_xywh[2] = width + axes->legend.ro_text_left;
+    axes->legend.ro_xywh[2] = width;
     axes->legend.ro_xywh[3] = height;
     axes->legend.ro_xywh[0] =
 	axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +

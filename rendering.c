@@ -568,18 +568,59 @@ static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea ar
     }
 }
 
+void cplot_draw_box(unsigned *canvas, int ystride, int axesheight, int *area, struct cplot_linestyle *linestyle) {
+    int linewidth = iround1(linestyle->thickness * axesheight);
+    struct cplot_linestyle lstyle = *linestyle;
+    lstyle.thickness = 1.0/axesheight;
+
+    {
+	int xy[] = {area[0], area[1], area[0], area[3]};
+	for (int i=0; i<linewidth; i++) {
+	    draw_line(canvas, ystride, xy, area, &lstyle, axesheight, 0);
+	    xy[0]++; xy[2]++;
+	}
+    } {
+	int x1 = area[2] - linewidth;
+	int xy[] = {x1, area[1], x1, area[3]};
+	for (int i=0; i<linewidth; i++) {
+	    draw_line(canvas, ystride, xy, area, &lstyle, axesheight, 0);
+	    xy[0]++; xy[2]++;
+	}
+    } {
+	int xy[] = {area[0], area[1], area[2], area[1]};
+	for (int i=0; i<linewidth; i++) {
+	    draw_line(canvas, ystride, xy, area, &lstyle, axesheight, 0);
+	    xy[1]++; xy[3]++;
+	}
+    } {
+	int y1 = area[3] - linewidth;
+	int xy[] = {area[0], y1, area[2], y1};
+	for (int i=0; i<linewidth; i++) {
+	    draw_line(canvas, ystride, xy, area, &lstyle, axesheight, 0);
+	    xy[1]++; xy[3]++;
+	}
+    }
+}
+
+void cplot_draw_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xywh, struct cplot_linestyle *linestyle) {
+    int area[] = xywh_to_area(xywh);
+    cplot_draw_box(canvas, ystride, axesheight, area, linestyle);
+}
+
 static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
+    cplot_draw_box_xywh(area.canvas, area.ystride, area.axesheight, axes->legend.ro_xywh, &axes->legend.borderstyle);
     int leg_x0 = axes->legend.ro_xywh[0];
     int leg_y0 = axes->legend.ro_xywh[1];
 
     int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
-    ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left, leg_y0);
+    int linewidth = iroundpos(axes->legend.borderstyle.thickness * area.axesheight);
+    ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left + linewidth, leg_y0 + linewidth);
     int text_left = axes->legend.ro_text_left;
     int rownumber = 0;
     for (int i=0; i<axes->ndata; i++) {
 	if (!axes->data[i]->label)
 	    continue;
-	legend_draw_marker(axes->data[i], area, leg_x0 + text_left/2, leg_y0 + (rownumber+++0.5)*rowh, text_left);
+	legend_draw_marker(axes->data[i], area, leg_x0 + linewidth + text_left/2, leg_y0 + (rownumber+++0.5)*rowh, text_left);
 	if (axes->data[i]->label)
 	    ttra_printf(axes->ttra, "%s\n", axes->data[i]->label);
     }
