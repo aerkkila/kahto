@@ -51,21 +51,34 @@ struct cplot_linestyle {
 };
 
 struct cplot_tickerdata_linear {
-    int nticks, baseten;
+    int nticks, // must be first
+	baseten;
     double step, min, base;
 };
 
-union cplot_tickerdata {
-    struct cplot_tickerdata_linear lin;
-    /* for future use */
+struct cplot_tickerdata_arbitrary {
+    int nticks; // must be first
+    double *ticks;
+    char **labels;
+    double min, max; // only used with relcoord
 };
 
-enum cplot_tickere {ticker_linear};
+struct cplot_tickerdata_common { // only used to access shared members
+    int nticks;
+};
+
+union cplot_tickerdata { // cplot_tickerdata_common defines how each struct must begin
+    struct cplot_tickerdata_common common;
+    struct cplot_tickerdata_linear lin;
+    struct cplot_tickerdata_arbitrary arb;
+};
+
+enum cplot_tickere {cplot_ticker_linear, cplot_ticker_arbitrary};
 
 struct cplot_ticker {
     enum cplot_tickere species;
-    int (*init)(struct cplot_ticker *this, double min, double max); // returns the number of ticks
-    double (*get_tick)(struct cplot_ticker *this, int ind, char *out, int sizeout);
+    void (*init)(struct cplot_ticker *this, double min, double max);
+    double (*get_tick)(struct cplot_ticker *this, int ind, char **label, int sizelabel);
     union cplot_tickerdata tickerdata;
 };
 
@@ -220,6 +233,11 @@ void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_fini();
 void cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void cplot_write_png(void *axes_or_layout, const char *name);
+
+void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
+void cplot_init_ticker_caveman(struct cplot_ticker *this, double min, double max);
+void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max);
+void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max);
 
 #define cplot_ix0axis 0
 #define cplot_iy0axis 1

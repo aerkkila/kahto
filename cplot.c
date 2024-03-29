@@ -338,7 +338,8 @@ end:
 }
 
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-    char tick[32];
+    char tickbuff[32];
+    char *tick = tickbuff;
     struct ttra *ttra = NULL;
 
     if (ticks->have_labels) {
@@ -358,7 +359,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     int line_px[4];
     line_px[isx+0] = ticks->ro_lines[0];
     line_px[isx+2] = ticks->ro_lines[1];
-    int nticks = ticks->ticker.init(&ticks->ticker, ticks->axis->min, ticks->axis->max); // turhaan init aina uudestaan
+    int nticks = ticks->ticker.tickerdata.common.nticks;
     float thickness = ticks->thickness < 0 ? ticks->axis->linestyle.thickness * -ticks->thickness : ticks->thickness;
     thickness *= axesheight;
     int gridline[4];
@@ -369,7 +370,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     int side = ticks->axis->pos >= 0.5;
 
     for (int itick=0; itick<nticks; itick++) {
-	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, tick, 32);
+	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, &tick, 32);
 	double pos_rel = (pos_data - ticks->axis->min) / (ticks->axis->max - ticks->axis->min);
 	if (!isx)
 	    pos_rel = 1 - pos_rel;

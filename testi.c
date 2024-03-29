@@ -65,6 +65,11 @@ int main() {
 	    y[i] *= y[i];
 	}
 	layout->axes[1] = cplot_y(y, .len=pit, .linestyle.style=1, .yxzowner[0]=1);
+	struct cplot_ticker *tk = &layout->axes[1]->axis[cplot_iy0axis]->ticks->ticker;
+	tk->init = cplot_init_ticker_arbitrary_relcoord;
+	tk->tickerdata.arb.nticks = 5;
+	tk->tickerdata.arb.ticks = (static double[]){0, 0.15, 0.5, 0.8, 1};
+	tk->tickerdata.arb.labels = (static char*[]){"0", "3×5", "\033[4;38;5;207;48;5;19mkeskikohta\033[0m", "80", "100"};
     }
 
     cplot_write_png(layout, "testi.png");
