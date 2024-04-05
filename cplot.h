@@ -94,7 +94,7 @@ struct cplot_ticks {
     unsigned color;
     float crossaxis, length, thickness;
 
-    struct cplot_linestyle gridstyle;
+    struct cplot_linestyle linestyle, gridstyle;
 
     int have_labels;
     float hvalign_text[2];

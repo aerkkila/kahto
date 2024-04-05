@@ -127,6 +127,10 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->thickness = -1; // same as axis
     ticks->hvalign_text[0] = -0.5;
 
+    ticks->linestyle.thickness = 1.0 / 1200;
+    ticks->linestyle.color = RGB(0, 0, 0);
+    ticks->linestyle.style = cplot_line_normal_e;
+
     ticks->gridstyle.thickness = 1.0 / 1200;
     ticks->gridstyle.color = RGB(100, 100, 100);
 
@@ -400,8 +404,6 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     line_px[isx+0] = ticks->ro_lines[0];
     line_px[isx+2] = ticks->ro_lines[1];
     int nticks = ticks->ticker.tickerdata.common.nticks;
-    float thickness = ticks->thickness < 0 ? ticks->axis->linestyle.thickness * -ticks->thickness : ticks->thickness;
-    thickness *= axesheight;
     int gridline[4];
     int *xywh = ticks->axis->axes->ro_inner_xywh;
     gridline[isx] = xywh[isx];
@@ -415,7 +417,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
 	line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-	draw_line(canvas, ystride, line_px, ticks->ro_tot_area, &ticks->gridstyle, axesheight, 0);
+	draw_line(canvas, ystride, line_px, ticks->ro_tot_area, &ticks->linestyle, axesheight, 0);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
 	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
