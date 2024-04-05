@@ -65,7 +65,7 @@ int main() {
 	    y[i] = i-pit/2;
 	    y[i] *= y[i];
 	}
-	layout->axes[1] = cplot_y(y, .len=pit, .linestyle.style=1, .yxzowner[0]=1);
+	layout->axes[1] = cplot_y(y, .len=pit, .linestyle.style=1, .yxzowner[0]=1, .label="paraabeli");
 	struct cplot_ticker *tk = &layout->axes[1]->axis[cplot_iy0axis]->ticks->ticker;
 	tk->init = cplot_init_ticker_arbitrary_relcoord;
 	tk->tickerdata.arb.nticks = 5;
@@ -77,7 +77,7 @@ int main() {
 	struct cplot_axis *y1axis = cplot_axis_new(layout->axes[1], 'y');
 	y1axis->pos = 1;
 	y1axis->ticks = cplot_ticks_new(y1axis);
-	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis);
+	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis, .markersize=1/60.0, .label="värillinen kohina");
     }
 
     cplot_write_png(layout, "testi.png");
