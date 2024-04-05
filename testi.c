@@ -57,6 +57,7 @@ int main() {
 
     /* ------------------------- */
 
+    int kohina[pit];
     {
 	int pit = 21;
 	float *y = malloc(pit * sizeof(float));
@@ -70,6 +71,13 @@ int main() {
 	tk->tickerdata.arb.nticks = 5;
 	tk->tickerdata.arb.ticks = (static double[]){0, 0.15, 0.5, 0.8, 1};
 	tk->tickerdata.arb.labels = (static char*[]){"0", "3×5", "\033[4;38;5;207;48;5;19mkeskikohta\033[0m", "80", "100"};
+
+	for (int i=0; i<pit; i++)
+	    kohina[i] = rand() % pit + i;
+	struct cplot_axis *y1axis = cplot_axis_new(layout->axes[1], 'y');
+	y1axis->pos = 1;
+	y1axis->ticks = cplot_ticks_new(y1axis);
+	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis);
     }
 
     cplot_write_png(layout, "testi.png");

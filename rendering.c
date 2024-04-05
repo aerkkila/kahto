@@ -425,7 +425,7 @@ static inline void draw_datum(unsigned *canvas, int ystride,
     }
 }
 
-static void draw_data_x(const short *xypixels, long x0, int len,
+static void draw_data_y(const short *xypixels, long x0, int len,
     unsigned *canvas, int ystride, const int *axis_xywh,
     unsigned char *bmap, int mapw, int maph, unsigned color, double xpix_per_unit)
 {
@@ -448,7 +448,37 @@ static void draw_data_xy(const short *xypixels, long x0, int len,
     }
 }
 
-static void connect_data_x(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle, double xpix_per_unit) {
+static inline unsigned from_cmap(const unsigned char *ptr) {
+    unsigned ret = 0xff<<24;
+    memcpy(&ret, ptr, 3);
+    return ret;
+}
+
+static void draw_data_xyc(const short *xypixels, const unsigned char *zlevels, long x0, int len,
+    unsigned *canvas, int ystride, const int *axis_xywh,
+    unsigned char *bmap, int mapw, int maph, unsigned char *cmap)
+{
+    for (int idata=0; idata<len; idata++) {
+	int x = xypixels[idata*2],
+	    y = xypixels[idata*2+1];
+	draw_datum(canvas, ystride, bmap, mapw, maph, x, y, axis_xywh, from_cmap(cmap+zlevels[idata]*3));
+    }
+}
+
+static void draw_data_yc(const short *xypixels, const unsigned char *zlevels, long x0, int len,
+    unsigned *canvas, int ystride, const int *axis_xywh,
+    unsigned char *bmap, int mapw, int maph, unsigned char *cmap, double xpix_per_unit)
+{
+    for (int idata=0; idata<len; idata++) {
+	double xd = (x0 + idata) * xpix_per_unit;
+	int x = iroundpos(xd),
+	    y = xypixels[idata*2+1];
+	unsigned color = from_cmap(cmap+zlevels[idata]*3);
+	draw_datum(canvas, ystride, bmap, mapw, maph, x, y, axis_xywh, color);
+    }
+}
+
+static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle, double xpix_per_unit) {
     int axis_area[] = xywh_to_area(args->axis_xywh);
     unsigned carry = 0;
     for (int i=0; i<args->len-1; i++) {
@@ -497,12 +527,21 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 }
 
 static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-    double yxmin[] = {data->yxaxis[0]->min, data->yxaxis[1]->min};
-    double yxdiff[] = {data->yxaxis[0]->max - yxmin[0], data->yxaxis[1]->max - yxmin[1]};
+    double yxzmin[] = {
+	data->yxaxis[0]->min,
+	data->yxaxis[1]->min,
+	data->caxis ? data->caxis->min : 0,
+    };
+    double yxzdiff[] = {
+	data->yxaxis[0]->max - yxzmin[0],
+	data->yxaxis[1]->max - yxzmin[1],
+	data->caxis ? data->caxis->max - yxzmin[2] : 0,
+    };
     const int *xywh = data->yxaxis[0]->axes->ro_inner_xywh;
     int yxlen[] = {xywh[3], xywh[2]};
     const long npoints = 1024;
     short xypixels[npoints*2];
+    unsigned char zlevels[npoints];
 
     int width, height, marker;
     width = height = iroundpos(data->markersize * axesheight);
@@ -512,18 +551,32 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
     int line_thickness = iroundpos(data->linestyle.thickness * axesheight);
     if (line_thickness < 1) line_thickness = 1;
 
-    double xpix_per_unit = xywh[2] / yxdiff[1]; // Used if x is not given.
+    double xpix_per_unit = xywh[2] / yxzdiff[1]; // Used if x is not given.
 
     for (long istart=0; istart<data->length; ) {
 	long iend = min(istart+npoints, data->length);
 	if (data->yxzdata[1])
-	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxmin[1], yxdiff[1], yxlen[1]);
-	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxmin[0], yxdiff[0], yxlen[0]);
+	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1]);
+	if (data->yxzdata[2])
+	    get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255);
+	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0]);
 	if (marker) {
-	    if (data->yxzdata[1])
-		draw_data_xy(xypixels, istart, iend-istart, canvas, ystride, xywh, bmap, width, height, data->color);
-	    else
-		draw_data_x(xypixels, istart, iend-istart, canvas, ystride, xywh, bmap, width, height, data->color, xpix_per_unit);
+	    if (data->yxzdata[1]) {
+		if (data->yxzdata[2])
+		    draw_data_xyc(xypixels, zlevels, istart, iend-istart, canvas, ystride,
+			xywh, bmap, width, height, data->caxis->cmap);
+		else
+		    draw_data_xy(xypixels, istart, iend-istart, canvas, ystride,
+			xywh, bmap, width, height, data->color);
+	    }
+	    else {
+		if (data->yxzdata[2])
+		    draw_data_yc(xypixels, zlevels, istart, iend-istart, canvas, ystride,
+			xywh, bmap, width, height, data->caxis->cmap, xpix_per_unit);
+		else
+		    draw_data_y(xypixels, istart, iend-istart, canvas, ystride,
+			xywh, bmap, width, height, data->color, xpix_per_unit);
+	    }
 	}
 	if (data->linestyle.style) {
 	    struct _cplot_line_args args = {
@@ -538,7 +591,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	    if (data->yxzdata[1])
 		connect_data_xy(&args, &data->linestyle);
 	    else
-		connect_data_x(&args, &data->linestyle, xpix_per_unit);
+		connect_data_y(&args, &data->linestyle, xpix_per_unit);
 	}
 	istart = iend;
     }

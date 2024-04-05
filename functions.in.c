@@ -22,6 +22,16 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
     }
 }
 
+static void get_datalevels_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axismin, double axisdiff, float scale) {
+    const $dtype *data = vdata;
+    data += istart;
+    int len = iend - istart;
+    for (int i=0; i<len; i++) {
+	float pos = (data[i] - axismin) / axisdiff;
+	out[i] = iround(pos*scale);
+    }
+}
+
 static double get_min_@dtype(const void *vdata, long length) {
     const $dtype *data = vdata;
     double min = DBL_MAX;

@@ -1,5 +1,7 @@
 #ifndef __cplot_h__
 #define __cplot_h__
+#define CMH_ENUM_ONLY
+#include "cmh_colormaps.h"
 
 #define cplot_notype 0
 #define cplot_i1 (10 + sizeof(char))
@@ -115,6 +117,13 @@ struct cplot_axis {
     int ro_line[4], ro_tick_area[4], ro_linetick_area[4];
 };
 
+struct cplot_coloraxis {
+    struct cplot_axes *axes;
+    double min, max;
+    int range_isset;
+    unsigned char *cmap;
+};
+
 enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};
 
 struct cplot_axistext {
@@ -133,6 +142,7 @@ struct cplot_data {
     int yxztype[3];
     long length;
     struct cplot_axis *yxaxis[2];
+    struct cplot_coloraxis *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int owner[3];
@@ -156,6 +166,8 @@ struct cplot_axes {
     int startcanvas;
     struct cplot_axis **axis;
     int naxis, mem_axis;
+    struct cplot_coloraxis **caxis;
+    int ncoloraxis, mem_coloraxis;
     struct ttra *ttra;
     int ro_inner_xywh[4];
     struct cplot_data **data;
@@ -188,6 +200,7 @@ struct cplot_args {
     int ytype, xtype, ztype;
     long len;
     struct cplot_axis *yaxis, *xaxis;
+    struct cplot_coloraxis *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: minbit, maxbit
     int yxzowner[3];
@@ -208,12 +221,32 @@ struct cplot_drawarea {
     int axeswidth, axesheight, ystride;
 };
 
-#define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){.ydata=(y), .ytype=cplot_type(*(y)), __VA_ARGS__})
+#define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
+    .ydata=(y),							\
+    .ytype=cplot_type(*(y)),					\
+    __VA_ARGS__							\
+    })
 #define cplot_yx(y, x, ...) cplot_plot_inl((struct cplot_args){	\
     .ydata=(y),							\
     .xdata=(x),							\
     .ytype=cplot_type(*(y)),					\
     .xtype=cplot_type(*(x)),					\
+    __VA_ARGS__							\
+    })
+#define cplot_yz(y, z, ...) cplot_plot_inl((struct cplot_args){	\
+    .ydata=(y),							\
+    .zdata=(z),							\
+    .ytype=cplot_type(*(y)),					\
+    .ztype=cplot_type(*(z)),					\
+    __VA_ARGS__							\
+    })
+#define cplot_yxz(y, x, z, ...) cplot_plot_inl((struct cplot_args){	\
+    .ydata=(y),							\
+    .xdata=(x),							\
+    .zdata=(z),							\
+    .ytype=cplot_type(*(y)),					\
+    .xtype=cplot_type(*(x)),					\
+    .ztype=cplot_type(*(z)),					\
     __VA_ARGS__							\
     })
 

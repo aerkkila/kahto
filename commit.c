@@ -227,11 +227,15 @@ static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2]) {
 }
 
 int cplot_axes_commit(struct cplot_axes *axes) {
+    for (int i=0; i<axes->ncoloraxis; i++)
+	if (axes->caxis[i]->range_isset != (minbit | maxbit))
+	    coloraxis_init_range(axes->caxis[i]);
+
     float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
     for (int i=0; i<axes->naxis; i++) {
 	struct cplot_axis *axis = axes->axis[i];
 	if (axis->range_isset != (minbit | maxbit))
-	    axis_update_range(axis);
+	    axis_init_range(axis);
 	if (axis->pos != (int)axis->pos)
 	    continue;
 	if (axis->ticks->ticker.init)
