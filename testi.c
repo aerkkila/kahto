@@ -65,7 +65,7 @@ int main() {
 	    y[i] = i-pit/2;
 	    y[i] *= y[i];
 	}
-	layout->axes[1] = cplot_y(y, .len=pit, .linestyle.style=1, .yxzowner[0]=1, .label="paraabeli");
+	layout->axes[1] = cplot_y(y, .len=pit, .linestyle.style=1, .yxzowner[0]=1, .marker="x", .literal_marker=1, .color=0xdd0077c7, .label="paraabeli");
 	struct cplot_ticker *tk = &layout->axes[1]->axis[cplot_iy0axis]->ticks->ticker;
 	tk->init = cplot_init_ticker_arbitrary_relcoord;
 	tk->tickerdata.arb.nticks = 5;

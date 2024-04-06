@@ -496,10 +496,16 @@ static void init_datastyle(struct cplot_data *data) {
 	data->markersize = 1.0 / 90;
     if (!data->marker)
 	data->marker = "o";
-    if (!data->color)
-	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor++) % cplot_ncolors];
-    if (!data->linestyle.color)
-	data->linestyle.color = data->color;
+    int next_color = 0;
+    if (!data->color) {
+	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
+	next_color = 1;
+    }
+    if (!data->linestyle.color) {
+	data->linestyle.color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
+	next_color = 1;
+    }
+    data->yxaxis[0]->axes->icolor += next_color;
     if (!data->linestyle.thickness)
 	data->linestyle.thickness = 1.0 / 600;
 }

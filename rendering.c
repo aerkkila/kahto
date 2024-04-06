@@ -385,6 +385,26 @@ static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignmen
     return 0;
 }
 
+static void init_plus(unsigned char *to, int tow, int toh) {
+    float rside = min(tow, toh) / 15.0;
+    float x0 = tow*0.5 - rside,
+	  x1 = tow*0.5 + rside;
+    float y0 = toh*0.5 - rside,
+	  y1 = toh*0.5 + rside;
+    for (int j=0; j<toh; j++) {
+	float a = y0 - j;
+	float b = j+1 - y1;
+	float yfrac = 1.0 - a * (a>0) - b * (b>0);
+	for (int i=0; i<tow; i++) {
+	    float a = x0 - i;
+	    float b = i+1 - x1;
+	    float xfrac = 1.0 - a * (a>0) - b * (b>0);
+	    float frac = max(yfrac, xfrac);
+	    to[j*tow+i] = frac*255 * (frac >= 0);
+	}
+    }
+}
+
 static void init_circle(unsigned char *to, int tow, int toh) {
     int radius = min(tow, toh) / 2;
     to += radius * tow + radius;
@@ -543,13 +563,18 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
 	ttra_set_fontheight(ttra, *height);
 	bmap = ttra_get_bitmap(ttra, data->marker, width, height);
+	/* bitmap is probably smaller than fontheight */
+	ttra_set_fontheight(ttra, ttra->fontheight * ttra->fontheight / (float)*height);
+	bmap = ttra_get_bitmap(ttra, data->marker, width, height);
     }
-    else if (!data->marker || data->marker[0] == ' ')
+    else if (!data->marker)
 	*has_marker = 0;
-    else if (data->marker[0] == '.')
-	bmap = NULL;
-    else
-	init_circle(bmap, *width, *height);
+    else switch (*data->marker) {
+	case ' ': *has_marker = 0; break;
+	case '.': bmap = NULL; break;
+	case '+': init_plus(bmap, *width, *height); break;
+	default: init_circle(bmap, *width, *height); break;
+    }
     return bmap;
 }
 
@@ -587,6 +612,21 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	if (data->yxzdata[2])
 	    get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255);
 	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0]);
+	if (data->linestyle.style) {
+	    struct _cplot_line_args args = {
+		.xypixels = xypixels,
+		.x0 = istart,
+		.len = iend-istart,
+		.canvas = canvas,
+		.ystride = ystride,
+		.axis_xywh = xywh,
+		.axesheight = axesheight,
+	    };
+	    if (data->yxzdata[1])
+		connect_data_xy(&args, &data->linestyle);
+	    else
+		connect_data_y(&args, &data->linestyle, xpix_per_unit);
+	}
 	if (marker) {
 	    if (data->yxzdata[1]) {
 		if (data->yxzdata[2])
@@ -605,21 +645,6 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 			xywh, bmap, width, height, data->color, xpix_per_unit);
 	    }
 	}
-	if (data->linestyle.style) {
-	    struct _cplot_line_args args = {
-		.xypixels = xypixels,
-		.x0 = istart,
-		.len = iend-istart,
-		.canvas = canvas,
-		.ystride = ystride,
-		.axis_xywh = xywh,
-		.axesheight = axesheight,
-	    };
-	    if (data->yxzdata[1])
-		connect_data_xy(&args, &data->linestyle);
-	    else
-		connect_data_y(&args, &data->linestyle, xpix_per_unit);
-	}
 	istart = iend;
     }
 }
@@ -632,12 +657,6 @@ static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea ar
     int *xywh = data->yxaxis[0]->axes->ro_inner_xywh;
     x0 -= xywh[0];
     y0 -= xywh[1];
-    if (marker) {
-	if (data->yxzdata[2])
-	    draw_datum_cmap(area.canvas, area.ystride, bmap, width, height, x0, y0, xywh, data->caxis->cmap);
-	else
-	    draw_datum(area.canvas, area.ystride, bmap, width, height, x0, y0, xywh, data->color);
-    }
     if (data->linestyle.style) {
 	short xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
 	struct _cplot_line_args args = {
@@ -649,6 +668,12 @@ static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea ar
 	    .axesheight = area.axesheight,
 	};
 	connect_data_xy(&args, &data->linestyle);
+    }
+    if (marker) {
+	if (data->yxzdata[2])
+	    draw_datum_cmap(area.canvas, area.ystride, bmap, width, height, x0, y0, xywh, data->caxis->cmap);
+	else
+	    draw_datum(area.canvas, area.ystride, bmap, width, height, x0, y0, xywh, data->color);
     }
 }
 
@@ -705,6 +730,8 @@ static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea are
 	if (!axes->data[i]->label)
 	    continue;
 	legend_draw_marker(axes->data[i], area, leg_x0 + linewidth + text_left/2, leg_y0 + (rownumber+++0.5)*rowh, text_left);
+	/* drawing a literal marker changes fontheight */
+	ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
 	if (axes->data[i]->label)
 	    ttra_printf(axes->ttra, "%s\n", axes->data[i]->label);
     }
