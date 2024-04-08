@@ -119,9 +119,12 @@ struct cplot_axis {
 
 struct cplot_coloraxis {
     struct cplot_axes *axes;
+    int side; // isy + side*2: x0=0, y0=1, x1=2, y1=3; not visible < 0
+    float po[4]; // parallel and orthogonal lengths
     double min, max;
     int range_isset;
     unsigned char *cmap;
+    int ro_area[4];
 };
 
 enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};

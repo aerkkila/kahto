@@ -115,6 +115,9 @@ struct cplot_coloraxis* cplot_coloraxis_new(struct cplot_axes *axes) {
     caxis->axes = axes;
     caxis->max = 1;
     caxis->cmap = cmh_colormaps[default_colormap].map;
+    caxis->side = 2;
+    caxis->po[0] = 1;
+    caxis->po[1] = 1.0/30;
     return caxis;
 }
 
@@ -489,6 +492,9 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
     for (int i=0; i<axes->ndata; i++)
 	cplot_data_render(axes->data[i], canvas, axes->wh[0], axes->wh[1], ystride);
     cplot_legend_draw(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
+
+    for (int i=axes->ncoloraxis-1; i>=0; i--)
+	cplot_coloraxis_draw(axes->caxis[i], canvas, ystride);
 }
 
 static void init_datastyle(struct cplot_data *data) {

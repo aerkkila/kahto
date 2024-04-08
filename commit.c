@@ -226,6 +226,27 @@ static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2], int m
     xywh[3] = iroundpos((1 - overgoing[1][1][0] - overgoing[1][1][1]) * axes->wh[1]) - xywh[1] - margin[3];
 }
 
+void cplot_coloraxis_commit(struct cplot_coloraxis *caxis, int margin[4]) {
+    if (caxis->side < 0)
+	return;
+    int wh[2];
+    int isx = caxis->side % 2 != 0;
+    wh[!isx] = iroundpos(caxis->po[0] * caxis->axes->wh[1]) - margin[!isx] - margin[!isx+2];
+    wh[isx]  = iroundpos(caxis->po[1] * caxis->axes->wh[1]);
+
+    int space = caxis->axes->wh[!isx] - margin[!isx] - margin[!isx+2];
+    caxis->ro_area[!isx] = margin[!isx] + (space - wh[!isx]) / 2; // centralize in the parallel direction
+    caxis->ro_area[!isx+2] = caxis->ro_area[!isx] + wh[!isx];
+
+    if (caxis->side / 2 == 0)
+	caxis->ro_area[isx] = margin[isx];
+    else
+	caxis->ro_area[isx] = caxis->axes->wh[isx] - margin[isx+2] - wh[isx];
+    caxis->ro_area[isx+2] = caxis->ro_area[isx] + wh[isx];
+
+    margin[caxis->side] += wh[isx];
+}
+
 int cplot_axes_commit(struct cplot_axes *axes) {
     for (int i=0; i<axes->ncoloraxis; i++)
 	if (axes->caxis[i]->range_isset != (minbit | maxbit))
@@ -237,6 +258,9 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	iroundpos(axes->wh[1] * axes->margin[2]),
 	iroundpos(axes->wh[1] * axes->margin[3]),
     };
+
+    for (int i=axes->ncoloraxis-1; i>=0; i--) // first in the list is the closest to the center
+	cplot_coloraxis_commit(axes->caxis[i], margin);
 
     float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
     for (int i=0; i<axes->naxis; i++) {
