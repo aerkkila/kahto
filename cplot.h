@@ -170,6 +170,7 @@ struct cplot_axes {
     int ncoloraxis, mem_coloraxis;
     struct ttra *ttra;
     int ro_inner_xywh[4];
+    float margin[4];
     struct cplot_data **data;
     int ndata, mem_data, icolor;
 

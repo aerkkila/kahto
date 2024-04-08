@@ -217,19 +217,26 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
 	out[!side] = other;
 }
 
-static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2]) {
+static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2], int margin[4]) {
     float ratio = (float)axes->wh[0] / axes->wh[1];
-    int *axis_xywh = axes->ro_inner_xywh;
-    axis_xywh[0] = iroundpos((overgoing[0][0][0] + overgoing[0][0][1]) * axes->wh[1]);
-    axis_xywh[1] = iroundpos((overgoing[1][0][0] + overgoing[1][0][1]) * axes->wh[1]);
-    axis_xywh[2] = iroundpos((ratio - overgoing[0][1][0] - overgoing[0][1][1]) * axes->wh[1]) - axis_xywh[0];
-    axis_xywh[3] = iroundpos((1 - overgoing[1][1][0] - overgoing[1][1][1]) * axes->wh[1]) - axis_xywh[1];
+    int *xywh = axes->ro_inner_xywh;
+    xywh[0] = iroundpos((overgoing[0][0][0] + overgoing[0][0][1]) * axes->wh[1]) + margin[0];
+    xywh[1] = iroundpos((overgoing[1][0][0] + overgoing[1][0][1]) * axes->wh[1]) + margin[1];
+    xywh[2] = iroundpos((ratio - overgoing[0][1][0] - overgoing[0][1][1]) * axes->wh[1]) - xywh[0] - margin[2];
+    xywh[3] = iroundpos((1 - overgoing[1][1][0] - overgoing[1][1][1]) * axes->wh[1]) - xywh[1] - margin[3];
 }
 
 int cplot_axes_commit(struct cplot_axes *axes) {
     for (int i=0; i<axes->ncoloraxis; i++)
 	if (axes->caxis[i]->range_isset != (minbit | maxbit))
 	    coloraxis_init_range(axes->caxis[i]);
+
+    int margin[4] = {
+	iroundpos(axes->wh[1] * axes->margin[0]),
+	iroundpos(axes->wh[1] * axes->margin[1]),
+	iroundpos(axes->wh[1] * axes->margin[2]),
+	iroundpos(axes->wh[1] * axes->margin[3]),
+    };
 
     float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
     for (int i=0; i<axes->naxis; i++) {
@@ -242,7 +249,7 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    axis->ticks->ticker.init(&axis->ticks->ticker, axis->min, axis->max);
 	cplot_axis_commit_orthogonal(axis, overgoing[axis->x_or_y=='x'][axis->pos==1]);
     }
-    update_xywh(axes, overgoing);
+    update_xywh(axes, overgoing, margin);
 
     for (int iloop=0; iloop<axes->naxis*20; iloop++) { // while (1) but prevent theoretical infinite loop
 	for (int i=0; i<axes->naxis; i++) {
@@ -254,7 +261,7 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	}
 	break;
 parallel_again:
-	update_xywh(axes, overgoing);
+	update_xywh(axes, overgoing, margin);
     }
 
     int *axis_xywh = axes->ro_inner_xywh;
