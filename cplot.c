@@ -103,6 +103,7 @@ struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
     axis->min = 0;
     axis->max = 1;
     axis->x_or_y = x_or_y;
+    axis->ticks = cplot_ticks_new(axis);
     return axis;
 }
 
@@ -140,16 +141,9 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->rowheight = 2.4*ticks->length;
     ticks->have_labels = 1;
 
-    if (axis->pos >= 0.5) {
-	ticks->crossaxis = 0;
-	ticks->hvalign_text[1] = 0;
-	ticks->ascending = 1;
-    }
-    else {
-	ticks->crossaxis = -1;
-	ticks->hvalign_text[1] = -1;
-	ticks->ascending = 0;
-    }
+    ticks->crossaxis = cplot_automatic;
+    ticks->hvalign_text[1] = cplot_automatic;
+    ticks->ascending = cplot_automatic;
 
     return ticks;
 }
@@ -162,12 +156,10 @@ struct cplot_axes* cplot_axes_new() {
     axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
     axes->axis[0] = cplot_axis_new(axes, 'x');
     axes->axis[0]->pos = 1; // bottom x-axis
-    axes->axis[0]->ticks = cplot_ticks_new(axes->axis[0]);
     axes->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
 
     axes->axis[1] = cplot_axis_new(axes, 'y');
     axes->axis[1]->pos = 0; // left y-axis
-    axes->axis[1]->ticks = cplot_ticks_new(axes->axis[1]);
     axes->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
 
     axes->wh[0] = cplot_default_width;
@@ -232,19 +224,19 @@ static void coloraxis_init_range(struct cplot_coloraxis *caxis) {
 	    case 0:
 		get_minmax[data->yxztype[2]](data->yxzdata[2], data->length, data->minmax[2]);
 		break;
-	    case maxbit:
+	    case cplot_maxbit:
 		data->minmax[2][0] = get_min[data->yxztype[2]](data->yxzdata[2], data->length);
 		break;
-	    case minbit:
+	    case cplot_minbit:
 		data->minmax[2][1] = get_max[data->yxztype[2]](data->yxzdata[2], data->length);
 		break;
 	    default: break;
 	}
-	data->have_minmax[2] = minbit | maxbit;
+	data->have_minmax[2] = cplot_minbit | cplot_maxbit;
 	update_min(caxis->min, data->minmax[2][0]);
 	update_max(caxis->max, data->minmax[2][1]);
     }
-    caxis->range_isset = minbit | maxbit;
+    caxis->range_isset = cplot_minbit | cplot_maxbit;
 }
 
 static void axis_init_range(struct cplot_axis *axis) {
@@ -261,8 +253,8 @@ static void axis_init_range(struct cplot_axis *axis) {
 		case 0: data->minmax[isx][0] = 0;
 			data->minmax[isx][1] = data->length-1;
 			break;
-		case maxbit: data->minmax[isx][0] = 0; break;
-		case minbit: data->minmax[isx][1] = data->length-1; break;
+		case cplot_maxbit: data->minmax[isx][0] = 0; break;
+		case cplot_minbit: data->minmax[isx][1] = data->length-1; break;
 		default: break;
 	    }
 	else
@@ -270,20 +262,20 @@ static void axis_init_range(struct cplot_axis *axis) {
 		case 0:
 		    get_minmax[data->yxztype[isx]](data->yxzdata[isx], data->length, data->minmax[isx]);
 		    break;
-		case maxbit:
+		case cplot_maxbit:
 		    data->minmax[isx][0] = get_min[data->yxztype[isx]](data->yxzdata[isx], data->length);
 		    break;
-		case minbit:
+		case cplot_minbit:
 		    data->minmax[isx][1] = get_max[data->yxztype[isx]](data->yxzdata[isx], data->length);
 		    break;
 		default: break;
 	    }
 
-	data->have_minmax[isx] = minbit | maxbit;
+	data->have_minmax[isx] = cplot_minbit | cplot_maxbit;
 	update_min(axis->min, data->minmax[isx][0]);
 	update_max(axis->max, data->minmax[isx][1]);
     }
-    axis->range_isset = minbit | maxbit;
+    axis->range_isset = cplot_minbit | cplot_maxbit;
 }
 
 static int rectangle_nexti(int j, int i, int rwidth, int rheight, const short (*right)[], const short (*down)[], int w, int h) {

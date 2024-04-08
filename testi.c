@@ -42,9 +42,7 @@ int main() {
 
     struct cplot_axis *y1axis = cplot_axis_new(layout->axes[3], 'y');
     y1axis->pos = 1;
-    y1axis->ticks = cplot_ticks_new(y1axis);
     struct cplot_axis *x1axis = cplot_axis_new(layout->axes[3], 'x');
-    x1axis->ticks = cplot_ticks_new(x1axis);
     cplot_yx(ydata2, xdata2, .len=pit2, .xaxis=x1axis, .yaxis=y1axis, .linestyle.style=1, .markersize=1.0/40, .label = "iso pallo");
     cplot_axislabel(x1axis, "x-akseli ylhäällä");
     cplot_axislabel(y1axis, "oikia");
@@ -76,7 +74,6 @@ int main() {
 	    kohina[i] = rand() % pit + i;
 	struct cplot_axis *y1axis = cplot_axis_new(layout->axes[1], 'y');
 	y1axis->pos = 1;
-	y1axis->ticks = cplot_ticks_new(y1axis);
 	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis, .markersize=1/60.0, .label="värillinen kohina");
     }
 

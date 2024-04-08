@@ -26,8 +26,9 @@
 	    /* floating point */ \
 	    : sizeof(a) + 20 ))		/* floating point number is enumerated as size + 20 */
 
-#define minbit 1
-#define maxbit 2
+#define cplot_minbit 1
+#define cplot_maxbit 2
+#define cplot_automatic -9010
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
@@ -98,7 +99,7 @@ struct cplot_ticks {
 
     int have_labels;
     float hvalign_text[2];
-    int ascending; // nimiöt tulevat suurempaan päähän
+    int ascending; // whether labels are in the end and not start
     float rowheight;
 
     int ro_lines[2], ro_labelarea[4], ro_tot_area[4];
@@ -147,7 +148,7 @@ struct cplot_data {
     struct cplot_axis *yxaxis[2];
     struct cplot_coloraxis *caxis;
     double minmax[3][2];
-    char have_minmax[3]; // bits: minbit, maxbit
+    char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     int owner[3];
     char *label;
     /* style */
@@ -206,7 +207,7 @@ struct cplot_args {
     struct cplot_axis *yaxis, *xaxis;
     struct cplot_coloraxis *caxis;
     double minmax[3][2];
-    char have_minmax[3]; // bits: minbit, maxbit
+    char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     int yxzowner[3];
     char *label;
 

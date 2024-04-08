@@ -24,6 +24,25 @@ void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
     } while (0);
 }
 
+static void cplot_ticks_set_parameters(struct cplot_ticks *ticks) {
+    if (ticks->axis->pos >= 0.5) {
+	if (ticks->hvalign_text[1] == cplot_automatic)
+	    ticks->hvalign_text[1] = 0;
+	if (ticks->crossaxis == cplot_automatic)
+	    ticks->crossaxis = 0;
+	if (ticks->ascending == cplot_automatic)
+	    ticks->ascending = 1;
+    }
+    else {
+	if (ticks->hvalign_text[1] == cplot_automatic)
+	    ticks->hvalign_text[1] = -1;
+	if (ticks->crossaxis == cplot_automatic)
+	    ticks->crossaxis = -1;
+	if (ticks->ascending == cplot_automatic)
+	    ticks->ascending = 0;
+    }
+}
+
 void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axis_xywh[4]) {
     struct ttra *ttra = NULL;
     if (ticks->have_labels) {
@@ -113,9 +132,8 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], in
 	axis->ro_tick_area[isx+2] -= halfthickness;
     }
 
-    if (axis->ticks) {
+    if (axis->ticks)
 	cplot_ticks_commit(axis->ticks, axesheight, axis_xywh);
-    }
 
     axis->ro_linetick_area[0] = min(axis->ro_line[0], axis->ro_tick_area[0]);
     axis->ro_linetick_area[1] = min(axis->ro_line[1], axis->ro_tick_area[1]);
@@ -249,7 +267,7 @@ void cplot_coloraxis_commit(struct cplot_coloraxis *caxis, int margin[4]) {
 
 int cplot_axes_commit(struct cplot_axes *axes) {
     for (int i=0; i<axes->ncoloraxis; i++)
-	if (axes->caxis[i]->range_isset != (minbit | maxbit))
+	if (axes->caxis[i]->range_isset != (cplot_minbit | cplot_maxbit))
 	    coloraxis_init_range(axes->caxis[i]);
 
     int margin[4] = {
@@ -265,7 +283,9 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
     for (int i=0; i<axes->naxis; i++) {
 	struct cplot_axis *axis = axes->axis[i];
-	if (axis->range_isset != (minbit | maxbit))
+	if (axis->ticks)
+	    cplot_ticks_set_parameters(axis->ticks);
+	if (axis->range_isset != (cplot_minbit | cplot_maxbit))
 	    axis_init_range(axis);
 	if (axis->pos != (int)axis->pos)
 	    continue;
