@@ -51,9 +51,9 @@ static inline int __attribute__((const)) iceil(float f) {
 }
 
 static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *axis) {
-    switch (axis->x_or_y) {
-	case 'x': return (cplot_f4si){0, axis->pos, 1, axis->pos};
-	case 'y': return (cplot_f4si){axis->pos, 0, axis->pos, 1};
+    switch (axis->direction) {
+	case 0: return (cplot_f4si){0, axis->pos, 1, axis->pos};
+	case 1: return (cplot_f4si){axis->pos, 0, axis->pos, 1};
 	default: __builtin_unreachable();
     }
 }
@@ -102,7 +102,7 @@ struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
     axis->linestyle.style = 1;
     axis->min = 0;
     axis->max = 1;
-    axis->x_or_y = x_or_y;
+    axis->direction = x_or_y != 'x';
     axis->ticks = cplot_ticks_new(axis);
     return axis;
 }
@@ -116,7 +116,8 @@ struct cplot_coloraxis* cplot_coloraxis_new(struct cplot_axes *axes) {
     caxis->axes = axes;
     caxis->max = 1;
     caxis->cmap = cmh_colormaps[default_colormap].map;
-    caxis->side = 2;
+    caxis->direction = 1;
+    caxis->pos = 1;
     caxis->po[0] = 1;
     caxis->po[1] = 1.0/30;
     return caxis;
@@ -124,7 +125,7 @@ struct cplot_coloraxis* cplot_coloraxis_new(struct cplot_axes *axes) {
 
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     struct cplot_ticks *ticks = calloc(1, sizeof(struct cplot_ticks));
-    ticks->axis = axis;
+    ticks->axis = (void*)axis;
     ticks->color = fg;
     ticks->ticker.init = cplot_init_ticker_default;
     ticks->length = 1.0 / 80;
@@ -240,7 +241,7 @@ static void coloraxis_init_range(struct cplot_coloraxis *caxis) {
 }
 
 static void axis_init_range(struct cplot_axis *axis) {
-    int isx = axis->x_or_y == 'x';
+    int isx = axis->direction == 0;
     axis->min = DBL_MAX;
     axis->max = -DBL_MAX;
     for (int idata=0; idata<axis->axes->ndata; idata++) {
@@ -394,7 +395,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	ttra_set_fontheight(ttra, ticks->rowheight*axesheight);
     }
 
-    int isx = ticks->axis->x_or_y == 'x';
+    int isx = ticks->axis->direction == 0;
     int line_px[4];
     line_px[isx+0] = ticks->ro_lines[0];
     line_px[isx+2] = ticks->ro_lines[1];
@@ -424,7 +425,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 }
 
 void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]) {
-    int coord = axistext->axis->x_or_y == 'y';
+    int coord = axistext->axis->direction == 1;
     int *axis_tot_area = axistext->axis->ro_linetick_area;
     int axislength = axis_tot_area[coord+2] - axis_tot_area[coord];
     xy[coord] = iroundpos(axis_tot_area[coord] + axislength * axistext->pos);
@@ -443,7 +444,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
     ttra_print(ttra, "\033[0m");
     ttra_set_fontheight(ttra, axistext->rowheight*axesheight);
     int xy[2];
-    int coord = axistext->axis->x_or_y == 'y';
+    int coord = axistext->axis->direction == 1;
     int *axis_tot_area = axistext->axis->ro_linetick_area;
     int axislength = axis_tot_area[coord+2] - axis_tot_area[coord];
     xy[coord] = iroundpos(axis_tot_area[coord] + axislength * axistext->pos);
@@ -455,7 +456,7 @@ void cplot_axis_render(struct cplot_axis *axis, unsigned *canvas, int axeswidth,
     float thickness = axis->linestyle.thickness * axesheight;
     int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
 
-    int isx = axis->x_or_y == 'x';
+    int isx = axis->direction == 0;
     area[isx+2] += (thickness+1)/2;
     area[isx] -= (thickness+1)/2;
     if (area[isx] < 0) area[isx] = 0;
@@ -567,7 +568,7 @@ void cplot_axislabel(struct cplot_axis *axis, char *label) {
 	.hvalign = {-0.5, -1 * (axis->pos < 0.5)},
 	.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
 	.axis = axis,
-	.rotation100 = 25 * (axis->x_or_y == 'y'),
+	.rotation100 = 25 * (axis->direction == 1),
 	.type = cplot_axistext_label,
     };
     cplot_add_axistext(axis, text);

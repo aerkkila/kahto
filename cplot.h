@@ -85,12 +85,22 @@ struct cplot_ticker {
     union cplot_tickerdata tickerdata;
 };
 
+/* shared between coloraxis and axis */
+struct cplot_genaxis {
+    struct cplot_axes *axes;
+    int direction; // x=0, y=1
+    float pos;
+    double min, max;
+    int range_isset, ro_line[4], ro_tick_area[4];
+    struct cplot_ticks *ticks;
+};
+
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
  *	1: Ticks end at the axis i.e. are left or above.
  */
 struct cplot_ticks {
-    struct cplot_axis *axis;
+    struct cplot_genaxis *axis;
     struct cplot_ticker ticker;
     unsigned color;
     float crossaxis, length, thickness;
@@ -106,26 +116,32 @@ struct cplot_ticks {
 };
 
 struct cplot_axis {
+    /* shared between genaxis, coloraxis and axis */
     struct cplot_axes *axes;
-    int x_or_y;
+    int direction; // x=0, y=1
     float pos;
     double min, max;
-    int range_isset;
+    int range_isset, ro_line[4], ro_tick_area[4];
+    struct cplot_ticks *ticks;
+    /* end shared */
     struct cplot_linestyle linestyle;
     struct cplot_axistext **text;
     int mem_text, ntext;
-    struct cplot_ticks *ticks;
-    int ro_line[4], ro_tick_area[4], ro_linetick_area[4];
+    int ro_linetick_area[4];
 };
 
 struct cplot_coloraxis {
+    /* shared between genaxis, coloraxis and axis */
     struct cplot_axes *axes;
-    int side; // isy + side*2: x0=0, y0=1, x1=2, y1=3; not visible < 0
-    float po[4]; // parallel and orthogonal lengths
+    int direction; // x=0, y=1
+    float pos;
     double min, max;
-    int range_isset;
+    int range_isset, ro_line[4], ro_tick_area[4];
+    struct cplot_ticks *ticks;
+    /* end shared */
+    float po[4]; // parallel and orthogonal lengths
     unsigned char *cmap;
-    int ro_area[4];
+    int ro_area[4], ro_tot_area[4];
 };
 
 enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};

@@ -50,7 +50,7 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
 	ttra_set_fontheight(ttra, ticks->rowheight*axesheight);
     }
 
-    int isx = ticks->axis->x_or_y == 'x';
+    int isx = ticks->axis->direction == 0;
     int line_px[4];
     line_px[isx] = axis_xywh[isx] +
 	iroundpos(ticks->axis->pos * axis_xywh[isx+2] + ticks->crossaxis * ticks->length * axesheight);
@@ -89,7 +89,7 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
     ticks->ro_tot_area[!isx+0] = min(ticks->ro_labelarea[!isx+0], minmaxpos[0]);
     ticks->ro_tot_area[!isx+2] = max(ticks->ro_labelarea[!isx+2], minmaxpos[1]);
 
-    struct cplot_axis *a = ticks->axis;
+    struct cplot_genaxis *a = ticks->axis;
     update_min(a->ro_tick_area[0], ticks->ro_tot_area[0]);
     update_min(a->ro_tick_area[1], ticks->ro_tot_area[1]);
     update_max(a->ro_tick_area[2], ticks->ro_tot_area[2]);
@@ -100,7 +100,7 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
 void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], int axesheight, const int axis_xywh[4]) {
     cplot_f4si line = axis_get_line(axis);
     int side = axis->pos >= 0.5;
-    int isx = axis->x_or_y == 'x';
+    int isx = axis->direction == 0;
     int iover[] = {iroundpos(overgoing[0] * axesheight), iroundpos(overgoing[1] * axesheight)};
     {
 	int tmp[] = {
@@ -145,7 +145,7 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], in
 int cplot_axis_commit_parallel(struct cplot_axis *axis, float *out[2], int xywh[4]) {
     struct cplot_ticks *tk = axis->ticks;
     struct ttra *ttra = axis->axes->ttra;
-    int isx = axis->x_or_y == 'x', change = 0;
+    int isx = axis->direction == 0, change = 0;
 
     if (tk && tk->have_labels) {
 	ttra_set_fontheight(ttra, iroundpos(tk->rowheight * axis->axes->wh[1]));
@@ -191,7 +191,7 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
 
     struct ttra *ttra = axis->axes->ttra;
     ttra_set_fontheight(ttra, 50);
-    int isx = axis->x_or_y == 'x';
+    int isx = axis->direction == 0;
     int side = axis->pos >= 0.5;
 
     if (tk->have_labels) {
@@ -245,10 +245,10 @@ static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2], int m
 }
 
 void cplot_coloraxis_commit(struct cplot_coloraxis *caxis, int margin[4]) {
-    if (caxis->side < 0)
+    if (caxis->direction < 0)
 	return;
     int wh[2];
-    int isx = caxis->side % 2 != 0;
+    int isx = !caxis->direction;
     wh[!isx] = iroundpos(caxis->po[0] * caxis->axes->wh[1]) - margin[!isx] - margin[!isx+2];
     wh[isx]  = iroundpos(caxis->po[1] * caxis->axes->wh[1]);
 
@@ -256,13 +256,13 @@ void cplot_coloraxis_commit(struct cplot_coloraxis *caxis, int margin[4]) {
     caxis->ro_area[!isx] = margin[!isx] + (space - wh[!isx]) / 2; // centralize in the parallel direction
     caxis->ro_area[!isx+2] = caxis->ro_area[!isx] + wh[!isx];
 
-    if (caxis->side / 2 == 0)
+    if (caxis->pos < 0.5)
 	caxis->ro_area[isx] = margin[isx];
     else
 	caxis->ro_area[isx] = caxis->axes->wh[isx] - margin[isx+2] - wh[isx];
     caxis->ro_area[isx+2] = caxis->ro_area[isx] + wh[isx];
 
-    margin[caxis->side] += wh[isx];
+    margin[isx + (caxis->pos >= 0.5) * 2] += wh[isx]; // if colorabar is x-direction, it affects y-margin
 }
 
 int cplot_axes_commit(struct cplot_axes *axes) {
@@ -291,14 +291,14 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    continue;
 	if (axis->ticks->ticker.init)
 	    axis->ticks->ticker.init(&axis->ticks->ticker, axis->min, axis->max);
-	cplot_axis_commit_orthogonal(axis, overgoing[axis->x_or_y=='x'][axis->pos==1]);
+	cplot_axis_commit_orthogonal(axis, overgoing[axis->direction==0][axis->pos==1]);
     }
     update_xywh(axes, overgoing, margin);
 
     for (int iloop=0; iloop<axes->naxis*20; iloop++) { // while (1) but prevent theoretical infinite loop
 	for (int i=0; i<axes->naxis; i++) {
 	    struct cplot_axis *axis = axes->axis[i];
-	    int isx = axis->x_or_y == 'x';
+	    int isx = axis->direction == 0;
 	    float *ends[] = {&overgoing[!isx][0][0], &overgoing[!isx][1][1]};
 	    if (cplot_axis_commit_parallel(axis, ends, axes->ro_inner_xywh))
 		goto parallel_again;
@@ -314,7 +314,7 @@ parallel_again:
 
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	struct cplot_axis *axis = axes->axis[iaxis];
-	get_ticklabel_limits_round3(axis, overgoing[axis->x_or_y=='x'][axis->pos==1], axes->wh[1], axis_xywh);
+	get_ticklabel_limits_round3(axis, overgoing[axis->direction==0][axis->pos==1], axes->wh[1], axis_xywh);
     }
 
     commit_legend(axes, axes->wh[0], axes->wh[1]);

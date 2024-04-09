@@ -430,9 +430,9 @@ static inline unsigned from_cmap(const unsigned char *ptr) {
 }
 
 static void cplot_coloraxis_draw(struct cplot_coloraxis *caxis, unsigned *canvas, int ystride) {
-    if (caxis->side < 0)
+    if (caxis->direction < 0)
 	return;
-    int isx = caxis->side % 2 != 0;
+    int isx = caxis->direction == 0;
     int length = caxis->ro_area[!isx+2] - caxis->ro_area[!isx];
 
     if (!isx)
