@@ -52,10 +52,13 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
 
     int isx = ticks->axis->direction == 0;
     int line_px[4];
+    /*
     line_px[isx] = axis_xywh[isx] +
 	iroundpos(ticks->axis->pos * axis_xywh[isx+2] + ticks->crossaxis * ticks->length * axesheight);
     line_px[isx+2] = axis_xywh[isx] +
-	iroundpos(ticks->axis->pos * axis_xywh[isx+2] + (ticks->crossaxis+1) * ticks->length * axesheight);
+	iroundpos(ticks->axis->pos * axis_xywh[isx+2] + (ticks->crossaxis+1) * ticks->length * axesheight);*/
+    line_px[isx] = ticks->axis->ro_line[isx] + ticks->crossaxis * ticks->length * axesheight; // thickness?
+    line_px[isx+2] = ticks->axis->ro_line[isx] + (ticks->crossaxis+1) * ticks->length * axesheight;
 
     ticks->ro_lines[0] = line_px[isx];
     ticks->ro_lines[1] = line_px[isx+2];
@@ -89,7 +92,7 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
     ticks->ro_tot_area[!isx+0] = min(ticks->ro_labelarea[!isx+0], minmaxpos[0]);
     ticks->ro_tot_area[!isx+2] = max(ticks->ro_labelarea[!isx+2], minmaxpos[1]);
 
-    struct cplot_genaxis *a = ticks->axis;
+    struct cplot_axis *a = ticks->axis;
     update_min(a->ro_tick_area[0], ticks->ro_tot_area[0]);
     update_min(a->ro_tick_area[1], ticks->ro_tot_area[1]);
     update_max(a->ro_tick_area[2], ticks->ro_tot_area[2]);
@@ -97,12 +100,11 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
 }
 
 /* axis_xywh on nyt tiedossa ja tikkien lopulliset alueet voidaan määrittää */
-void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], int axesheight, const int axis_xywh[4]) {
+void get_ticklabel_limits_round3(struct cplot_axis *axis, const float overgoing[2], int axesheight, const int axis_xywh[4]) {
     cplot_f4si line = axis_get_line(axis);
     int side = axis->pos >= 0.5;
     int isx = axis->direction == 0;
-    int iover[] = {iroundpos(overgoing[0] * axesheight), iroundpos(overgoing[1] * axesheight)};
-    {
+    if (!axis->outside) {
 	int tmp[] = {
 	    axis_xywh[0] + line[0] * (axis_xywh[2]-1),
 	    axis_xywh[1] + line[1] * (axis_xywh[3]-1),
@@ -110,14 +112,10 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], in
 	    axis_xywh[1] + line[3] * (axis_xywh[3]-1),
 	};
 	memcpy(axis->ro_line, tmp, sizeof(tmp));
-	if (side) {
-	    axis->ro_line[isx] += iover[!side];
-	    axis->ro_line[isx+2] += iover[!side];
-	}
-	else {
-	    axis->ro_line[isx] -= iover[!side];
-	    axis->ro_line[isx+2] -= iover[!side];
-	}
+    }
+    else {
+	axis->ro_area[!isx] = axis->ro_line[!isx] = axis_xywh[!isx];
+	axis->ro_area[!isx+2] = axis->ro_line[!isx] = axis_xywh[!isx] + axis_xywh[!isx+2];
     }
 
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
@@ -139,6 +137,12 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, float overgoing[2], in
     axis->ro_linetick_area[1] = min(axis->ro_line[1], axis->ro_tick_area[1]);
     axis->ro_linetick_area[2] = max(axis->ro_line[2], axis->ro_tick_area[2]);
     axis->ro_linetick_area[3] = max(axis->ro_line[3], axis->ro_tick_area[3]);
+
+    if (!axis->outside) {
+	memcpy(axis->ro_area, axis->ro_line, sizeof(axis->ro_line));
+	axis->ro_area[isx] -= iroundpos(axis->linestyle.thickness * axesheight);
+	axis->ro_area[isx+2] += iroundpos(axis->linestyle.thickness * axesheight);
+    }
 }
 
 /* This function may need to be called multiple times until nothing changes anymore. */
@@ -179,9 +183,38 @@ int cplot_axis_commit_parallel(struct cplot_axis *axis, float *out[2], int xywh[
 }
 
 /* out is in height units */
-void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
-    out[0] = axis->linestyle.thickness / 2;
-    out[1] = axis->linestyle.thickness / 2;
+void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out_[2], int margin[4]) {
+    if (axis->direction < 0)
+	return;
+    int isx = axis->direction == 0;
+    int side = axis->pos >= 0.5;
+
+    float *out = out_;
+    float other_out[2];
+    if (axis->outside)
+	out = other_out;
+
+    if (axis->linestyle.style != cplot_line_none_e) {
+	out[0] = axis->linestyle.thickness / 2;
+	out[1] = axis->linestyle.thickness / 2;
+    }
+    else
+	out[0] = out[1] = 0;
+
+    if (axis->outside) {
+	int wh[2];
+	wh[!isx] = iroundpos(axis->po[0] * axis->axes->wh[1]) - margin[!isx] - margin[!isx+2];
+	wh[isx]  = iroundpos(axis->po[1] * axis->axes->wh[1]);
+
+	int space = axis->axes->wh[!isx] - margin[!isx] - margin[!isx+2];
+	axis->ro_area[!isx] = margin[!isx] + (space - wh[!isx]) / 2; // centralize in the parallel direction
+	axis->ro_area[!isx+2] = axis->ro_area[!isx] + wh[!isx];
+
+	axis->ro_area[isx] = axis->pos < 0.5 ? margin[isx] : axis->axes->wh[isx] - margin[isx+2] - wh[isx];
+	axis->ro_area[isx+2] = axis->ro_area[isx] + wh[isx];
+
+	margin[isx + (axis->pos >= 0.5) * 2] += wh[isx]; // if this is x-direction, it affects y-margin
+    }
 
     struct cplot_ticks *tk = axis->ticks;
     if (tk && tk->ticker.init) {
@@ -191,8 +224,6 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
 
     struct ttra *ttra = axis->axes->ttra;
     ttra_set_fontheight(ttra, 50);
-    int isx = axis->direction == 0;
-    int side = axis->pos >= 0.5;
 
     if (tk->have_labels) {
 	int nlabels = tk->ticker.tickerdata.common.nticks,
@@ -222,7 +253,7 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
 	if (!axis->text[itext])
 	    continue;
 	struct cplot_axistext *axistext = axis->text[itext];
-	int *area = axistext->ro_area;
+	int area[4];
 	put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!isx], axistext->hvalign[isx], axistext->rotation100, area, 1);
 	float frac = (float)area[isx+2] / ttra->fontheight * axistext->rowheight;
 	update_max(max_negpos[1], frac);
@@ -233,6 +264,17 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out[2]) {
     float other = max_negpos[!side] - out[side];
     if (other > out[!side])
 	out[!side] = other;
+
+    if (axis->outside) {
+	int addroom = iroundpos(out[axis->pos >= 0.5] * axis->axes->wh[1]);
+	margin[isx + (axis->pos >= 0.5) * 2] += addroom;
+	axis->ro_area[isx+0] -= addroom;
+	axis->ro_area[isx+2] -= addroom;
+	axis->ro_line[0] = axis->ro_area[!isx*2];
+	axis->ro_line[1] = axis->ro_area[1 + isx*2];
+	axis->ro_line[2] = axis->ro_area[2];
+	axis->ro_line[3] = axis->ro_area[3];
+    }
 }
 
 static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2], int margin[4]) {
@@ -244,32 +286,7 @@ static void update_xywh(struct cplot_axes *axes, float overgoing[2][2][2], int m
     xywh[3] = iroundpos((1 - overgoing[1][1][0] - overgoing[1][1][1]) * axes->wh[1]) - xywh[1] - margin[3];
 }
 
-void cplot_coloraxis_commit(struct cplot_coloraxis *caxis, int margin[4]) {
-    if (caxis->direction < 0)
-	return;
-    int wh[2];
-    int isx = !caxis->direction;
-    wh[!isx] = iroundpos(caxis->po[0] * caxis->axes->wh[1]) - margin[!isx] - margin[!isx+2];
-    wh[isx]  = iroundpos(caxis->po[1] * caxis->axes->wh[1]);
-
-    int space = caxis->axes->wh[!isx] - margin[!isx] - margin[!isx+2];
-    caxis->ro_area[!isx] = margin[!isx] + (space - wh[!isx]) / 2; // centralize in the parallel direction
-    caxis->ro_area[!isx+2] = caxis->ro_area[!isx] + wh[!isx];
-
-    if (caxis->pos < 0.5)
-	caxis->ro_area[isx] = margin[isx];
-    else
-	caxis->ro_area[isx] = caxis->axes->wh[isx] - margin[isx+2] - wh[isx];
-    caxis->ro_area[isx+2] = caxis->ro_area[isx] + wh[isx];
-
-    margin[isx + (caxis->pos >= 0.5) * 2] += wh[isx]; // if colorabar is x-direction, it affects y-margin
-}
-
 int cplot_axes_commit(struct cplot_axes *axes) {
-    for (int i=0; i<axes->ncoloraxis; i++)
-	if (axes->caxis[i]->range_isset != (cplot_minbit | cplot_maxbit))
-	    coloraxis_init_range(axes->caxis[i]);
-
     int margin[4] = {
 	iroundpos(axes->wh[1] * axes->margin[0]),
 	iroundpos(axes->wh[1] * axes->margin[1]),
@@ -277,10 +294,8 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	iroundpos(axes->wh[1] * axes->margin[3]),
     };
 
-    for (int i=axes->ncoloraxis-1; i>=0; i--) // first in the list is the closest to the center
-	cplot_coloraxis_commit(axes->caxis[i], margin);
-
     float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
+
     for (int i=0; i<axes->naxis; i++) {
 	struct cplot_axis *axis = axes->axis[i];
 	if (axis->ticks)
@@ -291,11 +306,11 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    continue;
 	if (axis->ticks->ticker.init)
 	    axis->ticks->ticker.init(&axis->ticks->ticker, axis->min, axis->max);
-	cplot_axis_commit_orthogonal(axis, overgoing[axis->direction==0][axis->pos==1]);
+	cplot_axis_commit_orthogonal(axis, overgoing[axis->direction==0][axis->pos==1], margin);
     }
     update_xywh(axes, overgoing, margin);
 
-    for (int iloop=0; iloop<axes->naxis*20; iloop++) { // while (1) but prevent theoretical infinite loop
+    for (int iloop=0; iloop<axes->naxis*20; iloop++) { // while (1) but prevents theoretical infinite loop
 	for (int i=0; i<axes->naxis; i++) {
 	    struct cplot_axis *axis = axes->axis[i];
 	    int isx = axis->direction == 0;

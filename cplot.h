@@ -85,25 +85,15 @@ struct cplot_ticker {
     union cplot_tickerdata tickerdata;
 };
 
-/* shared between coloraxis and axis */
-struct cplot_genaxis {
-    struct cplot_axes *axes;
-    int direction; // x=0, y=1
-    float pos;
-    double min, max;
-    int range_isset, ro_line[4], ro_tick_area[4];
-    struct cplot_ticks *ticks;
-};
-
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
  *	1: Ticks end at the axis i.e. are left or above.
  */
 struct cplot_ticks {
-    struct cplot_genaxis *axis;
+    struct cplot_axis *axis;
     struct cplot_ticker ticker;
     unsigned color;
-    float crossaxis, length, thickness;
+    float crossaxis, length;
 
     struct cplot_linestyle linestyle, gridstyle;
 
@@ -116,29 +106,18 @@ struct cplot_ticks {
 };
 
 struct cplot_axis {
-    /* shared between genaxis, coloraxis and axis */
     struct cplot_axes *axes;
-    int direction; // x=0, y=1
+    int direction, outside; // x=0, y=1
     float pos;
     double min, max;
     int range_isset, ro_line[4], ro_tick_area[4];
     struct cplot_ticks *ticks;
-    /* end shared */
-    struct cplot_linestyle linestyle;
     struct cplot_axistext **text;
     int mem_text, ntext;
-    int ro_linetick_area[4];
-};
 
-struct cplot_coloraxis {
-    /* shared between genaxis, coloraxis and axis */
-    struct cplot_axes *axes;
-    int direction; // x=0, y=1
-    float pos;
-    double min, max;
-    int range_isset, ro_line[4], ro_tick_area[4];
-    struct cplot_ticks *ticks;
-    /* end shared */
+    struct cplot_linestyle linestyle;
+    int ro_linetick_area[4];
+
     float po[4]; // parallel and orthogonal lengths
     unsigned char *cmap;
     int ro_area[4], ro_tot_area[4];
@@ -161,8 +140,7 @@ struct cplot_data {
     void *yxzdata[3];
     int yxztype[3];
     long length;
-    struct cplot_axis *yxaxis[2];
-    struct cplot_coloraxis *caxis;
+    struct cplot_axis *yxaxis[2], *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     int owner[3];
@@ -184,10 +162,8 @@ struct cplot_axes {
     unsigned background;
     /* end shared */
     int startcanvas;
-    struct cplot_axis **axis;
+    struct cplot_axis **axis, *last_caxis;
     int naxis, mem_axis;
-    struct cplot_coloraxis **caxis;
-    int ncoloraxis, mem_coloraxis;
     struct ttra *ttra;
     int ro_inner_xywh[4];
     float margin[4];
@@ -220,8 +196,7 @@ struct cplot_args {
     void *ydata, *xdata, *zdata;
     int ytype, xtype, ztype;
     long len;
-    struct cplot_axis *yaxis, *xaxis;
-    struct cplot_coloraxis *caxis;
+    struct cplot_axis *yaxis, *xaxis, *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     int yxzowner[3];

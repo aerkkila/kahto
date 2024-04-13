@@ -80,8 +80,9 @@ void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]);
 void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
 void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout);
+void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
+void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 static void axis_init_range(struct cplot_axis*);
-static void coloraxis_init_range(struct cplot_coloraxis*);
 
 #include "functions.c"
 #include "rotate.c"
@@ -103,33 +104,35 @@ struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
     axis->min = 0;
     axis->max = 1;
     axis->direction = x_or_y != 'x';
-    axis->ticks = cplot_ticks_new(axis);
+    axis->ticks = cplot_ticks_new((void*)axis);
     return axis;
 }
 
-struct cplot_coloraxis* cplot_coloraxis_new(struct cplot_axes *axes) {
-    struct cplot_coloraxis *caxis = calloc(1, sizeof(struct cplot_coloraxis));
-    if (axes->mem_coloraxis < axes->ncoloraxis+1)
-	axes->caxis = realloc(axes->caxis, (axes->mem_coloraxis+=2) * sizeof(void*));
-    axes->caxis[axes->ncoloraxis++] = caxis;
-    memset(axes->caxis + axes->ncoloraxis, 0, (axes->mem_coloraxis - axes->ncoloraxis) * sizeof(void*));
+struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes) {
+    struct cplot_axis *caxis = calloc(1, sizeof(struct cplot_axis));
+    if (axes->mem_axis < axes->naxis+1)
+	axes->axis = realloc(axes->axis, (axes->mem_axis+=2) * sizeof(void*));
+    axes->axis[axes->naxis++] = caxis;
+    memset(axes->axis + axes->naxis, 0, (axes->mem_axis - axes->naxis) * sizeof(void*));
+    axes->last_caxis = caxis;
     caxis->axes = axes;
     caxis->max = 1;
     caxis->cmap = cmh_colormaps[default_colormap].map;
     caxis->direction = 1;
+    caxis->outside = 1;
     caxis->pos = 1;
     caxis->po[0] = 1;
     caxis->po[1] = 1.0/30;
+    caxis->ticks = cplot_ticks_new((void*)caxis);
     return caxis;
 }
 
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     struct cplot_ticks *ticks = calloc(1, sizeof(struct cplot_ticks));
-    ticks->axis = (void*)axis;
+    ticks->axis = axis;
     ticks->color = fg;
     ticks->ticker.init = cplot_init_ticker_default;
     ticks->length = 1.0 / 80;
-    ticks->thickness = -1; // same as axis
     ticks->hvalign_text[0] = -0.5;
 
     ticks->linestyle.thickness = 1.0 / 1200;
@@ -214,67 +217,43 @@ struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
     return layout;
 }
 
-static void coloraxis_init_range(struct cplot_coloraxis *caxis) {
-    caxis->min = DBL_MAX;
-    caxis->max = -DBL_MAX;
-    for (int idata=0; idata<caxis->axes->ndata; idata++) {
-	struct cplot_data *data = caxis->axes->data[idata];
-	if (data->caxis != caxis)
-	    continue;
-	switch (data->have_minmax[2]) {
-	    case 0:
-		get_minmax[data->yxztype[2]](data->yxzdata[2], data->length, data->minmax[2]);
-		break;
-	    case cplot_maxbit:
-		data->minmax[2][0] = get_min[data->yxztype[2]](data->yxzdata[2], data->length);
-		break;
-	    case cplot_minbit:
-		data->minmax[2][1] = get_max[data->yxztype[2]](data->yxzdata[2], data->length);
-		break;
-	    default: break;
-	}
-	data->have_minmax[2] = cplot_minbit | cplot_maxbit;
-	update_min(caxis->min, data->minmax[2][0]);
-	update_max(caxis->max, data->minmax[2][1]);
-    }
-    caxis->range_isset = cplot_minbit | cplot_maxbit;
-}
-
 static void axis_init_range(struct cplot_axis *axis) {
-    int isx = axis->direction == 0;
+    int yxz = axis->direction == 0;
     axis->min = DBL_MAX;
     axis->max = -DBL_MAX;
     for (int idata=0; idata<axis->axes->ndata; idata++) {
 	struct cplot_data *data = axis->axes->data[idata];
-	if (data->yxaxis[isx] != axis)
+	if (data->caxis == axis)
+	    yxz = 2;
+	else if (data->yxaxis[yxz] != axis)
 	    continue;
 
-	if (data->yxztype[isx] == cplot_notype)
-	    switch (data->have_minmax[isx]) {
-		case 0: data->minmax[isx][0] = 0;
-			data->minmax[isx][1] = data->length-1;
+	if (data->yxztype[yxz] == cplot_notype)
+	    switch (data->have_minmax[yxz]) {
+		case 0: data->minmax[yxz][0] = 0;
+			data->minmax[yxz][1] = data->length-1;
 			break;
-		case cplot_maxbit: data->minmax[isx][0] = 0; break;
-		case cplot_minbit: data->minmax[isx][1] = data->length-1; break;
+		case cplot_maxbit: data->minmax[yxz][0] = 0; break;
+		case cplot_minbit: data->minmax[yxz][1] = data->length-1; break;
 		default: break;
 	    }
 	else
-	    switch (data->have_minmax[isx]) {
+	    switch (data->have_minmax[yxz]) {
 		case 0:
-		    get_minmax[data->yxztype[isx]](data->yxzdata[isx], data->length, data->minmax[isx]);
+		    get_minmax[data->yxztype[yxz]](data->yxzdata[yxz], data->length, data->minmax[yxz]);
 		    break;
 		case cplot_maxbit:
-		    data->minmax[isx][0] = get_min[data->yxztype[isx]](data->yxzdata[isx], data->length);
+		    data->minmax[yxz][0] = get_min[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
 		    break;
 		case cplot_minbit:
-		    data->minmax[isx][1] = get_max[data->yxztype[isx]](data->yxzdata[isx], data->length);
+		    data->minmax[yxz][1] = get_max[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
 		    break;
 		default: break;
 	    }
 
-	data->have_minmax[isx] = cplot_minbit | cplot_maxbit;
-	update_min(axis->min, data->minmax[isx][0]);
-	update_max(axis->max, data->minmax[isx][1]);
+	data->have_minmax[yxz] = cplot_minbit | cplot_maxbit;
+	update_min(axis->min, data->minmax[yxz][0]);
+	update_max(axis->max, data->minmax[yxz][1]);
     }
     axis->range_isset = cplot_minbit | cplot_maxbit;
 }
@@ -452,23 +431,46 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
     put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[coord], axistext->hvalign[!coord], axistext->rotation100, axistext->ro_area, 0);
 }
 
-void cplot_axis_render(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-    float thickness = axis->linestyle.thickness * axesheight;
-    int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
-
+void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+    if (axis->direction < 0)
+	return;
     int isx = axis->direction == 0;
-    area[isx+2] += (thickness+1)/2;
-    area[isx] -= (thickness+1)/2;
-    if (area[isx] < 0) area[isx] = 0;
-    if (area[isx+2] > axis->axes->wh[isx])
-	area[isx+2] = axis->axes->wh[isx];
+    int length = axis->ro_area[!isx+2] - axis->ro_area[!isx];
 
-    int WH[] = {axeswidth, axesheight};
-    if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
+    if (axis->cmap) {
+	if (!isx)
+	    for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
+		long ind0 = j*ystride;
+		unsigned color = from_cmap(axis->cmap + (j - axis->ro_area[1]) * 255 / length * 3);
+		for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
+		    canvas[ind0 + i] = color;
+	    }
+	else
+	    for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
+		long ind0 = j*ystride;
+		for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
+		    canvas[ind0 + i] = from_cmap(axis->cmap + (i - axis->ro_area[0]) * 255 / length * 3);
+	    }
+    }
 
-    draw_line(canvas, ystride, axis->ro_line, area, &axis->linestyle, axesheight, 0);
+    if (axis->linestyle.style != cplot_line_none_e) {
+	float thickness = axis->linestyle.thickness * axesheight;
+	int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
+	area[isx+2] += (thickness+1)/2;
+	area[isx] -= (thickness+1)/2;
+	if (area[isx] < 0) area[isx] = 0;
+	if (area[isx+2] > axis->axes->wh[isx])
+	    area[isx+2] = axis->axes->wh[isx];
+
+	int WH[] = {axeswidth, axesheight};
+	if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
+
+	draw_line(canvas, ystride, axis->ro_line, area, &axis->linestyle, axesheight, 0);
+    }
+
     if (axis->ticks)
 	cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
+
     for (int i=0; i<axis->ntext; i++)
 	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
@@ -481,13 +483,10 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 	    canvas[ind0+i] = bg;
     }
     for (int i=0; i<axes->naxis; i++)
-	cplot_axis_render(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
+	cplot_axis_draw(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
     for (int i=0; i<axes->ndata; i++)
 	cplot_data_render(axes->data[i], canvas, axes->wh[0], axes->wh[1], ystride);
     cplot_legend_draw(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
-
-    for (int i=axes->ncoloraxis-1; i>=0; i--)
-	cplot_coloraxis_draw(axes->caxis[i], canvas, ystride);
 }
 
 static void init_datastyle(struct cplot_data *data) {
@@ -543,8 +542,8 @@ static void add_data(struct cplot_args *args) {
     if (!data->yxaxis[1])
 	data->yxaxis[1] = cplot_xaxis0(args->axes);
     if (data->yxzdata[2] && !data->caxis) {
-	if (args->axes->ncoloraxis)
-	    data->caxis = args->axes->caxis[args->axes->ncoloraxis-1];
+	if (args->axes->last_caxis)
+	    data->caxis = args->axes->last_caxis;
 	else
 	    data->caxis = cplot_coloraxis_new(args->axes);
 	data->caxis->range_isset = 0;
@@ -582,21 +581,13 @@ void cplot_destroy_axis(struct cplot_axis *axis) {
     }
     free(axis->text);
     free(axis->ticks);
-    memset(axis, 0, sizeof(*axis));
     free(axis);
-}
-
-void cplot_destroy_coloraxis(struct cplot_coloraxis *caxis) {
-    free(caxis);
 }
 
 void cplot_destroy_axes(struct cplot_axes *axes) {
     for (int i=0; i<axes->naxis; i++)
 	cplot_destroy_axis(axes->axis[i]);
     free(axes->axis);
-    for (int i=0; i<axes->ncoloraxis; i++)
-	cplot_destroy_coloraxis(axes->caxis[i]);
-    free(axes->caxis);
     ttra_destroy(axes->ttra);
     free(axes->ttra);
 

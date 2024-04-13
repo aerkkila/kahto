@@ -429,27 +429,6 @@ static inline unsigned from_cmap(const unsigned char *ptr) {
     return ret;
 }
 
-static void cplot_coloraxis_draw(struct cplot_coloraxis *caxis, unsigned *canvas, int ystride) {
-    if (caxis->direction < 0)
-	return;
-    int isx = caxis->direction == 0;
-    int length = caxis->ro_area[!isx+2] - caxis->ro_area[!isx];
-
-    if (!isx)
-	for (int j=caxis->ro_area[1]; j<caxis->ro_area[3]; j++) {
-	    long ind0 = j*ystride;
-	    unsigned color = from_cmap(caxis->cmap + j * 255 / length * 3);
-	    for (int i=caxis->ro_area[0]; i<caxis->ro_area[2]; i++)
-		canvas[ind0 + i] = color;
-	}
-    else
-	for (int j=caxis->ro_area[1]; j<caxis->ro_area[3]; j++) {
-	    long ind0 = j*ystride;
-	    for (int i=caxis->ro_area[0]; i<caxis->ro_area[2]; i++)
-		canvas[ind0 + i] = from_cmap(caxis->cmap + i * 255 / length * 3);
-	}
-}
-
 static inline void draw_datum(unsigned *canvas, int ystride,
     const unsigned char *bmap, int mapw, int maph,
     int x, int y, const int *axis_xywh, unsigned color)
