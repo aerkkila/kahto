@@ -74,7 +74,8 @@ int main() {
 	    kohina[i] = rand() % pit + i;
 	struct cplot_axis *y1axis = cplot_axis_new(layout->axes[1], 'y');
 	y1axis->pos = 1;
-	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis, .markersize=1/60.0, .label="värillinen kohina");
+	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis, .markersize=1/60.0,
+	    .label="värillinen kohina", .cmh_enum=cmh_turbo_e);
     }
 
     cplot_write_png(layout, "testi.png");

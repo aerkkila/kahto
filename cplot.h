@@ -119,7 +119,8 @@ struct cplot_axis {
     int ro_linetick_area[4];
 
     float po[4]; // parallel and orthogonal lengths
-    unsigned char *cmap;
+    const unsigned char *cmap;
+    int cmh_enum;
     int ro_area[4], ro_tot_area[4];
 };
 
@@ -151,6 +152,8 @@ struct cplot_data {
     float markersize;
     unsigned color;
     struct cplot_linestyle linestyle;
+    const unsigned char *cmap;
+    int cmh_enum;
 };
 
 enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
@@ -207,6 +210,8 @@ struct cplot_args {
     float markersize;
     unsigned color;
     struct cplot_linestyle linestyle;
+    const char *cmap;
+    int cmh_enum;
 
     /* end struct cplot_data */
     int copy[3]; // not used yet

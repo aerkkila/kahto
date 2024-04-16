@@ -424,9 +424,11 @@ static void init_circle(unsigned char *to, int tow, int toh) {
 }
 
 static inline unsigned from_cmap(const unsigned char *ptr) {
-    unsigned ret = 0xff<<24;
-    memcpy(&ret, ptr, 3);
-    return ret;
+    return
+	(ptr[0] << 16 ) |
+	(ptr[1] << 8 ) |
+	(ptr[2] << 0) |
+	(0xff << 24);
 }
 
 struct draw_data_args {

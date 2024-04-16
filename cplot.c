@@ -548,6 +548,12 @@ static void add_data(struct cplot_args *args) {
 	    data->caxis = cplot_coloraxis_new(args->axes);
 	data->caxis->range_isset = 0;
     }
+    if (data->caxis) {
+	if (data->cmap)
+	    data->caxis->cmap = data->cmap;
+	else if (data->cmh_enum)
+	    data->caxis->cmap = cmh_colormaps[data->cmh_enum].map;
+    }
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;
     init_datastyle(data);
