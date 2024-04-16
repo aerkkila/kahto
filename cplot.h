@@ -120,7 +120,7 @@ struct cplot_axis {
 
     float po[4]; // parallel and orthogonal lengths
     const unsigned char *cmap;
-    int cmh_enum;
+    int reverse_cmap;
     int ro_area[4], ro_tot_area[4];
 };
 

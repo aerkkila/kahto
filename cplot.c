@@ -438,10 +438,20 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
     int length = axis->ro_area[!isx+2] - axis->ro_area[!isx];
 
     if (axis->cmap) {
+	const unsigned char *cmap = axis->cmap;
+	unsigned char rcmap[256*3];
+	if (axis->reverse_cmap) {
+	    for (int i=0; i<256; i++) {
+		rcmap[i*3+0] = cmap[(255-i)*3+0];
+		rcmap[i*3+1] = cmap[(255-i)*3+1];
+		rcmap[i*3+2] = cmap[(255-i)*3+2];
+	    }
+	    cmap = rcmap;
+	}
 	if (!isx)
 	    for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
 		long ind0 = j*ystride;
-		unsigned color = from_cmap(axis->cmap + (j - axis->ro_area[1]) * 255 / length * 3);
+		unsigned color = from_cmap(cmap + (length - (j - axis->ro_area[1])) * 255 / length * 3);
 		for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
 		    canvas[ind0 + i] = color;
 	    }
@@ -449,7 +459,7 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
 	    for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
 		long ind0 = j*ystride;
 		for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
-		    canvas[ind0 + i] = from_cmap(axis->cmap + (i - axis->ro_area[0]) * 255 / length * 3);
+		    canvas[ind0 + i] = from_cmap(cmap + (i - axis->ro_area[0]) * 255 / length * 3);
 	    }
     }
 
@@ -551,8 +561,14 @@ static void add_data(struct cplot_args *args) {
     if (data->caxis) {
 	if (data->cmap)
 	    data->caxis->cmap = data->cmap;
-	else if (data->cmh_enum)
-	    data->caxis->cmap = cmh_colormaps[data->cmh_enum].map;
+	else if (data->cmh_enum) {
+	    if (data->cmh_enum < 0)
+		data->caxis->cmap = cmh_colormaps[-data->cmh_enum].map;
+	    else
+		data->caxis->cmap = cmh_colormaps[data->cmh_enum].map;
+	}
+	if (data->cmh_enum < 0)
+	    data->caxis->reverse_cmap = 1;
     }
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;

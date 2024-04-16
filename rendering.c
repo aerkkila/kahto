@@ -444,6 +444,7 @@ struct draw_data_args {
     int len;
     double xpix_per_unit;
     const unsigned char *zlevels, *cmap;
+    int reverse_cmap;
 };
 
 static inline void draw_datum(struct draw_data_args *ar) {
@@ -507,22 +508,39 @@ static void draw_data_xy(struct draw_data_args *restrict ar) {
 }
 
 static void draw_data_xyc(struct draw_data_args *restrict ar) {
-    for (int idata=0; idata<ar->len; idata++) {
-	ar->x = ar->xypixels[idata*2];
-	ar->y = ar->xypixels[idata*2+1];
-	ar->color = from_cmap(ar->cmap + ar->zlevels[idata]*3);
-	draw_datum(ar);
-    }
+    if (ar->reverse_cmap)
+	for (int idata=0; idata<ar->len; idata++) {
+	    ar->x = ar->xypixels[idata*2];
+	    ar->y = ar->xypixels[idata*2+1];
+	    ar->color = from_cmap(ar->cmap + (255-ar->zlevels[idata])*3);
+	    draw_datum(ar);
+	}
+    else
+	for (int idata=0; idata<ar->len; idata++) {
+	    ar->x = ar->xypixels[idata*2];
+	    ar->y = ar->xypixels[idata*2+1];
+	    ar->color = from_cmap(ar->cmap + ar->zlevels[idata]*3);
+	    draw_datum(ar);
+	}
 }
 
 static void draw_data_yc(struct draw_data_args *restrict ar) {
-    for (int idata=0; idata<ar->len; idata++) {
-	double xd = (ar->x0 + idata) * ar->xpix_per_unit;
-	ar->x = iroundpos(xd);
-	ar->y = ar->xypixels[idata*2+1];
-	ar->color = from_cmap(ar->cmap + ar->zlevels[idata]*3);
-	draw_datum(ar);
-    }
+    if (ar->reverse_cmap)
+	for (int idata=0; idata<ar->len; idata++) {
+	    double xd = (ar->x0 + idata) * ar->xpix_per_unit;
+	    ar->x = iroundpos(xd);
+	    ar->y = ar->xypixels[idata*2+1];
+	    ar->color = from_cmap(ar->cmap + (255-ar->zlevels[idata])*3);
+	    draw_datum(ar);
+	}
+    else
+	for (int idata=0; idata<ar->len; idata++) {
+	    double xd = (ar->x0 + idata) * ar->xpix_per_unit;
+	    ar->x = iroundpos(xd);
+	    ar->y = ar->xypixels[idata*2+1];
+	    ar->color = from_cmap(ar->cmap + ar->zlevels[idata]*3);
+	    draw_datum(ar);
+	}
 }
 
 static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle, double xpix_per_unit) {
@@ -614,6 +632,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	.axis_xywh = xywh,
 	.xpix_per_unit = xpix_per_unit,
 	.cmap = data->caxis ? data->caxis->cmap : NULL,
+	.reverse_cmap = data->caxis ? data->caxis->reverse_cmap : 0,
 	.color = data->color,
 	/*
 	 * xypixels, x0, len
@@ -698,6 +717,7 @@ static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea ar
 	    .maph = height,
 	    .color = data->color,
 	    .cmap = data->caxis ? data->caxis->cmap : NULL,
+	    .reverse_cmap = data->caxis ? data->caxis->reverse_cmap : 0,
 	};
 	if (data->yxzdata[2])
 	    draw_datum_cmap(&args);
