@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 
 #define π 3.14159265358979
 
@@ -43,8 +44,17 @@ int main() {
     struct cplot_axis *y1axis = cplot_axis_new(layout->axes[3], 'y');
     y1axis->pos = 1;
     struct cplot_axis *x1axis = cplot_axis_new(layout->axes[3], 'x');
-    cplot_yx(ydata2, xdata2, .len=pit2, .xaxis=x1axis, .yaxis=y1axis, .linestyle.style=1, .markersize=1.0/40, .label = "iso pallo");
-    cplot_axislabel(x1axis, "x-akseli ylhäällä");
+
+    struct tm tm = {.tm_year=2005-1900, .tm_mday=130};
+    time_t aika = timegm(&tm);
+    long askel = 200*86400;
+    long ajat[pit2];
+    for (int i=0; i<pit2; i++)
+	ajat[i] = aika + askel * i;
+
+    cplot_yx(ydata2, ajat, .len=pit2, .xaxis=x1axis, .yaxis=y1axis, .linestyle.style=1, .markersize=1.0/40, .label = "iso pallo");
+    x1axis->ticks->ticker.init = cplot_init_ticker_datetime;
+    cplot_axislabel(x1axis, "datetime-tikkeri");
     cplot_axislabel(y1axis, "oikia");
     y1axis->text[y1axis->ntext-1]->rotation100 = 0;
     cplot_axislabel(cplot_xaxis0(layout->axes[3]), "x-akseli alhaalla");

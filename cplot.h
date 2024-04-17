@@ -59,6 +59,12 @@ struct cplot_tickerdata_linear {
     double step, min, base, target_nticks;
 };
 
+struct cplot_tickerdata_datetime {
+    int nticks, // must be first
+	step, nticksmin, nticksmax;
+    long min;
+};
+
 struct cplot_tickerdata_arbitrary {
     int nticks; // must be first
     double *ticks;
@@ -73,10 +79,11 @@ struct cplot_tickerdata_common { // only used to access shared members
 union cplot_tickerdata { // cplot_tickerdata_common defines how each struct must begin
     struct cplot_tickerdata_common common;
     struct cplot_tickerdata_linear lin;
+    struct cplot_tickerdata_datetime datetime;
     struct cplot_tickerdata_arbitrary arb;
 };
 
-enum cplot_tickere {cplot_ticker_linear, cplot_ticker_arbitrary};
+enum cplot_tickere {cplot_ticker_linear, cplot_ticker_datetime, cplot_ticker_arbitrary};
 
 struct cplot_ticker {
     enum cplot_tickere species;
@@ -270,6 +277,7 @@ void cplot_write_png(void *axes_or_layout, const char *name);
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);
+void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max);
 

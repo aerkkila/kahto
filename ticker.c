@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 
 const char *cplot_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
@@ -36,6 +37,19 @@ double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, i
     return val;
 }
 
+double cplot_get_tick_datetime_annual(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
+    int step = this->tickerdata.datetime.step;
+    time_t min = this->tickerdata.datetime.min;
+    struct tm tm = *gmtime(&min);
+    tm.tm_year += ind * step;
+    double val = timegm(&tm);
+    if (tm.tm_yday == 0)
+	snprintf(*label, sizelabel, "%04i", tm.tm_year+1900);
+    else
+	snprintf(*label, sizelabel, "%4i-%02i", tm.tm_year+1900, tm.tm_mon+1);
+    return val;
+}
+
 double cplot_get_tick_arbitrary_datacoord(struct cplot_ticker *this, int ind, char **label, int _) {
     *label = this->tickerdata.arb.labels[ind];
     return this->tickerdata.arb.ticks[ind];
@@ -48,7 +62,9 @@ double cplot_get_tick_arbitrary_relcoord(struct cplot_ticker *this, int ind, cha
     return min + this->tickerdata.arb.ticks[ind] * (max - min);
 }
 
-#define default_target_linear_nticks 7
+#define default_linear_target_nticks 7
+#define default_datetime_nticksmin 4
+#define default_datetime_nticksmax 10
 
 static double get_linticker_base(double max, int *maxpower_out) {
     int maxsign = Sign(max);
@@ -81,7 +97,7 @@ void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max)
     this->species = cplot_ticker_linear;
     this->get_tick = cplot_get_tick_linear;
     double target_nticks0 = this->tickerdata.lin.target_nticks;
-    double target_nticks = target_nticks0 ? target_nticks0 : default_target_linear_nticks;
+    double target_nticks = target_nticks0 ? target_nticks0 : default_linear_target_nticks;
     int maxpower;
     double base = get_linticker_base(max, &maxpower);
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
@@ -116,7 +132,7 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
     int nstep_opt = arrlen(step_opts);
     double best_step, best_diff = DBL_MAX;
     double target_n_orig = this->tickerdata.lin.target_nticks;
-    double target_n = target_n_orig ? target_n_orig : default_target_linear_nticks;
+    double target_n = target_n_orig ? target_n_orig : default_linear_target_nticks;
     double diff = max - min;
     if (diff / (base*step_opts[0]) < target_n)
 	base *= 0.1;
@@ -143,4 +159,48 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 	.baseten = maxpower,
 	.target_nticks = target_n_orig,
     };
+}
+
+void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max) {
+    time_t time = min;
+    struct tm tm0 = *gmtime(&time);
+    time = max;
+    struct tm tm1 = *gmtime(&time);
+    double nticksmin0 = this->tickerdata.datetime.nticksmin;
+    double nticksmax0 = this->tickerdata.datetime.nticksmax;
+    int nticksmin = nticksmin0 ? nticksmin0 : default_datetime_nticksmin;
+    int nticksmax = nticksmax0 ? nticksmax0 : default_datetime_nticksmax;
+
+    this->species = cplot_ticker_datetime;
+    if (tm1.tm_year - tm0.tm_year + (tm1.tm_mon >= tm0.tm_mon) >= nticksmin) {
+	int nticks = tm1.tm_year - tm0.tm_year;
+	if (nticks < nticksmin)
+	    ;
+	struct tm tm_min = {.tm_year = tm0.tm_year+1, .tm_mday=1};
+	int mul5 = nticks / nticksmin;
+	int n5 = mul5 / 5;
+	mul5 = n5 * 5;
+	int step = 1;
+	if (mul5) {
+	    tm_min.tm_year = tm_min.tm_year / mul5 * mul5 + mul5; // täsmälleen alkuhetkeä ei nyt merkitä
+	    nticks = (tm1.tm_year / mul5 * mul5 - tm_min.tm_year) / mul5 + 1;
+	    step = mul5;
+	}
+	int divisor = nticks / nticksmax + 1;
+	nticks /= divisor;
+	step *= divisor;
+	time_t time_min = timegm(&tm_min);
+	this->get_tick = cplot_get_tick_datetime_annual;
+	this->tickerdata.datetime = (struct cplot_tickerdata_datetime) {
+	    .step = step,
+	    .min = time_min,
+	    .nticksmin = nticksmin0,
+	    .nticksmax = nticksmax0,
+	    .nticks = nticks,
+	};
+    }
+    else if (tm1.tm_mon - tm0.tm_mon + (tm1.tm_year-tm0.tm_year)*12 >= nticksmin)
+	fprintf(stderr, "datetime-tikkeri on kesken\n");
+    else
+	fprintf(stderr, "datetime-tikkeri on kesken\n");
 }
