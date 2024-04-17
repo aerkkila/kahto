@@ -48,34 +48,9 @@ double cplot_get_tick_arbitrary_relcoord(struct cplot_ticker *this, int ind, cha
     return min + this->tickerdata.arb.ticks[ind] * (max - min);
 }
 
-void cplot_init_ticker_caveman(struct cplot_ticker *this, double min, double max) {
-    this->species = cplot_ticker_linear;
-    this->get_tick = cplot_get_tick_linear;
-    this->tickerdata.lin = (struct cplot_tickerdata_linear) {
-	.nticks = 7,
-	.step = (max - min) / 6,
-	.min = min,
-	.base = 1,
-    };
-}
+#define default_target_linear_nticks 7
 
-void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max) {
-    this->species = cplot_ticker_arbitrary;
-    this->get_tick = cplot_get_tick_arbitrary_datacoord;
-    this->tickerdata.arb.min = min;
-    this->tickerdata.arb.max = max;
-}
-
-void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max) {
-    this->species = cplot_ticker_arbitrary;
-    this->get_tick = cplot_get_tick_arbitrary_relcoord;
-    this->tickerdata.arb.min = min;
-    this->tickerdata.arb.max = max;
-}
-
-void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max) {
-    double step_opts[] = {1, 1.5, 2, 2.5, 5};
-
+static double get_linticker_base(double max, int *maxpower_out) {
     int maxsign = Sign(max);
     max *= maxsign; // absolute value
     int maxpower = 0;
@@ -96,11 +71,52 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 	    base *= 0.1;
 	    maxpower--;
 	}
-    max *= maxsign;
+    //max *= maxsign;
+    if (maxpower_out)
+	*maxpower_out = maxpower;
+    return base;
+}
+
+void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max) {
+    this->species = cplot_ticker_linear;
+    this->get_tick = cplot_get_tick_linear;
+    double target_nticks0 = this->tickerdata.lin.target_nticks;
+    double target_nticks = target_nticks0 ? target_nticks0 : default_target_linear_nticks;
+    int maxpower;
+    double base = get_linticker_base(max, &maxpower);
+    this->tickerdata.lin = (struct cplot_tickerdata_linear) {
+	.nticks = target_nticks,
+	.step = (max - min) / (target_nticks-1),
+	.min = min,
+	.base = base,
+	.baseten = maxpower,
+    };
+}
+
+void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max) {
+    this->species = cplot_ticker_arbitrary;
+    this->get_tick = cplot_get_tick_arbitrary_datacoord;
+    this->tickerdata.arb.min = min;
+    this->tickerdata.arb.max = max;
+}
+
+void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max) {
+    this->species = cplot_ticker_arbitrary;
+    this->get_tick = cplot_get_tick_arbitrary_relcoord;
+    this->tickerdata.arb.min = min;
+    this->tickerdata.arb.max = max;
+}
+
+void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max) {
+    double step_opts[] = {1, 1.5, 2, 2.5, 5};
+
+    int maxpower;
+    double base = get_linticker_base(max, &maxpower);
 
     int nstep_opt = arrlen(step_opts);
     double best_step, best_diff = DBL_MAX;
-    double target_n = 7;
+    double target_n_orig = this->tickerdata.lin.target_nticks;
+    double target_n = target_n_orig ? target_n_orig : default_target_linear_nticks;
     double diff = max - min;
     if (diff / (base*step_opts[0]) < target_n)
 	base *= 0.1;
@@ -125,5 +141,6 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 	.min = mintick,
 	.base = base,
 	.baseten = maxpower,
+	.target_nticks = target_n_orig,
     };
 }

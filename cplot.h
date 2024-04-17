@@ -56,7 +56,7 @@ struct cplot_linestyle {
 struct cplot_tickerdata_linear {
     int nticks, // must be first
 	baseten;
-    double step, min, base;
+    double step, min, base, target_nticks;
 };
 
 struct cplot_tickerdata_arbitrary {
@@ -269,7 +269,7 @@ void cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void cplot_write_png(void *axes_or_layout, const char *name);
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
-void cplot_init_ticker_caveman(struct cplot_ticker *this, double min, double max);
+void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max);
 
