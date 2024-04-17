@@ -52,11 +52,6 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
 
     int isx = ticks->axis->direction == 0;
     int line_px[4];
-    /*
-    line_px[isx] = axis_xywh[isx] +
-	iroundpos(ticks->axis->pos * axis_xywh[isx+2] + ticks->crossaxis * ticks->length * axesheight);
-    line_px[isx+2] = axis_xywh[isx] +
-	iroundpos(ticks->axis->pos * axis_xywh[isx+2] + (ticks->crossaxis+1) * ticks->length * axesheight);*/
     line_px[isx] = ticks->axis->ro_line[isx] + ticks->crossaxis * ticks->length * axesheight; // thickness?
     line_px[isx+2] = ticks->axis->ro_line[isx] + (ticks->crossaxis+1) * ticks->length * axesheight;
 

@@ -117,8 +117,8 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 
     this->species = cplot_ticker_linear;
     this->get_tick = cplot_get_tick_linear;
-    double maxtick = best_step * (int)(max/best_step);
-    double mintick = best_step * (int)(min/best_step);
+    double maxtick = best_step * floor(max/best_step);
+    double mintick = best_step * ceil(min/best_step);
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
 	.nticks = iroundpos((maxtick - mintick) / best_step) + 1,
 	.step = best_step,
