@@ -177,22 +177,24 @@ void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double ma
 	if (nticks < nticksmin)
 	    ;
 	struct tm tm_min = {.tm_year = tm0.tm_year+1, .tm_mday=1};
-	int mul5 = nticks / nticksmin;
-	int n5 = mul5 / 5;
-	mul5 = n5 * 5;
-	int step = 1;
-	if (mul5) {
-	    tm_min.tm_year = tm_min.tm_year / mul5 * mul5 + mul5; // täsmälleen alkuhetkeä ei nyt merkitä
-	    nticks = (tm1.tm_year / mul5 * mul5 - tm_min.tm_year) / mul5 + 1;
-	    step = mul5;
-	}
-	int divisor = nticks / nticksmax + 1;
-	nticks /= divisor;
-	step *= divisor;
+
+	/* Tämän voisi vaihtaa lineearisen tikkerin menetelmään. */
+	int mul = nticks / nticksmin;
+	int n5 = mul / 5;
+	mul = n5 * 5 + !n5;
+	int mod = tm_min.tm_year % mul;
+	tm_min.tm_year += mul - mod - !mod*mul;
+	nticks = (tm1.tm_year / mul * mul - tm_min.tm_year) / mul + 1;
+
+	mul *= nticks / nticksmax + 1;
+	mod = tm_min.tm_year % mul;
+	tm_min.tm_year += mul - mod - !mod*mul;
+	nticks = (tm1.tm_year / mul * mul - tm_min.tm_year) / mul + 1;
+
 	time_t time_min = timegm(&tm_min);
 	this->get_tick = cplot_get_tick_datetime_annual;
 	this->tickerdata.datetime = (struct cplot_tickerdata_datetime) {
-	    .step = step,
+	    .step = mul,
 	    .min = time_min,
 	    .nticksmin = nticksmin0,
 	    .nticksmax = nticksmax0,
