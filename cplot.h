@@ -274,7 +274,6 @@ void cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_show(void *axes_or_layout);
 void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
-void cplot_fini();
 void cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void cplot_write_png(void *axes_or_layout, const char *name);
 

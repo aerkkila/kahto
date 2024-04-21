@@ -96,5 +96,4 @@ int main() {
     cplot_show(layout);
 
     cplot_destroy(layout);
-    cplot_fini();
 }

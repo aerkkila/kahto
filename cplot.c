@@ -627,10 +627,6 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
     free(axes);
 }
 
-void cplot_fini() {
-    ttra_fini();
-}
-
 void cplot_destroy(void *axes_or_layout) {
     struct cplot_layout *layout = axes_or_layout;
     if (layout->whatisthis == cplot_axes_e)
