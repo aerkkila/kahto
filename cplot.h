@@ -164,6 +164,7 @@ struct cplot_data {
 };
 
 enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
+enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
 
 struct cplot_axes {
     /* Shared between axes and layout. Order matters here. */
@@ -185,6 +186,8 @@ struct cplot_axes {
 	int ro_xywh[4], ro_text_left, automatic_placement;
 	float posx, posy, hvalign[2];
 	struct cplot_linestyle borderstyle;
+	enum cplot_fill fill;
+	unsigned fillcolor;
     } legend;
 };
 

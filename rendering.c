@@ -760,16 +760,36 @@ void cplot_draw_box(unsigned *canvas, int ystride, int axesheight, int *area, st
     }
 }
 
+void cplot_fill_box(unsigned *canvas, int ystride, int axesheight, const int *restrict area, unsigned color) {
+    for (int j=area[1]; j<area[3]; j++)
+	for (int i=area[0]; i<area[2]; i++)
+	    canvas[j*ystride+i] = color;
+}
+
 void cplot_draw_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xywh, struct cplot_linestyle *linestyle) {
     int area[] = xywh_to_area(xywh);
     cplot_draw_box(canvas, ystride, axesheight, area, linestyle);
 }
 
+void cplot_fill_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xywh, unsigned color) {
+    int area[] = xywh_to_area(xywh);
+    cplot_fill_box(canvas, ystride, axesheight, area, color);
+}
+
 static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
-    cplot_draw_box_xywh(area.canvas, area.ystride, area.axesheight, axes->legend.ro_xywh, &axes->legend.borderstyle);
+    unsigned fillcolor = axes->background;
+    switch (axes->legend.fill) {
+	case cplot_fill_color_e:
+	    fillcolor = axes->legend.fillcolor;
+	case cplot_fill_bg_e:
+	    cplot_fill_box_xywh(area.canvas, area.ystride, area.axesheight, axes->legend.ro_xywh, fillcolor);
+	case cplot_no_fill_e:
+	    cplot_draw_box_xywh(area.canvas, area.ystride, area.axesheight, axes->legend.ro_xywh, &axes->legend.borderstyle);
+	    break;
+    }
+
     int leg_x0 = axes->legend.ro_xywh[0];
     int leg_y0 = axes->legend.ro_xywh[1];
-
     int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
     int linewidth = iroundpos(axes->legend.borderstyle.thickness * area.axesheight);
     ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left + linewidth, leg_y0 + linewidth);
@@ -780,8 +800,12 @@ static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea are
 	    continue;
 	legend_draw_marker(axes->data[i], area, leg_x0 + linewidth + text_left/2, leg_y0 + (rownumber+++0.5)*rowh, text_left);
 	/* drawing a literal marker changes fontheight */
-	ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
-	if (axes->data[i]->label)
-	    ttra_printf(axes->ttra, "%s\n", axes->data[i]->label);
+	if (axes->data[i]->label) {
+	    ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
+	    unsigned mem = axes->ttra->bg_default;
+	    axes->ttra->bg_default = fillcolor;
+	    ttra_printf(axes->ttra, "\033[0m%s\n", axes->data[i]->label);
+	    axes->ttra->bg_default = mem;
+	}
     }
 }

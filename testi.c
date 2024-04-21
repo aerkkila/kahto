@@ -61,9 +61,11 @@ int main() {
     cplot_axislabel(cplot_yaxis0(layout->axes[3]), "yksinkertaiset tikit");
     layout->axes[3]->legend.borderstyle.style = 1;
     layout->axes[3]->legend.borderstyle.thickness = 1.0/100;
-    layout->axes[3]->legend.borderstyle.color = 0xffaadf49;
+    layout->axes[3]->legend.borderstyle.color = 0xff9adf49;
     layout->axes[3]->axis[cplot_ix0axis]->ticks->ticker.tickerdata.lin.target_nticks = 4;
     layout->axes[3]->axis[cplot_iy0axis]->ticks->ticker.init = cplot_init_ticker_simple;
+    layout->axes[3]->legend.fillcolor = 0xffc9b9c9;
+    layout->axes[3]->legend.fill = cplot_fill_color_e;
 
     /* ------------------------- */
 
