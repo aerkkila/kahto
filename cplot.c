@@ -396,7 +396,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	draw_line(canvas, ystride, line_px, ticks->ro_tot_area, &ticks->linestyle, axesheight, 0);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
-	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], 0, area_text, 0);
+	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], ticks->rotation100, area_text, 0);
 	if (ticks->gridstyle.style) {
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
 	    draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axesheight, 0);

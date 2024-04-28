@@ -74,7 +74,7 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
 	int area_text[4] = {0};
 	if (ttra && tick[0])
 	    if (put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx],
-		    ticks->hvalign_text[isx], 0, area_text, 1) >= 0) { // successful geometry
+		    ticks->hvalign_text[isx], ticks->rotation100, area_text, 1) >= 0) { // successful geometry
 		update_min(ticks->ro_labelarea[0], area_text[0]);
 		update_min(ticks->ro_labelarea[1], area_text[1]);
 		update_max(ticks->ro_labelarea[2], area_text[2]);
@@ -158,7 +158,7 @@ int cplot_axis_commit_parallel(struct cplot_axis *axis, float *out[2], int xywh[
 	    if (!isx)
 		pos_rel = 1 - pos_rel;
 	    pos_xy[!isx] = iroundpos(pos_rel * xywh[!isx+2]);
-	    put_text(ttra, lab, pos_xy[0], pos_xy[1], tk->hvalign_text[!isx], tk->hvalign_text[isx], 0, area, 1);
+	    put_text(ttra, lab, pos_xy[0], pos_xy[1], tk->hvalign_text[!isx], tk->hvalign_text[isx], tk->rotation100, area, 1);
 	    if (-area[!isx] > max01[0])
 		max01[0] = -area[isx];
 	    if (area[!isx+2] - size > max01[1])
@@ -227,7 +227,7 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out_[2], int ma
 	char *lab = labbuff;
 	for (int i=0; i<nlabels; i++) {
 	    tk->ticker.get_tick(&tk->ticker, i, &lab, 128);
-	    put_text(ttra, lab, 0, 0, tk->hvalign_text[!isx], tk->hvalign_text[isx], 0, area, 1);
+	    put_text(ttra, lab, 0, 0, tk->hvalign_text[!isx], tk->hvalign_text[isx], tk->rotation100, area, 1);
 	    if (-area[isx] > max01[0])
 		max01[0] = -area[isx];
 	    if (area[isx+2] > max01[1])

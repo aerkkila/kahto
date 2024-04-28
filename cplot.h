@@ -61,7 +61,8 @@ struct cplot_tickerdata_linear {
 
 struct cplot_tickerdata_datetime {
     int nticks, // must be first
-	step, nticksmin, nticksmax;
+	step;
+    double target_nticks;
     long min;
 };
 
@@ -107,7 +108,7 @@ struct cplot_ticks {
     int have_labels;
     float hvalign_text[2];
     int ascending; // whether labels are in the end and not start
-    float rowheight;
+    float rowheight, rotation100;
 
     int ro_lines[2], ro_labelarea[4], ro_tot_area[4];
 };

@@ -46,7 +46,30 @@ double cplot_get_tick_datetime_annual(struct cplot_ticker *this, int ind, char *
     if (tm.tm_yday == 0)
 	snprintf(*label, sizelabel, "%04i", tm.tm_year+1900);
     else
-	snprintf(*label, sizelabel, "%4i-%02i", tm.tm_year+1900, tm.tm_mon+1);
+	snprintf(*label, sizelabel, "%04i-%02i", tm.tm_year+1900, tm.tm_mon+1);
+    return val;
+}
+
+double cplot_get_tick_datetime_monthly(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
+    int step = this->tickerdata.datetime.step;
+    time_t min = this->tickerdata.datetime.min;
+    struct tm tm = *gmtime(&min);
+    tm.tm_mon += ind * step;
+    double val = timegm(&tm);
+    if (tm.tm_mday == 1)
+	snprintf(*label, sizelabel, "%04i-%02i", tm.tm_year+1900, tm.tm_mon+1);
+    else
+	snprintf(*label, sizelabel, "%04i-%02i-%02i", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday);
+    return val;
+}
+
+double cplot_get_tick_datetime_daily(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
+    int step = this->tickerdata.datetime.step;
+    time_t min = this->tickerdata.datetime.min;
+    struct tm tm = *gmtime(&min);
+    tm.tm_mday += ind * step;
+    double val = timegm(&tm);
+    snprintf(*label, sizelabel, "%04i-%02i-%02i", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday);
     return val;
 }
 
@@ -166,43 +189,88 @@ void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double ma
     struct tm tm0 = *gmtime(&time);
     time = max;
     struct tm tm1 = *gmtime(&time);
-    double nticksmin0 = this->tickerdata.datetime.nticksmin;
-    double nticksmax0 = this->tickerdata.datetime.nticksmax;
-    int nticksmin = nticksmin0 ? nticksmin0 : default_datetime_nticksmin;
-    int nticksmax = nticksmax0 ? nticksmax0 : default_datetime_nticksmax;
+    long best_diff = 10000000;
+    int datetype = 0, step;
+    double target_n_orig = this->tickerdata.datetime.target_nticks;
+    double target_n = target_n_orig ? target_n_orig : default_linear_target_nticks;
 
-    this->species = cplot_ticker_datetime;
-    if (tm1.tm_year - tm0.tm_year + (tm1.tm_mon >= tm0.tm_mon) >= nticksmin) {
-	int nticks = tm1.tm_year - tm0.tm_year;
-	if (nticks < nticksmin)
-	    ;
-	struct tm tm_min = {.tm_year = tm0.tm_year+1, .tm_mday=1};
-
-	/* Tämän voisi vaihtaa lineearisen tikkerin menetelmään. */
-	int mul = nticks / nticksmin;
-	int n5 = mul / 5;
-	mul = n5 * 5 + !n5;
-	int mod = tm_min.tm_year % mul;
-	tm_min.tm_year += mul - mod - !mod*mul;
-	nticks = (tm1.tm_year / mul * mul - tm_min.tm_year) / mul + 1;
-
-	mul *= nticks / nticksmax + 1;
-	mod = tm_min.tm_year % mul;
-	tm_min.tm_year += mul - mod - !mod*mul;
-	nticks = (tm1.tm_year / mul * mul - tm_min.tm_year) / mul + 1;
-
-	time_t time_min = timegm(&tm_min);
-	this->get_tick = cplot_get_tick_datetime_annual;
-	this->tickerdata.datetime = (struct cplot_tickerdata_datetime) {
-	    .step = mul,
-	    .min = time_min,
-	    .nticksmin = nticksmin0,
-	    .nticksmax = nticksmax0,
-	    .nticks = nticks,
-	};
+    void check_bestness(long n, int type, const int *opts, int iopt) {
+	long diff = Abs(n - target_n);
+	if (diff < 0) diff = -diff;
+	if (diff < best_diff) {
+	    best_diff = diff;
+	    step = opts[iopt];
+	    datetype = type;
+	}
     }
-    else if (tm1.tm_mon - tm0.tm_mon + (tm1.tm_year-tm0.tm_year)*12 >= nticksmin)
-	fprintf(stderr, "datetime-tikkeri on kesken\n");
-    else
-	fprintf(stderr, "datetime-tikkeri on kesken\n");
+
+    /* days */ {
+	int opts[] = {1, 2, 5, 10};
+	for (int iopt=0; iopt<arrlen(opts); iopt++) {
+	    long n = ((long)max - (long)min) / (86400 * opts[iopt]);
+	    check_bestness(n, 0, opts, iopt);
+	}
+    }
+    /* months */ {
+	int opts[] = {1, 2, 3, 4, 6};
+	for (int iopt=0; iopt<arrlen(opts); iopt++) {
+	    int n = tm1.tm_year*12 + tm1.tm_mon - (tm0.tm_year*12 + tm0.tm_mon);
+	    n /= opts[iopt];
+	    check_bestness(n, 1, opts, iopt);
+	}
+    }
+    /* years */ {
+	int opts[] = {1, 2, 5, 15, 25};
+	for (int iopt=0; iopt<arrlen(opts); iopt++) {
+	    int n = tm1.tm_year - tm0.tm_year;
+	    n /= opts[iopt];
+	    check_bestness(n, 2, opts, iopt);
+	}
+    }
+
+    double firsttick;
+    int nticks, add, mod;
+    switch (datetype) {
+	case 0:
+	    this->get_tick = cplot_get_tick_datetime_daily;
+	    add = !!(tm0.tm_sec + tm0.tm_min + tm0.tm_hour);
+	    tm0.tm_sec = tm0.tm_min = tm0.tm_hour = 0;
+	    tm0.tm_mday += add;
+	    mod = (tm0.tm_mday-1) % step;
+	    tm0.tm_mday += !!(mod) * (step - mod);
+	    firsttick = timegm(&tm0);
+	    nticks = (max - firsttick) / 86400;
+	    break;
+	case 1:
+	    this->get_tick = cplot_get_tick_datetime_monthly;
+	    add = !!(tm0.tm_sec + tm0.tm_min + tm0.tm_hour + tm0.tm_mday-1);
+	    tm0.tm_sec = tm0.tm_min = tm0.tm_hour = 0;
+	    tm0.tm_mday = 1;
+	    tm0.tm_mon += add;
+	    mod = tm0.tm_mon % step;
+	    tm0.tm_mon += !!(mod) * (step - mod);
+	    firsttick = timegm(&tm0);
+	    int nmonths = tm1.tm_year * 12 + tm1.tm_mon - (tm0.tm_year * 12 + tm0.tm_mon);
+	    nticks = nmonths / step + 1;
+	    break;
+	case 2:
+	    this->get_tick = cplot_get_tick_datetime_annual;
+	    struct tm year0tm = {.tm_year = tm0.tm_year, .tm_mday = 1};
+	    time_t year0_time = timegm(&year0tm);
+	    int year0 = tm0.tm_year + (year0_time != min);
+	    mod = year0 % step;
+	    year0 += !!(mod) * (step - mod);
+	    tm0 = (struct tm) { .tm_year = year0, .tm_mday = 1, };
+	    firsttick = timegm(&tm0);
+	    nticks = (tm1.tm_year - year0) / step + 1;
+	    printf("%i, %i\n", tm1.tm_year+1900, tm1.tm_mon+1);
+	    break;
+	default: __builtin_unreachable();
+    }
+
+    this->tickerdata.datetime = (struct cplot_tickerdata_datetime) {
+	.nticks = nticks,
+	.step = step,
+	.min = firsttick,
+    };
 }

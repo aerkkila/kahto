@@ -47,13 +47,14 @@ int main() {
 
     struct tm tm = {.tm_year=2005-1900, .tm_mday=130};
     time_t aika = timegm(&tm);
-    long askel = 200*86400;
+    long askel = 80*86400;
     long ajat[pit2];
     for (int i=0; i<pit2; i++)
 	ajat[i] = aika + askel * i;
 
     cplot_yx(ydata2, ajat, .len=pit2, .xaxis=x1axis, .yaxis=y1axis, .linestyle.style=1, .markersize=1.0/40, .label = "iso pallo");
     x1axis->ticks->ticker.init = cplot_init_ticker_datetime;
+    x1axis->ticks->rotation100 = 25;
     cplot_axislabel(x1axis, "datetime-tikkeri");
     cplot_axislabel(y1axis, "oikia");
     y1axis->text[y1axis->ntext-1]->rotation100 = 0;
