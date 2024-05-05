@@ -4,6 +4,7 @@
 #include <ttra.h>
 #include <float.h>
 #include <cmh_colormaps.h>
+#include <waylandhelper.h>
 #include "cplot.h"
 #include "png.c"
 
@@ -89,7 +90,6 @@ static void axis_init_range(struct cplot_axis*);
 #include "rendering.c"
 #include "ticker.c"
 #include "commit.c"
-#include "wayland_helper/waylandhelper.h"
 
 struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
     struct cplot_axis *axis = calloc(1, sizeof(struct cplot_axis));

@@ -3,5 +3,8 @@
 *.png
 core
 vgcore*
-ttra
 functions.c
+ttra
+waylandhelper
+Makefile.inc
+config.mk
