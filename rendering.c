@@ -314,10 +314,12 @@ static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *a
     xy[nosteep+0] -= halfthickness;
     xy[nosteep+2] -= halfthickness;
 
+    static float __default_dashpattern[] = {1.0/60, 1.0/60};
+
     switch (style->style) {
 	case cplot_line_dashed_e:
 	    if (!style->pattern) {
-		style->pattern = (static float[]){1.0/60, 1.0/60};
+		style->pattern = __default_dashpattern;
 		style->patternlen = 2;
 	    }
 	    struct _cplot_dashed_line_args args = {
