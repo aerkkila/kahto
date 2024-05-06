@@ -1,25 +1,68 @@
 #include <float.h>
 
-static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
+static inline int my_isnan_float(float f) {
+    const uint32_t exponent = ((1u<<31)-1) - ((1u<<(31-8))-1);
+    uint32_t bits;
+    memcpy(&bits, &f, 4);
+    return (bits & exponent) == exponent;
+}
+
+static inline int my_isnan_double(double f) {
+    const uint64_t exponent = ((1lu<<63)-1) - ((1lu<<(63-11))-1);
+    uint64_t bits;
+    memcpy(&bits, &f, 8);
+    return (bits & exponent) == exponent;
+}
+
+@startperl
+static long get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
-    int len = iend - istart;
+    long len = iend - istart;
+    long count = len;
     for (int i=0; i<len; i++) {
+#if cplot_@dtype >= cplot_f4 // any floating point
+	if (
+#if cplot_@dtype == cplot_f4
+	    my_isnan_float(data[i])
+#else
+	    my_isnan_double(data[i])
+#endif
+	) {
+	    count--;
+	    continue;
+	}
+#endif
 	float pos = (data[i] - axismin) / axisdiff;
 	out[i*2] = iround(pos * axislen - 0.5);
     }
+    return count;
 }
 
-static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
+static long get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
-    int len = iend - istart;
-    for (int i=0; i<len; i++) {
+    long len = iend - istart;
+    long count = len;
+    for (long i=0; i<len; i++) {
+#if cplot_@dtype >= cplot_f4 // any floating point
+	if (
+#if cplot_@dtype == cplot_f4
+	    my_isnan_float(data[i])
+#else
+	    my_isnan_double(data[i])
+#endif
+	) {
+	    count--;
+	    continue;
+	}
+#endif
 	float pos = (data[i] - axismin) / axisdiff;
 	out[i*2] = iround((1 - pos) * axislen - 0.5);
     }
+    return count;
 }
 
 static void get_datalevels_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axismin, double axisdiff, float scale) {

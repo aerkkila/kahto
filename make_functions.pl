@@ -9,6 +9,16 @@ sub main {
     open file_in, "<functions.in.c" or die;
     open file_out, ">functions.c";
 
+    # Copy only once until @startperl.
+    $line = <file_in>;
+    while (not $line =~ /^\@startperl\s*.*/) { #*
+	print file_out $line;
+	$line = <file_in>;
+	if (not $line) {
+	    last; }
+    }
+    $startpos = tell file_in;
+
     for (my $i=0; $i<@enumtypes; $i++) {
 	while (<file_in>) {
 	    $_ =~ s/\@dtype/$enumtypes[$i]/g;
@@ -16,7 +26,7 @@ sub main {
 	    print file_out $_;
 	}
 	print file_out "\n";
-	seek(file_in, 0, 0);
+	seek(file_in, $startpos, 0);
     }
 
     my $first = 1;

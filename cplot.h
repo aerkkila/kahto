@@ -4,17 +4,17 @@
 #include "cmh_colormaps.h"
 
 #define cplot_notype 0
-#define cplot_i1 (10 + sizeof(char))
-#define cplot_i2 (10 + sizeof(short))
-#define cplot_i4 (10 + sizeof(int))
-#define cplot_i8 (10 + sizeof(long))
-#define cplot_u1 sizeof(unsigned char)
-#define cplot_u2 sizeof(unsigned short)
-#define cplot_u4 sizeof(unsigned int)
-#define cplot_u8 sizeof(unsigned long)
-#define cplot_f4 (20 + sizeof(float))
-#define cplot_f8 (20 + sizeof(double))
-#define cplot_f10 (20 + sizeof(long double))
+#define cplot_i1 (10 + 1)
+#define cplot_i2 (10 + 2)
+#define cplot_i4 (10 + 4)
+#define cplot_i8 (10 + 8)
+#define cplot_u1 1
+#define cplot_u2 2
+#define cplot_u4 4
+#define cplot_u8 8
+#define cplot_f4 (20 + 4)
+#define cplot_f8 (20 + 8)
+#define cplot_f10 (20 + 16)
 
 /* returns some of the enumerations above according to the data type */
 #define cplot_type(a) ((int)( \
@@ -91,6 +91,7 @@ struct cplot_ticker {
     void (*init)(struct cplot_ticker *this, double min, double max);
     double (*get_tick)(struct cplot_ticker *this, int ind, char **label, int sizelabel);
     union cplot_tickerdata tickerdata;
+    int integers_only;
 };
 
 /* crossaxis: Where ticks are parallel to the axis?

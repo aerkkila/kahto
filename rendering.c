@@ -645,16 +645,17 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 
     for (long istart=0; istart<data->length; ) {
 	long iend = min(istart+npoints, data->length);
+	long num = iend - istart;
 	if (data->yxzdata[1])
-	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1]);
+	    num = get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1]);
 	if (data->yxzdata[2])
 	    get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255);
-	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0]);
+	num = get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0]);
 	if (data->linestyle.style) {
 	    struct _cplot_line_args args = {
 		.xypixels = xypixels,
 		.x0 = istart,
-		.len = iend-istart,
+		.len = num,
 		.canvas = canvas,
 		.ystride = ystride,
 		.axis_xywh = xywh,
@@ -668,7 +669,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	if (marker) {
 	    data_args.xypixels = xypixels;
 	    data_args.x0 = istart;
-	    data_args.len = iend-istart;
+	    data_args.len = num;
 	    data_args.zlevels = zlevels;
 	    if (data->yxzdata[1]) {
 		if (data->yxzdata[2])

@@ -122,7 +122,7 @@ void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max)
     double target_nticks0 = this->tickerdata.lin.target_nticks;
     double target_nticks = target_nticks0 ? target_nticks0 : default_linear_target_nticks;
     int maxpower;
-    double base = get_linticker_base(max, &maxpower);
+    double base = get_linticker_base(max-min, &maxpower);
     this->tickerdata.lin = (struct cplot_tickerdata_linear) {
 	.nticks = target_nticks,
 	.step = (max - min) / (target_nticks-1),
@@ -147,12 +147,24 @@ void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min,
 }
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max) {
-    double step_opts[] = {1, 1.5, 2, 2.5, 5};
+    double step_opts0[] = {1, 1.5, 2, 2.5, 5};
+    int nstep_opt0 = arrlen(step_opts0);
+    double step_opts1[] = {1, 2, 5};
+    int nstep_opt1 = arrlen(step_opts1);
+    double *step_opts;
+    int nstep_opt;
+    if (this->integers_only) {
+	step_opts = step_opts1;
+	nstep_opt = nstep_opt1;
+    }
+    else {
+	step_opts = step_opts0;
+	nstep_opt = nstep_opt0;
+    }
 
     int maxpower;
-    double base = get_linticker_base(max, &maxpower);
+    double base = get_linticker_base(max-min, &maxpower);
 
-    int nstep_opt = arrlen(step_opts);
     double best_step, best_diff = DBL_MAX;
     double target_n_orig = this->tickerdata.lin.target_nticks;
     double target_n = target_n_orig ? target_n_orig : default_linear_target_nticks;
