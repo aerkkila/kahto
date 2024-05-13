@@ -140,7 +140,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->linestyle.style = cplot_line_normal_e;
 
     ticks->gridstyle.thickness = 1.0 / 1200;
-    ticks->gridstyle.color = RGB(100, 100, 100);
+    ticks->gridstyle.color = 0xffcccccc;
 
     ticks->rowheight = 2.4*ticks->length;
     ticks->have_labels = 1;
@@ -576,13 +576,14 @@ static void add_data(struct cplot_args *args) {
     init_datastyle(data);
 }
 
-void cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text) {
+struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text) {
     if (axis->ntext >= axis->mem_text)
 	axis->text = realloc(axis->text, (axis->mem_text = axis->ntext + 2) * sizeof(void*));
     axis->text[axis->ntext++] = text;
+    return text;
 }
 
-void cplot_axislabel(struct cplot_axis *axis, char *label) {
+struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
     struct cplot_axistext *text = malloc(sizeof(struct cplot_axistext));
     *text = (struct cplot_axistext) {
 	.text = label,
@@ -593,7 +594,7 @@ void cplot_axislabel(struct cplot_axis *axis, char *label) {
 	.rotation100 = 25 * (axis->direction == 1),
 	.type = cplot_axistext_label,
     };
-    cplot_add_axistext(axis, text);
+    return cplot_add_axistext(axis, text);
 }
 
 void cplot_destroy_axis(struct cplot_axis *axis) {

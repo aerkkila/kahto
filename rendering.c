@@ -591,7 +591,8 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
     else if (!data->marker)
 	*has_marker = 0;
     else switch (*data->marker) {
-	case ' ': *has_marker = 0; break;
+	case ' ':
+	case  0 : *has_marker = 0; break;
 	case '.': bmap = NULL; break;
 	case '+': init_plus(bmap, *width, *height); break;
 	default: init_circle(bmap, *width, *height); break;

@@ -281,11 +281,11 @@ static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
 }
 #define cplot_plot(...) cplot_plot_inl((struct cplot_args){__VA_ARGS__})
 
-void cplot_axislabel(struct cplot_axis *axis, char *label);
+struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_show(void *axes_or_layout);
 void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
-void cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
+struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void cplot_write_png(void *axes_or_layout, const char *name);
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
