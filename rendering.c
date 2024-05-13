@@ -408,7 +408,8 @@ static void init_plus(unsigned char *to, int tow, int toh) {
 }
 
 static void init_circle(unsigned char *to, int tow, int toh) {
-    int radius = min(tow, toh) / 2;
+    int radius = (min(tow, toh)-1) / 2;
+    memset(to, 0, tow*toh);
     to += radius * tow + radius;
     int radius2 = radius * radius;
     for (int j=0; j<=radius; j++) {
