@@ -3,28 +3,37 @@
 
 const char *cplot_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
+void cplot__sprint_supernum(char *out, int sizeout, int num) {
+    char buff[20];
+    int len;
+    sprintf(buff, "%i%n", num, &len);
+    int slen = 0;
+    for (int i=0; i<len; i++) {
+	const char *str = (buff[i] == '-' ? "⁻" : cplot_supernum[buff[i] - '0']);
+	int slen1 = strlen(str);
+	if (slen+slen1+1 >= sizeout)
+	    break;
+	strcpy(out + slen, str);
+	slen += slen1;
+    }
+}
+
 double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
     double step = this->tickerdata.lin.step,
 	   base = this->tickerdata.lin.base,
 	   min = this->tickerdata.lin.min;
     double val = ind * step + min;
+    this->tickerdata.lin.out_omitted_coef = 0;
 
     if (base < 0.05 || base > 5000) {
-	const char *form = (step == (long)step ? "%.0f\n10" : "%.1f\n10");
-	snprintf(*label, sizelabel, form, val/base, base);
-	int baseten = this->tickerdata.lin.baseten;
-	char buff[20];
-	int len;
-	sprintf(buff, "%i%n", baseten, &len);
-	int slen = strlen(*label);
-	for (int i=0; i<len; i++) {
-	    const char *str = (buff[i] == '-' ? "⁻" : cplot_supernum[buff[i] - '0']);
-	    int slen1 = strlen(str);
-	    if (slen+slen1+1 >= sizelabel)
-		break;
-	    strcpy(*label + slen, str);
-	    slen += slen1;
+	const char *form = (step == (long)step ? "%.0f" : "%.1f");
+	int nprinted = snprintf(*label, sizelabel, form, val/base, base);
+	if (!this->tickerdata.lin.omit_coef) {
+	    nprinted += snprintf(*label+nprinted, sizelabel-nprinted, "\n10");
+	    cplot__sprint_supernum(*label+nprinted, sizelabel-nprinted, this->tickerdata.lin.baseten);
 	}
+	else
+	    this->tickerdata.lin.out_omitted_coef = 1;
     }
     else if (base < 1) {
 	const char *form = (step == (long)step ? "%.1f" : "%.2f");
@@ -43,7 +52,9 @@ double cplot_get_tick_datetime_annual(struct cplot_ticker *this, int ind, char *
     struct tm tm = *gmtime(&min);
     tm.tm_year += ind * step;
     double val = timegm(&tm);
-    if (tm.tm_yday == 0)
+    if (this->tickerdata.datetime.form)
+	strftime(*label, sizelabel, this->tickerdata.datetime.form, &tm);
+    else if (tm.tm_yday == 0)
 	snprintf(*label, sizelabel, "%04i", tm.tm_year+1900);
     else
 	snprintf(*label, sizelabel, "%04i-%02i", tm.tm_year+1900, tm.tm_mon+1);
@@ -56,7 +67,9 @@ double cplot_get_tick_datetime_monthly(struct cplot_ticker *this, int ind, char 
     struct tm tm = *gmtime(&min);
     tm.tm_mon += ind * step;
     double val = timegm(&tm);
-    if (tm.tm_mday == 1)
+    if (this->tickerdata.datetime.form)
+	strftime(*label, sizelabel, this->tickerdata.datetime.form, &tm);
+    else if (tm.tm_mday == 1)
 	snprintf(*label, sizelabel, "%04i-%02i", tm.tm_year+1900, tm.tm_mon+1);
     else
 	snprintf(*label, sizelabel, "%04i-%02i-%02i", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday);
@@ -69,7 +82,10 @@ double cplot_get_tick_datetime_daily(struct cplot_ticker *this, int ind, char **
     struct tm tm = *gmtime(&min);
     tm.tm_mday += ind * step;
     double val = timegm(&tm);
-    snprintf(*label, sizelabel, "%04i-%02i-%02i", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday);
+    if (this->tickerdata.datetime.form)
+	strftime(*label, sizelabel, this->tickerdata.datetime.form, &tm);
+    else
+	snprintf(*label, sizelabel, "%04i-%02i-%02i", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday);
     return val;
 }
 
@@ -123,13 +139,11 @@ void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max)
     double target_nticks = target_nticks0 ? target_nticks0 : default_linear_target_nticks;
     int maxpower;
     double base = get_linticker_base(max-min, &maxpower);
-    this->tickerdata.lin = (struct cplot_tickerdata_linear) {
-	.nticks = target_nticks,
-	.step = (max - min) / (target_nticks-1),
-	.min = min,
-	.base = base,
-	.baseten = maxpower,
-    };
+    this->tickerdata.lin.nticks = target_nticks;
+    this->tickerdata.lin.step = (max - min) / (target_nticks-1);
+    this->tickerdata.lin.min = min;
+    this->tickerdata.lin.base = base;
+    this->tickerdata.lin.baseten = maxpower;
 }
 
 void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max) {
@@ -186,14 +200,12 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
     this->get_tick = cplot_get_tick_linear;
     double maxtick = best_step * floor(max/best_step);
     double mintick = best_step * ceil(min/best_step);
-    this->tickerdata.lin = (struct cplot_tickerdata_linear) {
-	.nticks = iroundpos((maxtick - mintick) / best_step) + 1,
-	.step = best_step,
-	.min = mintick,
-	.base = base,
-	.baseten = maxpower,
-	.target_nticks = target_n_orig,
-    };
+    this->tickerdata.lin.nticks = iroundpos((maxtick - mintick) / best_step) + 1;
+    this->tickerdata.lin.step = best_step;
+    this->tickerdata.lin.min = mintick;
+    this->tickerdata.lin.base = base;
+    this->tickerdata.lin.baseten = maxpower;
+    this->tickerdata.lin.target_nticks = target_n_orig;
 }
 
 void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max) {
@@ -280,9 +292,8 @@ void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double ma
 	default: __builtin_unreachable();
     }
 
-    this->tickerdata.datetime = (struct cplot_tickerdata_datetime) {
-	.nticks = nticks,
-	.step = step,
-	.min = firsttick,
-    };
+    struct cplot_tickerdata_datetime *dt = &this->tickerdata.datetime;
+    dt->nticks = nticks;
+    dt->step = step;
+    dt->min = firsttick;
 }

@@ -57,6 +57,7 @@ struct cplot_tickerdata_linear {
     int nticks, // must be first
 	baseten;
     double step, min, base, target_nticks;
+    int omit_coef, out_omitted_coef;
 };
 
 struct cplot_tickerdata_datetime {
@@ -64,6 +65,7 @@ struct cplot_tickerdata_datetime {
 	step;
     double target_nticks;
     long min;
+    const char *form;
 };
 
 struct cplot_tickerdata_arbitrary {
@@ -140,6 +142,13 @@ struct cplot_axistext {
     char *text;
     enum axistext_type type;
     int owner;
+    float pos, rowheight, rotation100;
+    float hvalign[2];
+    int ro_area[4];
+};
+
+struct cplot_text {
+    char *text;
     float pos, rowheight, rotation100;
     float hvalign[2];
     int ro_area[4];
@@ -299,5 +308,7 @@ void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, 
 /* Käyttäjä ei tarvitse näitä. */
 void cplot_layout_to_axes(struct cplot_layout *layout);
 void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride);
+
+void cplot__sprint_supernum(char *out, int sizeout, int num);
 
 #endif
