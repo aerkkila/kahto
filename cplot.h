@@ -56,6 +56,7 @@ struct cplot_linestyle {
     float *pattern;
     unsigned *colors; // for future use
     int patternlen;
+    int align; // (y = 0, thickness = 3) => y:={-1,0,1} (align = 0), y:={-2,-1,0} (align = -1), y:={0,1,2} (align = 1)
 };
 
 struct cplot_tickerdata_linear {

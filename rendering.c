@@ -311,10 +311,20 @@ static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *a
 
     if (thickness < 1)
 	thickness = 1;
-    int halfthickness = iroundpos(thickness/2);
     int ithickness = iroundpos(thickness);
-    xy[nosteep+0] -= halfthickness;
-    xy[nosteep+2] -= halfthickness;
+    switch (style->align) {
+	case 0:
+	    xy[nosteep+0] -= ithickness/2;
+	    xy[nosteep+2] -= ithickness/2;
+	    break;
+	default:
+	case 1:
+	    break;
+	case -1:
+	    xy[nosteep+0] -= ithickness - 1;
+	    xy[nosteep+2] -= ithickness - 1;
+	    break;
+    }
 
     static float __default_dashpattern[] = {1.0/60, 1.0/60};
 
@@ -788,8 +798,10 @@ static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea are
     switch (axes->legend.fill) {
 	case cplot_fill_color_e:
 	    fillcolor = axes->legend.fillcolor;
+	    /* run through */
 	case cplot_fill_bg_e:
 	    cplot_fill_box_xywh(area.canvas, area.ystride, area.axesheight, axes->legend.ro_xywh, fillcolor);
+	    /* run through */
 	case cplot_no_fill_e:
 	    cplot_draw_box_xywh(area.canvas, area.ystride, area.axesheight, axes->legend.ro_xywh, &axes->legend.borderstyle);
 	    break;
