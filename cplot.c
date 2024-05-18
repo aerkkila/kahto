@@ -218,6 +218,63 @@ struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
     return layout;
 }
 
+static void get_minmax_for_data(struct cplot_data *data, int yxz) {
+    int yxz_other = yxz == 2 ? 1 : !yxz;
+    switch (data->yxztype[yxz_other]) {
+	case cplot_f4:
+	    get_minmax_with_float[data->yxztype[yxz]](
+		data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other]);
+	    break;
+	case cplot_f8:
+	    get_minmax_with_double[data->yxztype[yxz]](
+		data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other]);
+	    break;
+	default:
+	    get_minmax[data->yxztype[yxz]](data->yxzdata[yxz], data->length, data->minmax[yxz]);
+	    break;
+    }
+}
+
+static void get_min_for_data(struct cplot_data *data, int yxz) {
+    int yxz_other = yxz == 2 ? 1 : !yxz;
+    switch (data->yxztype[yxz_other]) {
+	case cplot_f4:
+	    data->minmax[yxz][0] =
+		get_min_with_float[data->yxztype[yxz]](
+		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
+	    break;
+	case cplot_f8:
+	    data->minmax[yxz][0] =
+		get_min_with_double[data->yxztype[yxz]](
+		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
+	    break;
+	default:
+	    data->minmax[yxz][0] =
+		get_min[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
+	    break;
+    }
+}
+
+static void get_max_for_data(struct cplot_data *data, int yxz) {
+    int yxz_other = yxz == 2 ? 1 : !yxz;
+    switch (data->yxztype[yxz_other]) {
+	case cplot_f4:
+	    data->minmax[yxz][1] =
+		get_max_with_float[data->yxztype[yxz]](
+		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
+	    break;
+	case cplot_f8:
+	    data->minmax[yxz][1] =
+		get_max_with_double[data->yxztype[yxz]](
+		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
+	    break;
+	default:
+	    data->minmax[yxz][1] =
+		get_max[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
+	    break;
+    }
+}
+
 static void axis_init_range(struct cplot_axis *axis) {
     int yxz = axis->direction == 0;
     axis->min = DBL_MAX;
@@ -241,12 +298,13 @@ static void axis_init_range(struct cplot_axis *axis) {
 	else
 	    switch (data->have_minmax[yxz]) {
 		case 0:
-		    get_minmax[data->yxztype[yxz]](data->yxzdata[yxz], data->length, data->minmax[yxz]);
+		    get_minmax_for_data(data, yxz);
 		    break;
 		case cplot_maxbit:
-		    data->minmax[yxz][0] = get_min[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
+		    get_min_for_data(data, yxz);
 		    break;
 		case cplot_minbit:
+		    get_max_for_data(data, yxz);
 		    data->minmax[yxz][1] = get_max[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
 		    break;
 		default: break;

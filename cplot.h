@@ -167,7 +167,7 @@ struct cplot_data {
     struct cplot_axis *yxaxis[2], *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
-    int owner[3];
+    char owner[3];
     char *label;
     /* style */
     const char* marker;
@@ -228,7 +228,7 @@ struct cplot_args {
     struct cplot_axis *yaxis, *xaxis, *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
-    int yxzowner[3];
+    char yxzowner[3];
     char *label;
 
     const char* marker;
