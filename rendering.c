@@ -265,13 +265,14 @@ static void _draw_thick_line(unsigned *canvas, int ystride, int xy[4], unsigned 
 	draw_line_xiaolin(canvas, ystride, xy, color);
     xy[nosteep+0]++;
     xy[nosteep+2]++;
-    for (int p=1; p<ithickness-1; p++) {
+    int p = 1;
+    for (; p<ithickness-1; p++) {
 	if (!check_line(xy, axis_area))
 	    draw_line_bresenham(canvas, ystride, xy, color);
 	xy[nosteep+0]++;
 	xy[nosteep+2]++;
     }
-    if (!check_line(xy, axis_area))
+    if (p < ithickness && !check_line(xy, axis_area))
 	draw_line_xiaolin(canvas, ystride, xy, color);
 }
 
@@ -281,13 +282,14 @@ static unsigned _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, un
 	new_carry = draw_line_xiaolin_dashed(args, carry);
     args->xy[args->nosteep+0]++;
     args->xy[args->nosteep+2]++;
-    for (int p=1; p<args->ithickness-1; p++) {
+    int p = 1;
+    for (; p<args->ithickness-1; p++) {
 	if (!check_line(args->xy, args->axis_area))
 	    new_carry = draw_line_bresenham_dashed(args, carry);
 	args->xy[args->nosteep+0]++;
 	args->xy[args->nosteep+2]++;
     }
-    if (!check_line(args->xy, args->axis_area))
+    if (p < args->ithickness && !check_line(args->xy, args->axis_area))
 	new_carry = draw_line_xiaolin_dashed(args, carry);
     return new_carry;
 }
