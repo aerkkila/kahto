@@ -26,8 +26,13 @@
 	    /* floating point */ \
 	    : sizeof(a) + 20 ))		/* floating point number is enumerated as size + 20 */
 
+/* If axis has range_isset & cplot_minbit, range will be edited so that markers don't cut on the edges.
+   With additional cplot_minbit_const, range will not be edited.
+   To zoom axis to some piece of data, use cplot_minbit|cplot_minbit_const and cplot_maxbit|cplot_maxbit_const. */
 #define cplot_minbit 1
 #define cplot_maxbit 2
+#define cplot_minbit_const 4
+#define cplot_maxbit_const 8
 #define cplot_automatic -9010
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)

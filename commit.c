@@ -305,6 +305,21 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     }
     update_xywh(axes, overgoing, margin);
 
+    /* Adjust exteremes to prevent markers from cutting on the edges. */
+    for (int i=0; i<axes->ndata; i++) {
+	struct cplot_data *data = axes->data[i];
+	for (int iaxis=0; iaxis<2; iaxis++) {
+	    struct cplot_axis *axis = data->yxaxis[iaxis];
+	    if (!axis)
+		continue;
+	    double sizedata = data->markersize * axes->wh[1] * (axis->max - axis->min) / axes->ro_inner_xywh[2];
+	    if (!(axis->range_isset & cplot_minbit_const))
+		update_min(axis->min, data->minmax[iaxis][0] - sizedata*0.5);
+	    if (!(axis->range_isset & cplot_maxbit_const))
+		update_max(axis->max, data->minmax[iaxis][1] + sizedata*0.5);
+	}
+    }
+
     for (int iloop=0; iloop<axes->naxis*20; iloop++) { // while (1) but prevents theoretical infinite loop
 	for (int i=0; i<axes->naxis; i++) {
 	    struct cplot_axis *axis = axes->axis[i];
