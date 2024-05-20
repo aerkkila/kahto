@@ -654,7 +654,7 @@ struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
 	.hvalign = {-0.5, -1.4 * (axis->pos < 0.5)},
 	.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
 	.axis = axis,
-	.rotation100 = 25 * (axis->direction == 1),
+	.rotation100 = 75 * (axis->direction == 1),
 	.type = cplot_axistext_label,
     };
     return cplot_add_axistext(axis, text);
