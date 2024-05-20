@@ -2,6 +2,7 @@
 #define __cplot_h__
 #define CMH_ENUM_ONLY
 #include "cmh_colormaps.h"
+#include <ttra.h>
 
 #define cplot_notype 0
 #define cplot_i1 (10 + 1)

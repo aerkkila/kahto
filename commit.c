@@ -288,6 +288,8 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	iroundpos(axes->wh[1] * axes->margin[2]),
 	iroundpos(axes->wh[1] * axes->margin[3]),
     };
+    if (!axes->ttra->text_initialized)
+	ttra_init(axes->ttra);
 
     float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
 

@@ -78,7 +78,7 @@ static inline float __attribute__((pure)) get_ticks_underaxislength(struct cplot
 }
 
 void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]);
-void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols);
+void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
 void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout);
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
@@ -170,7 +170,7 @@ struct cplot_axes* cplot_axes_new() {
     axes->wh[1] = cplot_default_height;
 
     axes->ttra = calloc(1, sizeof(struct ttra));
-    ttra_init(axes->ttra);
+    axes->ttra->fonttype = ttra_sans_e;
 
     axes->legend.rowheight = 1.0 / 40;
     axes->legend.symbolspace_per_rowheight = 1.25;
@@ -577,7 +577,7 @@ static void init_datastyle(struct cplot_data *data) {
 	data->linestyle.thickness = 1.0 / 600;
 }
 
-void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols) {
+void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols) {
     *lines = *cols = 0;
     for (int i=0; i<axes->ndata; i++)
 	if (axes->data[i]->label) {
@@ -589,11 +589,16 @@ void cplot_get_legend_dims(struct cplot_axes *axes, int *lines, int *cols) {
 }
 
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight) {
-    cplot_get_legend_dims(axes, y, x);
+    *x = *y = 0;
     int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * axesheight));
+    for (int i=0; i<axes->ndata; i++)
+	if (axes->data[i]->label) {
+	    int w, h;
+	    ttra_get_textdims_pixels(axes->ttra, axes->data[i]->label, &w, &h);
+	    *y += h;
+	    *x = max(*x, w);
+	}
     axes->legend.ro_text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
-    *y *= axes->ttra->fontheight;
-    *x *= axes->ttra->fontwidth;
     *x += axes->legend.ro_text_left;
     int linewidth = iround1(axes->legend.borderstyle.thickness * axesheight);
     *y += linewidth * 2;
