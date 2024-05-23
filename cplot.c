@@ -132,6 +132,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->axis = axis;
     ticks->color = fg;
     ticks->ticker.init = cplot_init_ticker_default;
+    ticks->ticker.ticks = ticks;
     ticks->length = 1.0 / 80;
     ticks->hvalign_text[0] = -0.5;
 
@@ -148,6 +149,12 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->crossaxis = cplot_automatic;
     ticks->hvalign_text[1] = cplot_automatic;
     ticks->ascending = cplot_automatic;
+
+    ticks->crossaxis1 = cplot_automatic;
+    ticks->linestyle1.style = cplot_line_normal_e;
+    ticks->linestyle1.thickness = 1.0 / 1200;
+    ticks->linestyle1.color = 0xff666666;
+    ticks->length1 = 1.0 / 110;
 
     return ticks;
 }
@@ -445,9 +452,11 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     int inner_area[] = xywh_to_area(xywh);
     int side = ticks->axis->pos >= 0.5;
 
+    const double axisdatamin = ticks->axis->min;
+    const double axisdatalen = ticks->axis->max - axisdatamin;
     for (int itick=0; itick<nticks; itick++) {
 	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, &tick, 32);
-	double pos_rel = (pos_data - ticks->axis->min) / (ticks->axis->max - ticks->axis->min);
+	double pos_rel = (pos_data - axisdatamin) / axisdatalen;
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
 	line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
@@ -458,6 +467,25 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	if (ticks->gridstyle.style) {
 	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
 	    draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axesheight, 0);
+	}
+    }
+
+    if (ticks->ticker.get_maxn_subticks) {
+	nticks = ticks->ticker.get_maxn_subticks(&ticks->ticker);
+	float posdata[nticks];
+	nticks = ticks->ticker.get_subticks(&ticks->ticker, posdata);
+	line_px[isx+0] = ticks->ro_lines1[0];
+	line_px[isx+2] = ticks->ro_lines1[1];
+	for (int i=0; i<nticks; i++) {
+	    double pos_rel = (posdata[i] - axisdatamin) / axisdatalen;
+	    if (!isx)
+		pos_rel = 1 - pos_rel;
+	    line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
+	    draw_line(canvas, ystride, line_px, ticks->ro_tot_area, &ticks->linestyle1, axesheight, 0);
+	    if (ticks->gridstyle1.style) {
+		gridline[!isx] = gridline[!isx+2] = line_px[!isx];
+		draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, axesheight, 0);
+	    }
 	}
     }
 }

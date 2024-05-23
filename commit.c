@@ -32,6 +32,8 @@ static void cplot_ticks_set_parameters(struct cplot_ticks *ticks) {
 	    ticks->crossaxis = 0;
 	if (ticks->ascending == cplot_automatic)
 	    ticks->ascending = 1;
+	if (ticks->crossaxis1 == cplot_automatic)
+	    ticks->crossaxis1 = 0;
     }
     else {
 	if (ticks->hvalign_text[1] == cplot_automatic)
@@ -40,6 +42,8 @@ static void cplot_ticks_set_parameters(struct cplot_ticks *ticks) {
 	    ticks->crossaxis = -1;
 	if (ticks->ascending == cplot_automatic)
 	    ticks->ascending = 0;
+	if (ticks->crossaxis1 == cplot_automatic)
+	    ticks->crossaxis1 = -1;
     }
 }
 
@@ -54,6 +58,9 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
     int line_px[4];
     line_px[isx] = ticks->axis->ro_line[isx] + ticks->crossaxis * ticks->length * axesheight; // thickness?
     line_px[isx+2] = ticks->axis->ro_line[isx] + (ticks->crossaxis+1) * ticks->length * axesheight;
+
+    ticks->ro_lines1[0] = ticks->axis->ro_line[isx] + ticks->crossaxis1 * ticks->length1 * axesheight;
+    ticks->ro_lines1[1] = ticks->axis->ro_line[isx] + (ticks->crossaxis1+1) * ticks->length1 * axesheight;
 
     ticks->ro_lines[0] = line_px[isx];
     ticks->ro_lines[1] = line_px[isx+2];
@@ -86,6 +93,9 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
     ticks->ro_tot_area[isx+2] = max(ticks->ro_labelarea[isx+2], ticks->ro_lines[1]);
     ticks->ro_tot_area[!isx+0] = min(ticks->ro_labelarea[!isx+0], minmaxpos[0]);
     ticks->ro_tot_area[!isx+2] = max(ticks->ro_labelarea[!isx+2], minmaxpos[1]);
+
+    update_min(ticks->ro_tot_area[isx+0], ticks->ro_lines1[0]);
+    update_max(ticks->ro_tot_area[isx+2], ticks->ro_lines1[1]);
 
     struct cplot_axis *a = ticks->axis;
     update_min(a->ro_tick_area[0], ticks->ro_tot_area[0]);

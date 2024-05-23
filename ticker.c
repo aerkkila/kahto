@@ -46,6 +46,30 @@ double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, i
     return val;
 }
 
+int cplot_get_maxn_subticks_linear(struct cplot_ticker *this) {
+    return this->tickerdata.lin.nsubticks * (this->tickerdata.lin.nticks + 1);
+}
+
+int cplot_get_subticks_linear(struct cplot_ticker *this, float *pos) {
+    double min = this->tickerdata.lin.min,
+	   step = this->tickerdata.lin.step;
+    int nsub = this->tickerdata.lin.nsubticks,
+	nmaj = this->tickerdata.lin.nticks;
+    int itick = 0;
+    double substep = step / nsub;
+
+    double room = min - this->ticks->axis->min;
+    int n_under = (int)(room / substep);
+    double min_under = min - n_under * substep;
+    for (int i=0; i<n_under; i++)
+	pos[itick++] = min_under + i*substep;
+
+    for (int j=0; j<nmaj; j++)
+	for (int i=1; i<nsub; i++)
+	    pos[itick++] = min + j*step + i*substep;
+    return itick;
+}
+
 double cplot_get_tick_datetime_annual(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
     int step = this->tickerdata.datetime.step;
     time_t min = this->tickerdata.datetime.min;
@@ -162,18 +186,23 @@ void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min,
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max) {
     double step_opts0[] = {1, 1.5, 2, 2.5, 5};
+    int subticks_mul0[] = {4, 3, 4, 5, 5};
     int nstep_opt0 = arrlen(step_opts0);
     double step_opts1[] = {1, 2, 5};
+    int subticks_mul1[] = {4, 4, 5};
     int nstep_opt1 = arrlen(step_opts1);
     double *step_opts;
+    int *subticks_mul;
     int nstep_opt;
     if (this->integers_only) {
 	step_opts = step_opts1;
 	nstep_opt = nstep_opt1;
+	subticks_mul = subticks_mul1;
     }
     else {
 	step_opts = step_opts0;
 	nstep_opt = nstep_opt0;
+	subticks_mul = subticks_mul0;
     }
 
     int maxpower;
@@ -183,6 +212,7 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
     double target_n_orig = this->tickerdata.lin.target_nticks;
     double target_n = target_n_orig ? target_n_orig : default_linear_target_nticks;
     double diff = max - min;
+    int best_mul;
     if (diff / (base*step_opts[0]) < target_n)
 	base *= 0.1;
     for (int iopt=0; iopt<nstep_opt; iopt++) {
@@ -193,11 +223,14 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 	if (targetdiff < best_diff) {
 	    best_diff = targetdiff;
 	    best_step = step;
+	    best_mul = subticks_mul[iopt];
 	}
     }
 
     this->species = cplot_ticker_linear;
     this->get_tick = cplot_get_tick_linear;
+    this->get_maxn_subticks = cplot_get_maxn_subticks_linear;
+    this->get_subticks = cplot_get_subticks_linear;
     double maxtick = best_step * floor(max/best_step);
     double mintick = best_step * ceil(min/best_step);
     this->tickerdata.lin.nticks = iroundpos((maxtick - mintick) / best_step) + 1;
@@ -206,6 +239,7 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
     this->tickerdata.lin.base = base;
     this->tickerdata.lin.baseten = maxpower;
     this->tickerdata.lin.target_nticks = target_n_orig;
+    this->tickerdata.lin.nsubticks = best_mul;
 }
 
 void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max) {

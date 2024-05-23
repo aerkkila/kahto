@@ -64,7 +64,7 @@ struct cplot_tickerdata_linear {
     int nticks, // must be first
 	baseten;
     double step, min, base, target_nticks;
-    int omit_coef, out_omitted_coef;
+    int omit_coef, out_omitted_coef, nsubticks;
 };
 
 struct cplot_tickerdata_datetime {
@@ -99,28 +99,32 @@ struct cplot_ticker {
     enum cplot_tickere species;
     void (*init)(struct cplot_ticker *this, double min, double max);
     double (*get_tick)(struct cplot_ticker *this, int ind, char **label, int sizelabel);
+    int (*get_maxn_subticks)(struct cplot_ticker *this);
+    int (*get_subticks)(struct cplot_ticker *this, float *out);
     union cplot_tickerdata tickerdata;
     int integers_only;
+    struct cplot_ticks *ticks;
 };
 
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
  *	1: Ticks end at the axis i.e. are left or above.
+ * variable1: variable for minor ticks
  */
 struct cplot_ticks {
     struct cplot_axis *axis;
     struct cplot_ticker ticker;
-    unsigned color;
-    float crossaxis, length;
+    unsigned color, color1;
+    float crossaxis, length, crossaxis1, length1;
 
-    struct cplot_linestyle linestyle, gridstyle;
+    struct cplot_linestyle linestyle, gridstyle, linestyle1, gridstyle1;
 
     int have_labels;
     float hvalign_text[2];
     int ascending; // whether labels are in the end and not start
     float rowheight, rotation100;
 
-    int ro_lines[2], ro_labelarea[4], ro_tot_area[4];
+    int ro_lines[2], ro_lines1[2], ro_labelarea[4], ro_tot_area[4];
 };
 
 struct cplot_axis {
