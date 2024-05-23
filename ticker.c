@@ -36,8 +36,19 @@ double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, i
 	    this->tickerdata.lin.out_omitted_coef = 1;
     }
     else if (base < 1) {
-	const char *form = (step == (long)step ? "%.1f" : "%.2f");
-	snprintf(*label, sizelabel, form, val);
+	char buff[20];
+	sprintf(buff, "%f", step);
+	int ilast = 0, i = -1, idecimal = 0;
+	while (buff[++i])
+	    if (buff[i] == '.' || buff[i] == ',') {
+		idecimal = i;
+		break;
+	    }
+	while (buff[++i])
+	    if (buff[i] != '0')
+		ilast = i;
+	sprintf(buff, "%%.%if", ilast-idecimal);
+	snprintf(*label, sizelabel, buff, val);
     }
     else {
 	const char *form = (step == (long)step ? "%.0f" : "%.1f");
