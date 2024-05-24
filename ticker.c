@@ -23,9 +23,10 @@ double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, i
 	   base = this->tickerdata.lin.base,
 	   min = this->tickerdata.lin.min;
     double val = ind * step + min;
+    int baseten = this->tickerdata.lin.baseten;
     this->tickerdata.lin.out_omitted_coef = 0;
 
-    if (base < 0.005 || base > 5000) {
+    if (baseten <= -4  || baseten >= 6) {
 	const char *form = (step == (long)step ? "%.0f" : "%.1f");
 	int nprinted = snprintf(*label, sizelabel, form, val/base, base);
 	if (!this->tickerdata.lin.omit_coef) {
