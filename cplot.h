@@ -286,11 +286,28 @@ struct cplot_drawarea {
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
 struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y);
 struct cplot_layout* cplot_layout_new(int nrows, int ncols);
+
 struct cplot_axes* cplot_plot_args(struct cplot_args *args);
 static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
     return cplot_plot_args(&args);
 }
 #define cplot_plot(...) cplot_plot_inl((struct cplot_args){__VA_ARGS__})
+
+#define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){.marker="", .linestyle.style=cplot_line_normal_e, .linestyle.thickness=1.0/800, __VA_ARGS__})
+
+static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, float x1, struct cplot_args args) {
+    static double xdata[2], ydata[2];
+    xdata[0] = x0;
+    xdata[1] = x1;
+    ydata[0] = y0;
+    ydata[1] = y1;
+    args.xdata = xdata;
+    args.ydata = ydata;
+    args.xtype = cplot_type(xdata[0]);
+    args.ytype = cplot_type(ydata[0]);
+    args.len = 2;
+    return cplot_plot_args(&args);
+}
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_show(void *axes_or_layout);
