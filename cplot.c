@@ -588,7 +588,7 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 
 static void init_datastyle(struct cplot_data *data) {
     if (data->markersize == 0)
-	data->markersize = 1.0 / 90;
+	data->markersize = 1.0 / 50;
     if (!data->marker)
 	data->marker = "o";
     int next_color = 0;
