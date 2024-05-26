@@ -3,6 +3,18 @@
 
 const char *cplot_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
+static inline long ifloor_ticker(double a) {
+    a += 1e-7;
+    long r = a;
+    return r - (r > a);
+}
+
+static inline long iceil_ticker(double a) {
+    a -= 1e-7;
+    long r = a;
+    return r + (r < a);
+}
+
 void cplot__sprint_supernum(char *out, int sizeout, int num) {
     char buff[20];
     int len;
@@ -217,41 +229,70 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 	subticks_mul = subticks_mul0;
     }
 
-    int maxpower;
-    double base = get_linticker_base(max-min, &maxpower);
-
-    double best_step, best_diff = DBL_MAX;
     double target_n_orig = this->tickerdata.lin.target_nticks;
     double target_n = target_n_orig ? target_n_orig : default_linear_target_nticks;
-    double diff = max - min;
-    int best_mul;
-    if (diff / (base*step_opts[0]) < target_n)
-	base *= 0.1;
+
+    int tenpower;
+    double base0, base1, diff = max - min;
+    base0 = get_linticker_base(diff, &tenpower);
+    long imin0 = iceil_ticker(min/base0) * 10;
+    long imax0 = ifloor_ticker(max/base0) * 10;
+    base1 = base0*0.1;
+    long imin1 = iceil_ticker(min/base1) * 10;
+    long imax1 = ifloor_ticker(max/base1) * 10;
+
+    struct best {
+	double min, max;
+	int iopt, which, n, diff;
+    } best = {.diff = 9999999};
+
     for (int iopt=0; iopt<nstep_opt; iopt++) {
-	double step = base * step_opts[iopt];
-	double n = diff / step;
-	double targetdiff = n - target_n;
-	if (targetdiff < 0) targetdiff = -targetdiff;
-	if (targetdiff < best_diff) {
-	    best_diff = targetdiff;
-	    best_step = step;
-	    best_mul = subticks_mul[iopt];
-	}
+	int istep = iroundpos(step_opts[iopt]*10);
+	long iminnow0 = imin0 / istep * istep;
+	iminnow0 += istep * (iminnow0 < imin0);
+	long imaxnow0 = imax0 / istep * istep;
+	long iminnow1 = imin1 / istep * istep;
+	iminnow1 += istep * (iminnow1 < imin1);
+	long imaxnow1 = imax1 / istep * istep;
+	int n0 = (imaxnow0 - iminnow0) / istep + 1,
+	    n1 = (imaxnow1 - iminnow1) / istep + 1;
+	int diff0 = target_n - n0,
+	    diff1 = target_n - n1;
+	if (diff0 < 0)
+	    diff0 = -diff0 * 2; // this prefers (target - n) to (target + n)
+	if (diff1 < 0)
+	    diff1 = -diff1 * 2;
+	if (diff0 < best.diff)
+	    best = (struct best) {
+		.min = iminnow0 / 10.0 * base0,
+		.max = imaxnow0 / 10.0 * base0,
+		.iopt = iopt,
+		.which = 0,
+		.n = n0,
+		.diff = diff0,
+	    };
+	else if (diff1 < best.diff)
+	    best = (struct best) {
+		.min = iminnow1 / 10.0 * base1,
+		.max = imaxnow1 / 10.0 * base1,
+		.iopt = iopt,
+		.which = 1,
+		.n = n1,
+		.diff = diff1,
+	    };
     }
 
     this->species = cplot_ticker_linear;
     this->get_tick = cplot_get_tick_linear;
     this->get_maxn_subticks = cplot_get_maxn_subticks_linear;
     this->get_subticks = cplot_get_subticks_linear;
-    double maxtick = best_step * floor(max/best_step);
-    double mintick = best_step * ceil(min/best_step);
-    this->tickerdata.lin.nticks = iroundpos((maxtick - mintick) / best_step) + 1;
-    this->tickerdata.lin.step = best_step;
-    this->tickerdata.lin.min = mintick;
-    this->tickerdata.lin.base = base;
-    this->tickerdata.lin.baseten = maxpower;
+    this->tickerdata.lin.nticks = best.n;
+    this->tickerdata.lin.step = step_opts[best.iopt] * (best.which ? base1 : base0);
+    this->tickerdata.lin.min = best.min;
+    this->tickerdata.lin.base = best.which ? base1 : base0;
+    this->tickerdata.lin.baseten = tenpower - best.which;
     this->tickerdata.lin.target_nticks = target_n_orig;
-    this->tickerdata.lin.nsubticks = best_mul;
+    this->tickerdata.lin.nsubticks = subticks_mul[best.iopt];
 }
 
 void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max) {
