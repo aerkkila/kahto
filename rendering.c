@@ -419,6 +419,32 @@ static void init_plus(unsigned char *to, int tow, int toh) {
     }
 }
 
+static void init_rectangle(unsigned char *to, int tow, int toh) {
+    int odd_tow = tow - (tow % 2 == 0);
+    int side = min(odd_tow, toh);
+    int rectheight = sin(3.14159265/3) * side;
+    int y0 = (toh - rectheight) * 0.5;
+    float halfw0 = 0.5;
+    float halfw1 = side * 0.5;
+    /* halfw0 + (rectheight-1) * addw = halfw1 */
+    float addw = (halfw1 - halfw0) / (rectheight - 1);
+    memset(to, 0, tow*toh);
+
+    int imid = tow/2;
+    float ifloat = halfw0;
+    for (int j=y0; j<y0+rectheight; j++) {
+	int iint = ifloat - 0.5; // without the central pixel
+	float lastfrac = ifloat - 0.5 - iint;
+	unsigned char lastval = lastfrac * 255;
+	if (lastval) {
+	    to[j*tow + imid - iint - 1] = lastval;
+	    to[j*tow + imid + iint + 1] = lastval;
+	}
+	memset(to + j*tow + imid - iint, 255, iint*2+1);
+	ifloat += addw;
+    }
+}
+
 static void init_circle(unsigned char *to, int tow, int toh) {
     int radius = (min(tow, toh)-1) / 2;
     memset(to, 0, tow*toh);
@@ -593,6 +619,7 @@ static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot
 static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
     *has_marker = 1;
     if (data->literal_marker) {
+literal:
 	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
 	ttra_set_fontheight(ttra, *height);
 	bmap = ttra_get_bitmap(ttra, data->marker, width, height);
@@ -607,7 +634,9 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 	case  0 : *has_marker = 0; break;
 	case '.': bmap = NULL; break;
 	case '+': init_plus(bmap, *width, *height); break;
-	default: init_circle(bmap, *width, *height); break;
+	case '^': init_rectangle(bmap, *width, *height); break;
+	case 'o': init_circle(bmap, *width, *height); break;
+	default: goto literal;
     }
     return bmap;
 }
