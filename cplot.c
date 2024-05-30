@@ -282,6 +282,48 @@ static void get_max_for_data(struct cplot_data *data, int yxz) {
     }
 }
 
+static long get_last_for_data(struct cplot_data *data, int yxz) {
+    int yxz_other = yxz == 2 ? 1 : !yxz;
+    long i = data->length - 1;
+    switch (data->yxztype[yxz_other]) {
+	case cplot_f4:
+	    float *dt4 = data->yxzdata[yxz_other];
+	    for (; i>=0; i--)
+		if (!my_isnan_float(dt4[i]))
+		    return i;
+	    return i;
+	case cplot_f8:
+	    double *dt8 = data->yxzdata[yxz_other];
+	    for (; i>=0; i--)
+		if (!my_isnan_double(dt8[i]))
+		    return i;
+	    return i;
+	default:
+	    return i;
+    }
+}
+
+static long get_first_for_data(struct cplot_data *data, int yxz) {
+    int yxz_other = yxz == 2 ? 1 : !yxz;
+    long i = 0;
+    switch (data->yxztype[yxz_other]) {
+	case cplot_f4:
+	    float *dt4 = data->yxzdata[yxz_other];
+	    for (; i<data->length; i++)
+		if (!my_isnan_float(dt4[i]))
+		    return i;
+	    return i;
+	case cplot_f8:
+	    double *dt8 = data->yxzdata[yxz_other];
+	    for (; i<data->length; i++)
+		if (!my_isnan_double(dt8[i]))
+		    return i;
+	    return i;
+	default:
+	    return i;
+    }
+}
+
 static void axis_init_range(struct cplot_axis *axis) {
     int yxz = axis->direction == 0;
     axis->min = DBL_MAX;
@@ -293,15 +335,12 @@ static void axis_init_range(struct cplot_axis *axis) {
 	else if (data->yxaxis[yxz] != axis)
 	    continue;
 
-	if (data->yxztype[yxz] == cplot_notype)
-	    switch (data->have_minmax[yxz]) {
-		case 0: data->minmax[yxz][0] = 0;
-			data->minmax[yxz][1] = data->length-1;
-			break;
-		case cplot_maxbit: data->minmax[yxz][0] = 0; break;
-		case cplot_minbit: data->minmax[yxz][1] = data->length-1; break;
-		default: break;
-	    }
+	if (data->yxztype[yxz] == cplot_notype) {
+	    if (!(data->have_minmax[yxz] & cplot_minbit))
+		data->minmax[yxz][0] = get_first_for_data(data, yxz);
+	    if (!(data->have_minmax[yxz] & cplot_maxbit))
+		data->minmax[yxz][1] = get_last_for_data(data, yxz);
+	}
 	else
 	    switch (data->have_minmax[yxz]) {
 		case 0:
@@ -312,7 +351,6 @@ static void axis_init_range(struct cplot_axis *axis) {
 		    break;
 		case cplot_minbit:
 		    get_max_for_data(data, yxz);
-		    data->minmax[yxz][1] = get_max[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
 		    break;
 		default: break;
 	    }
@@ -662,6 +700,8 @@ static void add_data(struct cplot_args *args) {
 	if (data->cmh_enum < 0)
 	    data->caxis->reverse_cmap = 1;
     }
+    if (!data->yxzdata[1])
+	data->yxaxis[1]->ticks->ticker.integers_only = 1;
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;
     init_datastyle(data);

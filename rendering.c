@@ -58,6 +58,7 @@ struct _cplot_line_args {
     long x0, len;
     unsigned *canvas;
     const int ystride, *axis_xywh, axesheight;
+    double xpix_per_unit, xpos0;
 };
 
 static unsigned draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args, unsigned carry) {
@@ -483,7 +484,7 @@ struct draw_data_args {
     const short *xypixels;
     long x0;
     int len;
-    double xpix_per_unit;
+    double xpix_per_unit, xpos0; // used if xdata is not given
     const unsigned char *zlevels, *cmap;
     int reverse_cmap;
 };
@@ -534,7 +535,7 @@ static inline void draw_datum_cmap(struct draw_data_args *restrict ar) {
 static void draw_data_y(struct draw_data_args *restrict ar) {
     for (int idata=0; idata<ar->len; idata++) {
 	double xd = (ar->x0 + idata) * ar->xpix_per_unit;
-	ar->x = iroundpos(xd);
+	ar->x = iroundpos(xd) + ar->xpos0;
 	ar->y = ar->xypixels[idata*2+1];
 	draw_datum(ar);
     }
@@ -569,7 +570,7 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
     if (ar->reverse_cmap)
 	for (int idata=0; idata<ar->len; idata++) {
 	    double xd = (ar->x0 + idata) * ar->xpix_per_unit;
-	    ar->x = iroundpos(xd);
+	    ar->x = iroundpos(xd) + ar->xpos0;
 	    ar->y = ar->xypixels[idata*2+1];
 	    ar->color = from_cmap(ar->cmap + (255-ar->zlevels[idata])*3);
 	    draw_datum(ar);
@@ -577,21 +578,21 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
     else
 	for (int idata=0; idata<ar->len; idata++) {
 	    double xd = (ar->x0 + idata) * ar->xpix_per_unit;
-	    ar->x = iroundpos(xd);
+	    ar->x = iroundpos(xd) + ar->xpos0;
 	    ar->y = ar->xypixels[idata*2+1];
 	    ar->color = from_cmap(ar->cmap + ar->zlevels[idata]*3);
 	    draw_datum(ar);
 	}
 }
 
-static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle, double xpix_per_unit) {
+static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
     int axis_area[] = xywh_to_area(args->axis_xywh);
     unsigned carry = 0;
     for (int i=0; i<args->len-1; i++) {
 	int xy[] = {
-	    iroundpos((args->x0+i) * xpix_per_unit) + args->axis_xywh[0],
+	    iroundpos((args->x0+i) * args->xpix_per_unit) + args->xpos0 + args->axis_xywh[0],
 	    args->xypixels[1] + args->axis_xywh[1],
-	    iroundpos((args->x0+i+1) * xpix_per_unit) + args->axis_xywh[0],
+	    iroundpos((args->x0+i+1) * args->xpix_per_unit) + args->xpos0 + args->axis_xywh[0],
 	    args->xypixels[3] + args->axis_xywh[1],
 	};
 	carry = draw_line(args->canvas, args->ystride, xy, axis_area, linestyle, args->axesheight, carry);
@@ -676,6 +677,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	.maph = height,
 	.axis_xywh = xywh,
 	.xpix_per_unit = xpix_per_unit,
+	.xpos0 = iround(-data->yxaxis[1]->min * xpix_per_unit),
 	.cmap = data->caxis ? data->caxis->cmap : NULL,
 	.reverse_cmap = data->caxis ? data->caxis->reverse_cmap : 0,
 	.color = data->color,
@@ -690,10 +692,10 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	long iend = min(istart+npoints, data->length);
 	long num = iend - istart;
 	if (data->yxzdata[1])
-	    num = get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1]);
+	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1]);
 	if (data->yxzdata[2])
 	    get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255);
-	num = get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0]);
+	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0]);
 	if (data->linestyle.style) {
 	    struct _cplot_line_args args = {
 		.xypixels = xypixels,
@@ -703,11 +705,13 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 		.ystride = ystride,
 		.axis_xywh = xywh,
 		.axesheight = axesheight,
+		.xpix_per_unit = data_args.xpix_per_unit,
+		.xpos0 = data_args.xpos0,
 	    };
 	    if (data->yxzdata[1])
 		connect_data_xy(&args, &data->linestyle);
 	    else
-		connect_data_y(&args, &data->linestyle, xpix_per_unit);
+		connect_data_y(&args, &data->linestyle);
 	}
 	if (marker) {
 	    data_args.xypixels = xypixels;

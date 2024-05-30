@@ -15,12 +15,11 @@ static inline int my_isnan_double(double f) {
 }
 
 @startperl
-static long get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
+static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
     long len = iend - istart;
-    long count = len;
     for (int i=0; i<len; i++) {
 #if cplot_@dtype >= cplot_f4 // any floating point
 	if (
@@ -29,23 +28,19 @@ static long get_datapx_@dtype(long istart, long iend, const void *vdata, short *
 #else
 	    my_isnan_double(data[i])
 #endif
-	) {
-	    count--;
+	)
 	    continue;
-	}
 #endif
 	float pos = (data[i] - axismin) / axisdiff;
 	out[i*2] = iround(pos * axislen - 0.5);
     }
-    return count;
 }
 
-static long get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
+static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
     long len = iend - istart;
-    long count = len;
     for (long i=0; i<len; i++) {
 #if cplot_@dtype >= cplot_f4 // any floating point
 	if (
@@ -54,15 +49,12 @@ static long get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 #else
 	    my_isnan_double(data[i])
 #endif
-	) {
-	    count--;
+	)
 	    continue;
-	}
 #endif
 	float pos = (data[i] - axismin) / axisdiff;
 	out[i*2] = iround((1 - pos) * axislen - 0.5);
     }
-    return count;
 }
 
 static void get_datalevels_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axismin, double axisdiff, float scale) {
