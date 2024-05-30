@@ -1,3 +1,6 @@
+#ifndef CPLOT_NO_VERSION_CHECK
+#define CPLOT_NO_VERSION_CHECK
+#endif
 #include "cplot.h"
 #include <ttra.h>
 

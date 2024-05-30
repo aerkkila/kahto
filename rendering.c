@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <ttra.h>
 #include <err.h>
-#define using_cplot
+#ifndef CPLOT_NO_VERSION_CHECK
+#define CPLOT_NO_VERSION_CHECK
+#endif
 #include "cplot.h"
 
 static inline void tocanvas(unsigned *ptr, int value, unsigned color) {

@@ -5,6 +5,7 @@
 #include <float.h>
 #include <cmh_colormaps.h>
 #include <waylandhelper.h>
+#define CPLOT_NO_VERSION_CHECK
 #include "cplot.h"
 #include "png.c"
 
@@ -19,6 +20,8 @@
 #define Sign(a) ((a) < 0 ? -1 : 1 * ((a)>0))
 
 #define default_colormap cmh_jet_e
+
+const int __cplot_version_in_library = __cplot_version_in_program;
 
 unsigned cplot_colorscheme[] = {
     0xffe41a1c, 0xff377eb8, 0xff4daf4a, 0xff984ea3,
@@ -664,6 +667,8 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesh
 	    *y += h;
 	    *x = max(*x, w);
 	}
+    if (!*y)
+	return;
     axes->legend.ro_text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
     *x += axes->legend.ro_text_left;
     int linewidth = iround1(axes->legend.borderstyle.thickness * axesheight);

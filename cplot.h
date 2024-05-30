@@ -38,6 +38,34 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
+#define __cplot_version_in_program 0
+extern const int __cplot_version_in_library;
+#ifndef CPLOT_NO_VERSION_CHECK
+static void __attribute__((constructor)) cplot_check_version() {
+    if (__cplot_version_in_library != __cplot_version_in_program)
+	goto fail;
+    return;
+fail: __attribute__((cold));
+    /* Use assembly to avoid including stdio or unistd in the header. */
+    const char errmsg[] = "The program has to be recompiled due to a change in cplot library.\n";
+    asm (
+	"movq $2, %%rdi\n" // stderr
+	"movq %0, %%rsi\n"
+	"movq %1, %%rdx\n"
+	"movq $1, %%rax\n" // write
+	"syscall\n"
+	:
+	: "rm"(errmsg), "rm"(sizeof(errmsg)-1)
+	: "rdi", "rsi", "rdx", "rax"
+    );
+    asm (
+	"movq $45, %rdi\n" // exit status
+	"movq $60, %rax\n" // exit
+	"syscall\n"
+    );
+}
+#endif
+
 typedef float cplot_f4si __attribute__((vector_size (16)));
 typedef float cplot_f2si __attribute__((vector_size (8)));
 
