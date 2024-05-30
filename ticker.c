@@ -142,6 +142,11 @@ double cplot_get_tick_arbitrary_datacoord(struct cplot_ticker *this, int ind, ch
     return this->tickerdata.arb.ticks[ind];
 }
 
+double cplot_get_tick_arbitrary_datacoord_enum(struct cplot_ticker *this, int ind, char **label, int _) {
+    *label = this->tickerdata.arb.labels[ind];
+    return ind;
+}
+
 double cplot_get_tick_arbitrary_relcoord(struct cplot_ticker *this, int ind, char **label, int _) {
     *label = this->tickerdata.arb.labels[ind];
     double min = this->tickerdata.arb.min,
@@ -197,6 +202,13 @@ void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max)
 void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max) {
     this->species = cplot_ticker_arbitrary;
     this->get_tick = cplot_get_tick_arbitrary_datacoord;
+    this->tickerdata.arb.min = min;
+    this->tickerdata.arb.max = max;
+}
+
+void cplot_init_ticker_arbitrary_datacoord_enum(struct cplot_ticker *this, double min, double max) {
+    this->species = cplot_ticker_arbitrary;
+    this->get_tick = cplot_get_tick_arbitrary_datacoord_enum;
     this->tickerdata.arb.min = min;
     this->tickerdata.arb.max = max;
 }

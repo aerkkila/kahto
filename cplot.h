@@ -310,6 +310,7 @@ static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, fl
 }
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
+void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
 void cplot_show(void *axes_or_layout);
 void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
@@ -320,6 +321,7 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max);
+void cplot_init_ticker_arbitrary_datacoord_enum(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max);
 
 #define cplot_ix0axis 0

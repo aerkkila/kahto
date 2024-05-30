@@ -728,6 +728,13 @@ struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
     return cplot_add_axistext(axis, text);
 }
 
+void cplot_ticklabels(struct cplot_axis *axis, char **names, int howmany) {
+    axis->ticks->ticker.init = cplot_init_ticker_arbitrary_datacoord_enum;
+    axis->ticks->ticker.tickerdata.arb.labels = names;
+    axis->ticks->ticker.tickerdata.arb.nticks = howmany;
+    axis->ticks->rotation100 = 75;
+}
+
 void cplot_destroy_axis(struct cplot_axis *axis) {
     for (int i=axis->ntext-1; i>=0; i--) {
 	if (axis->text[i]->owner)
