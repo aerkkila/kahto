@@ -21,6 +21,22 @@ static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
     *ptr = *ptr>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
 }
 
+static void draw_line_x(unsigned *canvas, int ystride, const int *xy, unsigned color) {
+    int imin = xy[2] < xy[0];
+    int x0 = xy[imin*2];
+    int x1 = xy[!imin*2];
+    for (int i=x0; i<=x1; i++)
+	canvas[xy[1]*ystride + i] = color;
+}
+
+static void draw_line_y(unsigned *canvas, int ystride, const int *xy, unsigned color) {
+    int imin = xy[3] < xy[1];
+    int y0 = xy[imin*2+1];
+    int y1 = xy[!imin*2+1];
+    for (int j=y0; j<=y1; j++)
+	canvas[j*ystride + xy[2]] = color;
+}
+
 /* https://en.wikipedia.org/wiki/Bresenham's_line_algorithm */
 /* This method is nice because it uses only integers. */
 static void draw_line_bresenham(unsigned *canvas, int ystride, const int *xy, unsigned color) {
@@ -483,7 +499,7 @@ struct draw_data_args {
     const int *axis_xywh;
     unsigned color;
 
-    const short *xypixels;
+    short *xypixels;
     long x0;
     int len;
     double xpix_per_unit, xpos0; // used if xdata is not given
@@ -537,7 +553,7 @@ static inline void draw_datum_cmap(struct draw_data_args *restrict ar) {
 static void draw_data_y(struct draw_data_args *restrict ar) {
     for (int idata=0; idata<ar->len; idata++) {
 	double xd = (ar->x0 + idata) * ar->xpix_per_unit;
-	ar->x = iroundpos(xd) + ar->xpos0;
+	ar->x = ar->xypixels[idata*2+0] = iroundpos(xd) + ar->xpos0;
 	ar->y = ar->xypixels[idata*2+1];
 	draw_datum(ar);
     }
@@ -572,7 +588,7 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
     if (ar->reverse_cmap)
 	for (int idata=0; idata<ar->len; idata++) {
 	    double xd = (ar->x0 + idata) * ar->xpix_per_unit;
-	    ar->x = iroundpos(xd) + ar->xpos0;
+	    ar->x = ar->xypixels[idata*2+0] = iroundpos(xd) + ar->xpos0;
 	    ar->y = ar->xypixels[idata*2+1];
 	    ar->color = from_cmap(ar->cmap + (255-ar->zlevels[idata])*3);
 	    draw_datum(ar);
@@ -580,12 +596,14 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
     else
 	for (int idata=0; idata<ar->len; idata++) {
 	    double xd = (ar->x0 + idata) * ar->xpix_per_unit;
-	    ar->x = iroundpos(xd) + ar->xpos0;
+	    ar->x = ar->xypixels[idata*2+0] = iroundpos(xd) + ar->xpos0;
 	    ar->y = ar->xypixels[idata*2+1];
 	    ar->color = from_cmap(ar->cmap + ar->zlevels[idata]*3);
 	    draw_datum(ar);
 	}
 }
+
+static void draw_errorbar(struct draw_data_args *restrict ar);
 
 static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
     int axis_area[] = xywh_to_area(args->axis_xywh);
@@ -694,10 +712,10 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	long iend = min(istart+npoints, data->length);
 	long num = iend - istart;
 	if (data->yxzdata[1])
-	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1]);
+	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1], 2);
 	if (data->yxzdata[2])
 	    get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255);
-	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0]);
+	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0], 2);
 	if (data->linestyle.style) {
 	    struct _cplot_line_args args = {
 		.xypixels = xypixels,
@@ -731,6 +749,23 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 		    draw_data_yc(&data_args);
 		else
 		    draw_data_y(&data_args);
+	    }
+	}
+	for (int icoord=0; icoord<2; icoord++) {
+	    if (!data->err.yx[icoord])
+		continue;
+	    const int ixcoord = 0;
+	    short errb[npoints];
+	    get_datapx_inv[data->yxztype[0]](istart, iend, data->err.yx[icoord], errb, yxzmin[0], yxzdiff[0], yxlen[0], 1);
+	    int area[] = xywh_to_area(xywh);
+	    for (int i=0; i<iend-istart; i++) {
+		int line[] = {xypixels[i*2+ixcoord], errb[i], xypixels[i*2+ixcoord], xypixels[i*2+!ixcoord]};
+		line[0] += xywh[0];
+		line[2] += xywh[0];
+		line[1] += xywh[1];
+		line[3] += xywh[1];
+		if (!check_line(line, area))
+		    draw_line_y(canvas, ystride, line, data->color);
 	    }
 	}
 	istart = iend;

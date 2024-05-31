@@ -15,7 +15,7 @@ static inline int my_isnan_double(double f) {
 }
 
 @startperl
-static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
+static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int strideout) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
@@ -32,11 +32,11 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
 	    continue;
 #endif
 	float pos = (data[i] - axismin) / axisdiff;
-	out[i*2] = iround(pos * axislen - 0.5);
+	out[i*strideout] = iround(pos * axislen - 0.5);
     }
 }
 
-static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen) {
+static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int strideout) {
     const $dtype *data = vdata;
     axislen--;
     data += istart;
@@ -53,7 +53,7 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 	    continue;
 #endif
 	float pos = (data[i] - axismin) / axisdiff;
-	out[i*2] = iround((1 - pos) * axislen - 0.5);
+	out[i*strideout] = iround((1 - pos) * axislen - 0.5);
     }
 }
 

@@ -38,7 +38,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 0
+#define __cplot_version_in_program 1
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -193,6 +193,13 @@ struct cplot_text {
     int ro_area[4];
 };
 
+union cplot_errorbars {
+    struct {
+	void *y0, *y1, *x0, *x1;
+    } list;
+    void *yx[4];
+};
+
 /* If changed, cplot_args must be changed similarily. */
 struct cplot_data {
     void *yxzdata[3];
@@ -203,6 +210,7 @@ struct cplot_data {
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char owner[3];
     char *label;
+    union cplot_errorbars err;
     /* style */
     const char* marker;
     int literal_marker;
@@ -264,6 +272,7 @@ struct cplot_args {
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char yxzowner[3];
     char *label;
+    union cplot_errorbars err;
 
     const char* marker;
     int literal_marker;

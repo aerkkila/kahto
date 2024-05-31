@@ -228,8 +228,50 @@ struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
     return layout;
 }
 
+static void get_min_for_data(struct cplot_data *data, int yxz) {
+    int yxz_other = yxz == 2 ? 1 : !yxz;
+    void *dt = data->yxzdata[yxz];
+    if (yxz < 2 && data->err.yx[yxz])
+	dt = data->err.yx[yxz]; // lower side of errorbar
+    switch (data->yxztype[yxz_other]) {
+	case cplot_f4:
+	    data->minmax[yxz][0] = get_min_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    break;
+	case cplot_f8:
+	    data->minmax[yxz][0] = get_min_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    break;
+	default:
+	    data->minmax[yxz][0] = get_min[data->yxztype[yxz]] (dt, data->length);
+	    break;
+    }
+}
+
+static void get_max_for_data(struct cplot_data *data, int yxz) {
+    int yxz_other = yxz == 2 ? 1 : !yxz;
+    void *dt = data->yxzdata[yxz];
+    if (yxz < 2 && data->err.yx[yxz+1])
+	dt = data->err.yx[yxz+1]; // higher side of errorbar
+    switch (data->yxztype[yxz_other]) {
+	case cplot_f4:
+	    data->minmax[yxz][1] = get_max_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    break;
+	case cplot_f8:
+	    data->minmax[yxz][1] = get_max_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    break;
+	default:
+	    data->minmax[yxz][1] = get_max[data->yxztype[yxz]] (dt, data->length);
+	    break;
+    }
+}
+
 static void get_minmax_for_data(struct cplot_data *data, int yxz) {
     int yxz_other = yxz == 2 ? 1 : !yxz;
+    /* errorbars are handled in the other functions */
+    if (yxz < 2 && (data->err.yx[yxz] || data->err.yx[yxz+1])) {
+	get_min_for_data(data, yxz);
+	get_max_for_data(data, yxz);
+	return;
+    }
     switch (data->yxztype[yxz_other]) {
 	case cplot_f4:
 	    get_minmax_with_float[data->yxztype[yxz]](
@@ -241,46 +283,6 @@ static void get_minmax_for_data(struct cplot_data *data, int yxz) {
 	    break;
 	default:
 	    get_minmax[data->yxztype[yxz]](data->yxzdata[yxz], data->length, data->minmax[yxz]);
-	    break;
-    }
-}
-
-static void get_min_for_data(struct cplot_data *data, int yxz) {
-    int yxz_other = yxz == 2 ? 1 : !yxz;
-    switch (data->yxztype[yxz_other]) {
-	case cplot_f4:
-	    data->minmax[yxz][0] =
-		get_min_with_float[data->yxztype[yxz]](
-		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
-	    break;
-	case cplot_f8:
-	    data->minmax[yxz][0] =
-		get_min_with_double[data->yxztype[yxz]](
-		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
-	    break;
-	default:
-	    data->minmax[yxz][0] =
-		get_min[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
-	    break;
-    }
-}
-
-static void get_max_for_data(struct cplot_data *data, int yxz) {
-    int yxz_other = yxz == 2 ? 1 : !yxz;
-    switch (data->yxztype[yxz_other]) {
-	case cplot_f4:
-	    data->minmax[yxz][1] =
-		get_max_with_float[data->yxztype[yxz]](
-		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
-	    break;
-	case cplot_f8:
-	    data->minmax[yxz][1] =
-		get_max_with_double[data->yxztype[yxz]](
-		data->yxzdata[yxz], data->length, data->yxzdata[yxz_other]);
-	    break;
-	default:
-	    data->minmax[yxz][1] =
-		get_max[data->yxztype[yxz]](data->yxzdata[yxz], data->length);
 	    break;
     }
 }
