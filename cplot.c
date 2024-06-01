@@ -188,6 +188,7 @@ struct cplot_axes* cplot_axes_new() {
     axes->legend.posy = 1;
     axes->legend.hvalign[1] = -1;
     axes->legend.automatic_placement = 1;
+    axes->legend.visible = 1;
     axes->legend.borderstyle.thickness = 1.0/500;
     axes->legend.borderstyle.style = cplot_line_normal_e;
     axes->legend.borderstyle.color = 0xff<<24;

@@ -864,6 +864,8 @@ void cplot_fill_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xyw
 }
 
 static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
+    if (!axes->legend.visible || (axes->legend.visible < 0 && !axes->legend.ro_place_found))
+	return;
     unsigned fillcolor = axes->background;
     switch (axes->legend.fill) {
 	case cplot_fill_color_e:

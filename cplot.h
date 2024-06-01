@@ -241,7 +241,7 @@ struct cplot_axes {
 
     struct legend {
 	float rowheight, symbolspace_per_rowheight;
-	int ro_xywh[4], ro_text_left, automatic_placement;
+	int ro_xywh[4], ro_text_left, automatic_placement, visible, ro_place_found;
 	float posx, posy, hvalign[2];
 	struct cplot_linestyle borderstyle;
 	enum cplot_fill fill;

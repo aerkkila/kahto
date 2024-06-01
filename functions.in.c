@@ -28,8 +28,10 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
 #else
 	    my_isnan_double(data[i])
 #endif
-	)
+	) {
+	    out[i*strideout] = -9999;
 	    continue;
+	}
 #endif
 	float pos = (data[i] - axismin) / axisdiff;
 	out[i*strideout] = iround(pos * axislen - 0.5);
@@ -49,8 +51,10 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 #else
 	    my_isnan_double(data[i])
 #endif
-	)
+	) {
+	    out[i*strideout] = -9999;
 	    continue;
+	}
 #endif
 	float pos = (data[i] - axismin) / axisdiff;
 	out[i*strideout] = iround((1 - pos) * axislen - 0.5);

@@ -5,6 +5,8 @@
 #include <ttra.h>
 
 void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
+    if (!axes->legend.visible)
+	return;
     int height, width;
     cplot_get_legend_dims_px(axes, &height, &width, axesheight);
     axes->legend.ro_xywh[2] = width;
@@ -20,8 +22,11 @@ void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
 	    break;
 	int iplace, jplace;
 	cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace);
-	if (iplace < 0)
+	if (iplace < 0) {
+	    axes->legend.ro_place_found = 0;
 	    break;
+	}
+	axes->legend.ro_place_found = 1;
 	axes->legend.ro_xywh[0] = iplace;
 	axes->legend.ro_xywh[1] = jplace;
     } while (0);
