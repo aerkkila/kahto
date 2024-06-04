@@ -24,7 +24,7 @@
 const int __cplot_version_in_library = __cplot_version_in_program;
 
 unsigned cplot_colorscheme[] = {
-    0xffe41a1c, 0xff377eb8, 0xff4daf4a, 0xff984ea3,
+    0xffc20700, 0xff377eb8, 0xff4daf4a, 0xff984ea3,
     0xffff7f00, 0xffffff33, 0xffa65628, 0xfff781bf, 0xff999999
 };
 
@@ -86,7 +86,7 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesh
 void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout);
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
-static void axis_init_range(struct cplot_axis*);
+void cplot_axis_datarange(struct cplot_axis*);
 
 #include "functions.c"
 #include "rotate.c"
@@ -330,7 +330,7 @@ static long get_first_for_data(struct cplot_data *data, int yxz) {
     }
 }
 
-static void axis_init_range(struct cplot_axis *axis) {
+void cplot_axis_datarange(struct cplot_axis *axis) {
     int yxz = axis->direction == 0;
     axis->min = DBL_MAX;
     axis->max = -DBL_MAX;
@@ -365,7 +365,7 @@ static void axis_init_range(struct cplot_axis *axis) {
 	update_min(axis->min, data->minmax[yxz][0]);
 	update_max(axis->max, data->minmax[yxz][1]);
     }
-    axis->range_isset = cplot_minbit | cplot_maxbit;
+    axis->range_isset |= cplot_minbit | cplot_maxbit;
 }
 
 static int rectangle_nexti(int j, int i, int rwidth, int rheight, const short (*right)[], const short (*down)[], int w, int h) {

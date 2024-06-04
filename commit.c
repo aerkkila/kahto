@@ -315,8 +315,9 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	struct cplot_axis *axis = axes->axis[i];
 	if (axis->ticks)
 	    cplot_ticks_set_parameters(axis->ticks);
-	if (axis->range_isset != (cplot_minbit | cplot_maxbit))
-	    axis_init_range(axis);
+	unsigned minmax = cplot_minbit | cplot_maxbit;
+	if ((axis->range_isset & minmax) != minmax)
+	    cplot_axis_datarange(axis);
 	if (axis->pos != (int)axis->pos)
 	    continue;
 	if (axis->ticks->ticker.init)
@@ -330,7 +331,7 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	struct cplot_data *data = axes->data[i];
 	for (int iaxis=0; iaxis<2; iaxis++) {
 	    struct cplot_axis *axis = data->yxaxis[iaxis];
-	    if (!axis)
+	    if (!axis || !cplot_visible_marker(data->marker))
 		continue;
 	    double sizedata = data->markersize * axes->wh[1] * (axis->max - axis->min) / axes->ro_inner_xywh[2];
 	    if (!(axis->range_isset & cplot_minbit_const))

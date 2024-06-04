@@ -367,10 +367,10 @@ void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min,
 static inline struct cplot_axis* cplot_xaxis0(struct cplot_axes *axes) { return axes->axis[cplot_ix0axis]; }
 static inline struct cplot_axis* cplot_yaxis0(struct cplot_axes *axes) { return axes->axis[cplot_iy0axis]; }
 
-/* Käyttäjä tuskin tarvitsee näitä. */
 void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride);
 int  cplot_axes_commit(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride);
+void cplot_axis_datarange(struct cplot_axis*);
 
 /* Käyttäjä ei tarvitse näitä. */
 void cplot_layout_to_axes(struct cplot_layout *layout);

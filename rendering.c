@@ -637,6 +637,10 @@ static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot
     }
 }
 
+static int cplot_visible_marker(const char *str) {
+    return (unsigned char)*str > ' ';
+}
+
 static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
     *has_marker = 1;
     if (data->literal_marker) {
