@@ -853,7 +853,7 @@ void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
     }
 }
 
-void cplot_show(void *vplot) {
+void* cplot_show(void *vplot) {
     struct cplot_axes *axes = vplot;
     struct waylandhelper wlh = {
 	.xres = axes->wh[0],
@@ -872,4 +872,5 @@ void cplot_show(void *vplot) {
 	usleep(10000);
     }
     wlh_destroy(&wlh);
+    return vplot;
 }

@@ -348,7 +348,7 @@ static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, fl
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
-void cplot_show(void *axes_or_layout);
+void* cplot_show(void *axes_or_layout); // returns the input
 void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
