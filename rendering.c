@@ -98,6 +98,8 @@ static unsigned draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
     int D = 2*dn - dm;
     const float coef = dm / sqrt(dm*dm + dn*dn); // m-yksikön pituus = coef * hypotenuusa
     unsigned short ipat = carry>>16, try = (carry & 0xffff) + m0;
+    ipat++; // carry:ssä on ipat-1, jotta oletusarvona toimii 0
+
     if (nosteep) { // (m,n) = (x,y)
 	while (1) {
 	    int end = min(m1+1, try);
@@ -116,7 +118,7 @@ static unsigned draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
     else { // (m,n) = (y,x)
 	while (1) {
 	    int end = min(m1+1, try);
-	    for (; m0<=end; m0++) {
+	    for (; m0<end; m0++) {
 		if (ipat % 2 == 0)
 		    canvas[m0*ystride + n0] = color; // only this line differs
 		n0 += D > 0 ? n_add : 0;
@@ -125,10 +127,10 @@ static unsigned draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
 	    if (m0 > m1)
 		break;
 	    ipat = (ipat + 1) % args->patternlength;
-	    try = m0 + iroundpos(args->pattern[ipat] * coef);
+	    try = m0 + iroundpos(args->pattern[ipat]*axesheight * coef);
 	}
     }
-    return ipat<<16 | (try-m0);
+    return (ipat-1)<<16 | (try-m0);
 }
 
 /* anti-aliased line */
@@ -176,6 +178,7 @@ static unsigned draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
     const float slope = dn / dm;
     const float coef = dm / sqrt(dm*dm + dn*dn); // m-yksikön pituus = coef * hypotenuusa
     unsigned short ipat = carry>>16, try = (carry & 0xffff) + m0;
+    ipat++; // carry:ssä on ipat-1, jotta oletusarvona toimii 0
 
     if (nosteep) { // (m,n) = (x,y)
 	while (1) {
@@ -213,7 +216,7 @@ static unsigned draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
 	    try = m0 + iroundpos(args->pattern[ipat]*axesheight * coef);
 	}
     }
-    return ipat<<16 | (try-m0);
+    return (ipat-1)<<16 | (try-m0);
 }
 
 static int check_line(int *line, const int *area) {
