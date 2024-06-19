@@ -887,7 +887,8 @@ static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea are
     int leg_y0 = axes->legend.ro_xywh[1];
     int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
     int linewidth = iroundpos(axes->legend.borderstyle.thickness * area.axesheight);
-    ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left + linewidth, leg_y0 + linewidth);
+    /* lisään y:hyn +1:n, että kirjaimen ja viivan väliin jää tyhjä pikseli */
+    ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left + linewidth, leg_y0 + linewidth + 1);
     int text_left = axes->legend.ro_text_left;
     int rownumber = 0;
     for (int i=0; i<axes->ndata; i++) {

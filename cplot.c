@@ -631,10 +631,6 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 }
 
 static void init_datastyle(struct cplot_data *data) {
-    if (data->markersize == 0)
-	data->markersize = 1.0 / 50;
-    if (!data->marker)
-	data->marker = "o";
     int next_color = 0;
     if (!data->color) {
 	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
@@ -645,8 +641,6 @@ static void init_datastyle(struct cplot_data *data) {
 	next_color = 1;
     }
     data->yxaxis[0]->axes->icolor += next_color;
-    if (!data->linestyle.thickness)
-	data->linestyle.thickness = 1.0 / 600;
 }
 
 void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols) {
@@ -677,6 +671,7 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesh
     int linewidth = iround1(axes->legend.borderstyle.thickness * axesheight);
     *y += linewidth * 2;
     *x += linewidth * 2;
+    *y += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
 }
 
 static void add_data(struct cplot_args *args) {

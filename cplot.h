@@ -3,6 +3,7 @@
 #define CMH_ENUM_ONLY
 #include "cmh_colormaps.h"
 #include <ttra.h>
+#include <stdlib.h> // cplot_line_inl uses malloc
 
 #define cplot_notype 0
 #define cplot_i1 (10 + 1)
@@ -38,7 +39,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 1
+#define __cplot_version_in_program 2
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -291,12 +292,19 @@ struct cplot_drawarea {
     int axeswidth, axesheight, ystride;
 };
 
+#define __cplot_defaultargs	\
+    .markersize = 1./60,	\
+    .marker = "o",		\
+    .linestyle.thickness = 1./600
+
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
+    __cplot_defaultargs,					\
     .ydata=(y),							\
     .ytype=cplot_type(*(y)),					\
     __VA_ARGS__							\
     })
 #define cplot_yx(y, x, ...) cplot_plot_inl((struct cplot_args){	\
+    __cplot_defaultargs,					\
     .ydata=(y),							\
     .xdata=(x),							\
     .ytype=cplot_type(*(y)),					\
@@ -304,6 +312,7 @@ struct cplot_drawarea {
     __VA_ARGS__							\
     })
 #define cplot_yz(y, z, ...) cplot_plot_inl((struct cplot_args){	\
+    __cplot_defaultargs,					\
     .ydata=(y),							\
     .zdata=(z),							\
     .ytype=cplot_type(*(y)),					\
@@ -311,6 +320,7 @@ struct cplot_drawarea {
     __VA_ARGS__							\
     })
 #define cplot_yxz(y, x, z, ...) cplot_plot_inl((struct cplot_args){	\
+    __cplot_defaultargs,					\
     .ydata=(y),							\
     .xdata=(x),							\
     .zdata=(z),							\
@@ -333,7 +343,8 @@ static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
 #define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){.marker="", .linestyle.style=cplot_line_normal_e, .linestyle.thickness=1.0/800, __VA_ARGS__})
 
 static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, float x1, struct cplot_args args) {
-    static double xdata[2], ydata[2];
+    double *buff = malloc(4*sizeof(double));
+    double *ydata = buff, *xdata = buff+2;
     xdata[0] = x0;
     xdata[1] = x1;
     ydata[0] = y0;
@@ -343,6 +354,7 @@ static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, fl
     args.xtype = cplot_type(xdata[0]);
     args.ytype = cplot_type(ydata[0]);
     args.len = 2;
+    args.yxzowner[0] = 1;
     return cplot_plot_args(&args);
 }
 
