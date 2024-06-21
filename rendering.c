@@ -441,7 +441,7 @@ static void init_plus(unsigned char *to, int tow, int toh) {
     }
 }
 
-static void init_rectangle(unsigned char *to, int tow, int toh) {
+static void init_triangle(unsigned char *to, int tow, int toh) {
     int odd_tow = tow - (tow % 2 == 0);
     int side = min(odd_tow, toh);
     int rectheight = sin(3.14159265/3) * side;
@@ -662,7 +662,7 @@ literal:
 	case  0 : *has_marker = 0; break;
 	case '.': bmap = NULL; break;
 	case '+': init_plus(bmap, *width, *height); break;
-	case '^': init_rectangle(bmap, *width, *height); break;
+	case '^': init_triangle(bmap, *width, *height); break;
 	case 'o': init_circle(bmap, *width, *height); break;
 	default: goto literal;
     }
