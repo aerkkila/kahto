@@ -263,9 +263,11 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
 	long iminnow0 = imin0 / istep * istep;
 	iminnow0 += istep * (iminnow0 < imin0);
 	long imaxnow0 = imax0 / istep * istep;
+	imaxnow0 -= istep * (imaxnow0 > imax0);
 	long iminnow1 = imin1 / istep * istep;
 	iminnow1 += istep * (iminnow1 < imin1);
 	long imaxnow1 = imax1 / istep * istep;
+	imaxnow1 -= istep * (imaxnow1 > imax1);
 	int n0 = (imaxnow0 - iminnow0) / istep + 1,
 	    n1 = (imaxnow1 - iminnow1) / istep + 1;
 	int diff0 = target_n - n0,
