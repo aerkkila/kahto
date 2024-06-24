@@ -782,15 +782,18 @@ void cplot_destroy(void *axes_or_layout) {
 }
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
-    struct cplot_axes *axes =
-	args->axes ? args->axes :
-	args->yaxis ? args->yaxis->axes :
-	args->xaxis ? args->xaxis->axes :
-	cplot_axes_new();
-    args->axes = axes;
+    struct cplot_axes *axes1 = NULL;
+    struct cplot_axes **axes = args->axesptr ? args->axesptr : &axes1;
+    if (!*axes)
+	*axes =
+	    args->axes ? args->axes :
+	    args->yaxis ? args->yaxis->axes :
+	    args->xaxis ? args->xaxis->axes :
+	    cplot_axes_new();
+    args->axes = *axes;
     if (args->ydata)
 	add_data(args);
-    return axes;
+    return *axes;
 }
 
 void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride) {

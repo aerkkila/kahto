@@ -39,7 +39,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 2
+#define __cplot_version_in_program 3
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -263,6 +263,7 @@ struct cplot_layout {
 
 struct cplot_args {
     struct cplot_axes *axes;
+    struct cplot_axes **axesptr;
 
     /* struct cplot_data inlined. ydata must stay first */
     void *ydata, *xdata, *zdata;
