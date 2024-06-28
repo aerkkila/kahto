@@ -3,6 +3,7 @@
 #define CMH_ENUM_ONLY
 #include "cmh_colormaps.h"
 #include <ttra.h>
+#include <waylandhelper.h>
 #include <stdlib.h> // cplot_line_inl uses malloc
 
 #define cplot_notype 0
@@ -39,7 +40,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 3
+#define __cplot_version_in_program 4
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -230,6 +231,7 @@ struct cplot_axes {
     enum cplot_whatisthis whatisthis;
     int wh[2];
     unsigned background;
+    struct waylandhelper *wlh;
     /* end shared */
     int startcanvas;
     struct cplot_axis **axis, *last_caxis;
@@ -255,6 +257,7 @@ struct cplot_layout {
     enum cplot_whatisthis whatisthis;
     int wh[2];
     unsigned background;
+    struct waylandhelper *wlh;
     /* end shared */
     struct cplot_axes **axes;
     float (*xywh)[4];

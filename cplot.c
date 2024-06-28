@@ -853,12 +853,12 @@ void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
 
 void* cplot_show(void *vplot) {
     struct cplot_axes *axes = vplot;
-    struct waylandhelper wlh = {
-	.xres = axes->wh[0],
-	.yres = axes->wh[1],
+    struct waylandhelper wlh = axes->wlh ? *axes->wlh : (struct waylandhelper){
 	.xresmin = 20,
 	.yresmin = 20,
     };
+    wlh.xres = axes->wh[0];
+    wlh.yres = axes->wh[1];
     wlh_init(&wlh);
     while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
 	if (wlh.redraw && wlh.can_redraw) {
