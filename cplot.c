@@ -236,13 +236,15 @@ static void get_min_for_data(struct cplot_data *data, int yxz) {
 	dt = data->err.yx[yxz]; // lower side of errorbar
     switch (data->yxztype[yxz_other]) {
 	case cplot_f4:
-	    data->minmax[yxz][0] = get_min_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    data->minmax[yxz][0] = get_min_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
+		data->yxzstride[yxz], data->yxzstride[yxz_other]);
 	    break;
 	case cplot_f8:
-	    data->minmax[yxz][0] = get_min_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    data->minmax[yxz][0] = get_min_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
+		data->yxzstride[yxz], data->yxzstride[yxz_other]);
 	    break;
 	default:
-	    data->minmax[yxz][0] = get_min[data->yxztype[yxz]] (dt, data->length);
+	    data->minmax[yxz][0] = get_min[data->yxztype[yxz]] (dt, data->length, data->yxzstride[yxz]);
 	    break;
     }
 }
@@ -254,13 +256,15 @@ static void get_max_for_data(struct cplot_data *data, int yxz) {
 	dt = data->err.yx[yxz+1]; // higher side of errorbar
     switch (data->yxztype[yxz_other]) {
 	case cplot_f4:
-	    data->minmax[yxz][1] = get_max_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    data->minmax[yxz][1] = get_max_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
+		data->yxzstride[yxz], data->yxzstride[yxz_other]);
 	    break;
 	case cplot_f8:
-	    data->minmax[yxz][1] = get_max_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other]);
+	    data->minmax[yxz][1] = get_max_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
+		data->yxzstride[yxz], data->yxzstride[yxz_other]);
 	    break;
 	default:
-	    data->minmax[yxz][1] = get_max[data->yxztype[yxz]] (dt, data->length);
+	    data->minmax[yxz][1] = get_max[data->yxztype[yxz]] (dt, data->length, data->yxzstride[yxz]);
 	    break;
     }
 }
@@ -276,14 +280,16 @@ static void get_minmax_for_data(struct cplot_data *data, int yxz) {
     switch (data->yxztype[yxz_other]) {
 	case cplot_f4:
 	    get_minmax_with_float[data->yxztype[yxz]](
-		data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other]);
+		data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other],
+		data->yxzstride[yxz], data->yxzstride[yxz_other]);
 	    break;
 	case cplot_f8:
 	    get_minmax_with_double[data->yxztype[yxz]](
-		data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other]);
+		data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other],
+		data->yxzstride[yxz], data->yxzstride[yxz_other]);
 	    break;
 	default:
-	    get_minmax[data->yxztype[yxz]](data->yxzdata[yxz], data->length, data->minmax[yxz]);
+	    get_minmax[data->yxztype[yxz]](data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzstride[yxz]);
 	    break;
     }
 }
@@ -291,17 +297,18 @@ static void get_minmax_for_data(struct cplot_data *data, int yxz) {
 static long get_last_for_data(struct cplot_data *data, int yxz) {
     int yxz_other = yxz == 2 ? 1 : !yxz;
     long i = data->length - 1;
+    int stride_oth = data->yxzstride[yxz_other];
     switch (data->yxztype[yxz_other]) {
 	case cplot_f4:
 	    float *dt4 = data->yxzdata[yxz_other];
 	    for (; i>=0; i--)
-		if (!my_isnan_float(dt4[i]))
+		if (!my_isnan_float(dt4[i*stride_oth]))
 		    return i;
 	    return i;
 	case cplot_f8:
 	    double *dt8 = data->yxzdata[yxz_other];
 	    for (; i>=0; i--)
-		if (!my_isnan_double(dt8[i]))
+		if (!my_isnan_double(dt8[i*stride_oth]))
 		    return i;
 	    return i;
 	default:
@@ -312,17 +319,18 @@ static long get_last_for_data(struct cplot_data *data, int yxz) {
 static long get_first_for_data(struct cplot_data *data, int yxz) {
     int yxz_other = yxz == 2 ? 1 : !yxz;
     long i = 0;
+    int stride_oth = data->yxzstride[yxz_other];
     switch (data->yxztype[yxz_other]) {
 	case cplot_f4:
 	    float *dt4 = data->yxzdata[yxz_other];
 	    for (; i<data->length; i++)
-		if (!my_isnan_float(dt4[i]))
+		if (!my_isnan_float(dt4[i*stride_oth]))
 		    return i;
 	    return i;
 	case cplot_f8:
 	    double *dt8 = data->yxzdata[yxz_other];
 	    for (; i<data->length; i++)
-		if (!my_isnan_double(dt8[i]))
+		if (!my_isnan_double(dt8[i*stride_oth]))
 		    return i;
 	    return i;
 	default:

@@ -40,7 +40,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 4
+#define __cplot_version_in_program 5
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -207,6 +207,7 @@ struct cplot_data {
     void *yxzdata[3];
     int yxztype[3];
     long length;
+    short yxzstride[3];
     struct cplot_axis *yxaxis[2], *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
@@ -272,6 +273,7 @@ struct cplot_args {
     void *ydata, *xdata, *zdata;
     int ytype, xtype, ztype;
     long len;
+    short ystride, xstride, zstride;
     struct cplot_axis *yaxis, *xaxis, *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
@@ -299,12 +301,16 @@ struct cplot_drawarea {
 #define __cplot_defaultargs	\
     .markersize = 1./60,	\
     .marker = "o",		\
+    .ystride = 1,		\
+    .xstride = 1,		\
+    .zstride = 1,		\
     .linestyle.thickness = 1./600
 
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
     .ydata=(y),							\
     .ytype=cplot_type(*(y)),					\
+    .ztype=0,							\
     __VA_ARGS__							\
     })
 #define cplot_yx(y, x, ...) cplot_plot_inl((struct cplot_args){	\
@@ -313,6 +319,7 @@ struct cplot_drawarea {
     .xdata=(x),							\
     .ytype=cplot_type(*(y)),					\
     .xtype=cplot_type(*(x)),					\
+    .ztype=0,							\
     __VA_ARGS__							\
     })
 #define cplot_yz(y, z, ...) cplot_plot_inl((struct cplot_args){	\

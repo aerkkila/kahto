@@ -467,6 +467,7 @@ static void init_triangle(unsigned char *to, int tow, int toh) {
     }
 }
 
+#if 0
 static void init_circle(unsigned char *to, int tow, int toh) {
     int radius = (min(tow, toh)-1) / 2;
     memset(to, 0, tow*toh);
@@ -484,6 +485,114 @@ static void init_circle(unsigned char *to, int tow, int toh) {
 	    to[j*tow + i] = to[-j*tow + i] = to[j*tow - i] = to[-j*tow - i] = value;
 	}
     }
+}
+
+static void init_circle(unsigned char *to, int tow, int toh) {
+    float origo[] = {tow/2., toh/2.};
+    float radius = min(tow-1, toh-1) / 2.; // -1 because measured at the center of the pixel: -(2*0.5)
+    float radius2 = radius * radius;
+    /* x = sqrt(r2 - y2) */
+    for (int j=0; j<toh; j++) {
+	float dy2 = j+0.5 - origo[1];
+	dy2 *= dy2;
+	float dx = sqrt(radius2 - dy2);
+	float xleft = origo[0] - dx;
+	float xright = origo[0] + dx;
+	int ixleft = xleft; // points at the fractional pixel
+	int ixright = xright; // points at the fractional pixel
+	memset(to+j*tow, 0, ixleft);
+	float part = xleft - ixleft;
+	to[j*tow+ixleft] = iroundpos(part*255);
+	memset(to+j*tow+ixleft+1, 255, ixright-(ixleft+1));
+	part = xright - ixright;
+	to[j*tow+ixright] = iroundpos(part*255);
+	memset(to+j*tow+ixright+1, 0, tow-(ixright+1));
+    }
+}
+#endif
+
+static void init_circle(unsigned char *to, int tow, int toh) {
+    int tow16 = tow*16,
+	toh16 = toh*16;
+    unsigned char (*to16)[tow16] = malloc(tow16 * toh16);
+    int r = (min(tow16, toh16)-1) / 2;
+    int t1 = r/16,
+	x = r,
+	y = 0;
+    while (x >= y) {
+	int x0 = r-x,
+	    x1 = r+x,
+	    y0 = r-y,
+	    y1 = r+y;
+	memset(to16[y0], 0, x0);
+	memset(to16[y0]+x0, 1, x1-x0);
+	memset(to16[y0]+x1, 0, tow16-x1);
+
+	memset(to16[y1-1], 0, x0);
+	memset(to16[y1-1]+x0, 1, x1-x0);
+	memset(to16[y1-1]+x1, 0, tow16-x1);
+
+	memset(to16[x0], 0, y0);
+	memset(to16[x0]+y0, 1, y1-y0);
+	memset(to16[x0]+y1, 0, tow16-y1);
+
+	memset(to16[x1-1], 0, y0);
+	memset(to16[x1-1]+y0, 1, y1-y0);
+	memset(to16[x1-1]+y1, 0, tow16-y1);
+
+	t1 += ++y;
+	if (t1 >= x)
+	    t1 -= x--;
+    }
+    memset(to16[2*r+1], 0, (toh16-(2*r+1)) * sizeof(to16[0]));
+
+    memset(to, 0, tow*toh);
+    for (int j=0; j<tow16; j++)
+	for (int i=0; i<tow16; i++)
+	    to[j/16*tow+i/16] += to16[j][i] && j%16 && i%16;
+    free(to16);
+}
+
+static void init_4star(unsigned char *to, int tow, int toh) {
+    int tow16 = tow*16,
+	toh16 = toh*16;
+    unsigned char (*to16)[tow16] = malloc(tow16 * toh16);
+    int r = (min(tow16, toh16)-1) / 2;
+    int t1 = r/16,
+	x = r,
+	y = 0;
+    int size = 2*r+1;
+    while (x >= y) {
+	int x0 = x,
+	    x1 = size - x,
+	    y0 = y,
+	    y1 = size - y;
+	memset(to16[y0], 0, x0);
+	memset(to16[y0]+x0, 1, x1-x0);
+	memset(to16[y0]+x1, 0, tow16-x1);
+
+	memset(to16[y1-1], 0, x0);
+	memset(to16[y1-1]+x0, 1, x1-x0);
+	memset(to16[y1-1]+x1, 0, tow16-x1);
+
+	memset(to16[x0], 0, y0);
+	memset(to16[x0]+y0, 1, y1-y0);
+	memset(to16[x0]+y1, 0, tow16-y1);
+
+	memset(to16[x1-1], 0, y0);
+	memset(to16[x1-1]+y0, 1, y1-y0);
+	memset(to16[x1-1]+y1, 0, tow16-y1);
+
+	t1 += ++y;
+	if (t1 >= x)
+	    t1 -= x--;
+    }
+
+    memset(to, 0, tow*toh);
+    for (int j=0; j<toh16; j++)
+	for (int i=0; i<tow16; i++)
+	    to[j/16*tow+i/16] += to16[j][i] && j%16 && i%16;
+    free(to16);
 }
 
 static inline unsigned from_cmap(const unsigned char *ptr) {
@@ -719,10 +828,10 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	long iend = min(istart+npoints, data->length);
 	long num = iend - istart;
 	if (data->yxzdata[1])
-	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1], 2);
+	    get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1], data->yxzstride[1], 2);
 	if (data->yxzdata[2])
-	    get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255);
-	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0], 2);
+	    get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255, data->yxzstride[2]);
+	get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0], data->yxzstride[0], 2);
 	if (data->linestyle.style) {
 	    struct _cplot_line_args args = {
 		.xypixels = xypixels,
@@ -763,7 +872,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 		continue;
 	    const int ixcoord = 0;
 	    short errb[npoints];
-	    get_datapx_inv[data->yxztype[0]](istart, iend, data->err.yx[icoord], errb, yxzmin[0], yxzdiff[0], yxlen[0], 1);
+	    get_datapx_inv[data->yxztype[0]](istart, iend, data->err.yx[icoord], errb, yxzmin[0], yxzdiff[0], yxlen[0], data->yxzstride[0], 1);
 	    int area[] = xywh_to_area(xywh);
 	    for (int i=0; i<iend-istart; i++) {
 		int line[] = {xypixels[i*2+ixcoord], errb[i], xypixels[i*2+ixcoord], xypixels[i*2+!ixcoord]};
