@@ -40,7 +40,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 5
+#define __cplot_version_in_program 6
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -216,8 +216,9 @@ struct cplot_data {
     union cplot_errorbars err;
     /* style */
     const char* marker;
-    int literal_marker;
     float markersize;
+    float nofill;
+    int literal_marker;
     unsigned color;
     struct cplot_linestyle linestyle;
     const unsigned char *cmap;
@@ -282,8 +283,9 @@ struct cplot_args {
     union cplot_errorbars err;
 
     const char* marker;
-    int literal_marker;
     float markersize;
+    float nofill;
+    int literal_marker;
     unsigned color;
     struct cplot_linestyle linestyle;
     const char *cmap;

@@ -755,6 +755,7 @@ static int cplot_visible_marker(const char *str) {
 
 static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
     *has_marker = 1;
+    typeof(init_circle) *initfun = NULL;
     if (data->literal_marker) {
 literal:
 	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
@@ -768,12 +769,27 @@ literal:
 	*has_marker = 0;
     else switch (*data->marker) {
 	case ' ':
-	case  0 : *has_marker = 0; break;
-	case '.': bmap = NULL; break;
-	case '+': init_plus(bmap, *width, *height); break;
-	case '^': init_triangle(bmap, *width, *height); break;
-	case 'o': init_circle(bmap, *width, *height); break;
+	case  0 : *has_marker = 0; return NULL;
+	case '.': return NULL;
+	case '+': initfun = init_plus; break;
+	case '^': initfun = init_triangle; break;
+	case 'o': initfun = init_circle; break;
 	default: goto literal;
+    }
+
+    initfun(bmap, *width, *height);
+    if (data->nofill) {
+	int W = *width, H = *height;
+	int w = W * data->nofill,
+	    h = *height * data->nofill;
+	int x0 = (W - w) / 2,
+	    y0 = (H - h) / 2;
+	unsigned char *bmap1 = malloc(w * h);
+	initfun(bmap1, w, h);
+	for (int j=0; j<h; j++)
+	    for (int i=0; i<w; i++)
+		bmap[(j+y0)*W + i+x0] -= bmap1[j*w+i];
+	free(bmap1);
     }
     return bmap;
 }
