@@ -549,7 +549,7 @@ static void init_circle(unsigned char *to, int tow, int toh) {
     memset(to, 0, tow*toh);
     for (int j=0; j<tow16; j++)
 	for (int i=0; i<tow16; i++)
-	    to[j/16*tow+i/16] += to16[j][i] && j%16 && i%16;
+	    to[j/16*tow+i/16] += to16[j][i] && (j%16 || i%16);
     free(to16);
 }
 
