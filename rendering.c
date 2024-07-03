@@ -587,11 +587,12 @@ static void init_4star(unsigned char *to, int tow, int toh) {
 	if (t1 >= x)
 	    t1 -= x--;
     }
+    memset(to16[2*r+1], 0, (toh16-(2*r+1)) * sizeof(to16[0]));
 
     memset(to, 0, tow*toh);
     for (int j=0; j<toh16; j++)
 	for (int i=0; i<tow16; i++)
-	    to[j/16*tow+i/16] += to16[j][i] && j%16 && i%16;
+	    to[j/16*tow+i/16] += to16[j][i] && (j%16 || i%16);
     free(to16);
 }
 
@@ -754,30 +755,44 @@ static int cplot_visible_marker(const char *str) {
 }
 
 static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
-    *has_marker = 1;
-    typeof(init_circle) *initfun = NULL;
-    if (data->literal_marker) {
-literal:
+    void literal_initfun(unsigned char *bmap, int w, int h) {
 	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
-	ttra_set_fontheight(ttra, *height);
-	bmap = ttra_get_bitmap(ttra, data->marker, width, height);
 	/* bitmap is probably smaller than fontheight */
-	ttra_set_fontheight(ttra, ttra->fontheight * ttra->fontheight / (float)*height);
-	bmap = ttra_get_bitmap(ttra, data->marker, width, height);
-    }
-    else if (!data->marker)
-	*has_marker = 0;
-    else switch (*data->marker) {
-	case ' ':
-	case  0 : *has_marker = 0; return NULL;
-	case '.': return NULL;
-	case '+': initfun = init_plus; break;
-	case '^': initfun = init_triangle; break;
-	case 'o': initfun = init_circle; break;
-	default: goto literal;
+	int bw, bh;
+	unsigned char *bm;
+	ttra_set_fontheight(ttra, 50);
+	ttra_get_bitmap(ttra, data->marker, &bw, &bh);
+	ttra_set_fontheight(ttra, h * ttra->fontheight / (float)bh);
+
+	bm = ttra_get_bitmap(ttra, data->marker, &bw, &bh);
+	memset(bmap, 0, w*h);
+	int minw = bw < w ? bw : w;
+	int minh = bh < h ? bh : h;
+	for (int j=0; j<minh; j++)
+	    memcpy(bmap + j*w, bm + j*bw, minw);
     }
 
+    *has_marker = 1;
+    typeof(init_circle) *initfun = literal_initfun;
+    if (!data->marker) {
+	*has_marker = 0;
+	return NULL;
+    }
+    else if (!data->literal_marker)
+	switch (*data->marker) {
+	    case ' ':
+	    case  0 : *has_marker = 0;
+	    case '.': return NULL;
+	    case '+': initfun = init_plus; break;
+	    case '^': initfun = init_triangle; break;
+	    case '*':
+	    case '4': initfun = init_4star; break;
+	    case 'o': initfun = init_circle; break;
+	    default: break;
+	}
+
     initfun(bmap, *width, *height);
+
     if (data->nofill) {
 	int W = *width, H = *height;
 	int w = W * data->nofill,
