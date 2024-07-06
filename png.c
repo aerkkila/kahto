@@ -40,7 +40,7 @@ static int write_png(unsigned char* rgb, const char* name, int draw_w, int draw_
     for (int j=0; j<draw_h; j++)
 	png_free(png_p, pngdata[j]);
     png_free(png_p, pngdata);
-  
+
     fclose(file);
     png_destroy_write_struct(&png_p, &info_p);
 
@@ -56,7 +56,7 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
     }
 }
 
-void cplot_write_png(void *axes_or_layout, const char *name) {
+void* cplot_write_png(void *axes_or_layout, const char *name) {
     struct cplot_layout *layout = axes_or_layout;
     unsigned *argb = malloc(layout->wh[0] * layout->wh[1] * sizeof(unsigned));
 
@@ -76,6 +76,7 @@ void cplot_write_png(void *axes_or_layout, const char *name) {
     free(argb);
     write_png(bgr, name, layout->wh[0], layout->wh[1]);
     free(bgr);
+    return axes_or_layout;
 }
 
 #endif // HAVE_PNG

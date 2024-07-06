@@ -377,7 +377,7 @@ void* cplot_show(void *axes_or_layout); // returns the input
 void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
-void cplot_write_png(void *axes_or_layout, const char *name);
+void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);

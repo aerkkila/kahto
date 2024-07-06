@@ -23,6 +23,8 @@ else
 	LDLIBS += -lxkbcommon -lwayland-client
 endif
 
+all: libcplot.so
+
 testi.out: testi.c cplot.o $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
