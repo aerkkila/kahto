@@ -1036,7 +1036,9 @@ static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea are
     for (int i=0; i<axes->ndata; i++) {
 	if (!axes->data[i]->label)
 	    continue;
-	legend_draw_marker(axes->data[i], area, leg_x0 + linewidth + text_left/2, leg_y0 + (rownumber+++0.5)*rowh, text_left);
+	legend_draw_marker(axes->data[i], area,
+	    leg_x0 + linewidth + text_left/2,
+	    leg_y0 + linewidth + (rownumber+++0.5)*rowh, text_left);
 	/* drawing a literal marker changes fontheight */
 	if (axes->data[i]->label) {
 	    ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
