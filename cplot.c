@@ -94,13 +94,18 @@ void cplot_axis_datarange(struct cplot_axis*);
 #include "ticker.c"
 #include "commit.c"
 
-struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
+struct cplot_axis* cplot_axis_void_new(struct cplot_axes *axes) {
     struct cplot_axis *axis = calloc(1, sizeof(struct cplot_axis));
     axis->axes = axes;
     if (axes->mem_axis < axes->naxis+1)
 	axes->axis = realloc(axes->axis, (axes->mem_axis+=2) * sizeof(void*));
     axes->axis[axes->naxis++] = axis;
     memset(axes->axis + axes->naxis, 0, (axes->mem_axis - axes->naxis) * sizeof(void*));
+    return axis;
+}
+
+struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
+    struct cplot_axis *axis = cplot_axis_void_new(axes);
     axis->linestyle.color = fg;
     axis->linestyle.thickness = 1.0 / 400;
     axis->linestyle.style = 1;
@@ -111,17 +116,13 @@ struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
     return axis;
 }
 
-struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes) {
-    struct cplot_axis *caxis = calloc(1, sizeof(struct cplot_axis));
-    if (axes->mem_axis < axes->naxis+1)
-	axes->axis = realloc(axes->axis, (axes->mem_axis+=2) * sizeof(void*));
-    axes->axis[axes->naxis++] = caxis;
-    memset(axes->axis + axes->naxis, 0, (axes->mem_axis - axes->naxis) * sizeof(void*));
+struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y) {
+    struct cplot_axis *caxis = cplot_axis_void_new(axes);
     axes->last_caxis = caxis;
     caxis->axes = axes;
     caxis->max = 1;
     caxis->cmap = cmh_colormaps[default_colormap].map;
-    caxis->direction = 1;
+    caxis->direction = x_or_y != 'x';
     caxis->outside = 1;
     caxis->pos = 1;
     caxis->po[0] = 1;
@@ -708,7 +709,7 @@ static void add_data(struct cplot_args *args) {
 	if (args->axes->last_caxis)
 	    data->caxis = args->axes->last_caxis;
 	else
-	    data->caxis = cplot_coloraxis_new(args->axes);
+	    data->caxis = cplot_coloraxis_new(args->axes, 'y');
 	data->caxis->range_isset = 0;
     }
     if (data->caxis) {
@@ -735,6 +736,14 @@ struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_
 	axis->text = realloc(axis->text, (axis->mem_text = axis->ntext + 2) * sizeof(void*));
     axis->text[axis->ntext++] = text;
     return text;
+}
+
+struct cplot_axistext* cplot_title(struct cplot_axes *axes, char *title) {
+    struct cplot_axis *axis = cplot_axis_void_new(axes); // direction = position = 0, i.e. top
+    axis->outside = 1;
+    struct cplot_axistext *atext = cplot_axislabel(axis, title);
+    atext->hvalign[1] = -1.4;
+    return atext;
 }
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {

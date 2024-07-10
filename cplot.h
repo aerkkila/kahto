@@ -173,7 +173,7 @@ struct cplot_axis {
     float po[4]; // parallel and orthogonal lengths
     const unsigned char *cmap;
     int reverse_cmap;
-    int ro_area[4], ro_tot_area[4];
+    int ro_area[4] /* area of the finitely thick line */, ro_tot_area[4];
 };
 
 enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};
@@ -354,6 +354,7 @@ struct cplot_drawarea {
 
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
 struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y);
+struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y);
 struct cplot_layout* cplot_layout_new(int nrows, int ncols);
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args);
@@ -392,6 +393,8 @@ void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
+struct cplot_axistext* cplot_title(struct cplot_axes *axes, char *title)
+    __attribute__((warning("Ei toimi vielä.")));
 void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);

@@ -128,7 +128,7 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, const float overgoing[
     }
     else {
 	axis->ro_area[!isx] = axis->ro_line[!isx] = axis_xywh[!isx];
-	axis->ro_area[!isx+2] = axis->ro_line[!isx] = axis_xywh[!isx] + axis_xywh[!isx+2];
+	axis->ro_area[!isx+2] = axis->ro_line[!isx+2] = axis_xywh[!isx] + axis_xywh[!isx+2];
     }
 
     axis->ro_tick_area[0] = axis->ro_tick_area[2] = axis->ro_line[0];
@@ -153,6 +153,7 @@ void get_ticklabel_limits_round3(struct cplot_axis *axis, const float overgoing[
 
     if (!axis->outside) {
 	memcpy(axis->ro_area, axis->ro_line, sizeof(axis->ro_line));
+	/* Eikö näissä pitäisi kummassakin olla puolikas? */
 	axis->ro_area[isx] -= iroundpos(axis->linestyle.thickness * axesheight);
 	axis->ro_area[isx+2] += iroundpos(axis->linestyle.thickness * axesheight);
     }
@@ -238,7 +239,7 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out_[2], int ma
     struct ttra *ttra = axis->axes->ttra;
     ttra_set_fontheight(ttra, 50);
 
-    if (tk->have_labels) {
+    if (tk && tk->have_labels) {
 	int nlabels = tk->ticker.tickerdata.common.nticks,
 	    area[4], max01[2] = {0};
 	char labbuff[128];
@@ -281,8 +282,9 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out_[2], int ma
     if (axis->outside) {
 	int addroom = iroundpos(out[axis->pos >= 0.5] * axis->axes->wh[1]);
 	margin[isx + (axis->pos >= 0.5) * 2] += addroom;
-	axis->ro_area[isx+0] -= addroom;
-	axis->ro_area[isx+2] -= addroom;
+	/* Only on the ascending side this was outside the figure. */
+	axis->ro_area[isx+0] -= addroom * (axis->pos >= 0.5);
+	axis->ro_area[isx+2] -= addroom * (axis->pos >= 0.5);
 	axis->ro_line[0] = axis->ro_area[!isx*2];
 	axis->ro_line[1] = axis->ro_area[1 + isx*2];
 	axis->ro_line[2] = axis->ro_area[2];
@@ -325,7 +327,7 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    cplot_axis_datarange(axis);
 	if (axis->pos != (int)axis->pos)
 	    continue;
-	if (axis->ticks->ticker.init)
+	if (axis->ticks && axis->ticks->ticker.init)
 	    axis->ticks->ticker.init(&axis->ticks->ticker, axis->min, axis->max);
 	cplot_axis_commit_orthogonal(axis, overgoing[axis->direction==0][axis->pos==1], margin);
     }

@@ -31,6 +31,7 @@ int main() {
 	xdata2[i] = i*0.1;
     }
     cplot_yx(ydata2, xdata2, .len=pit2, .marker="+", .literal_marker=1, .axes=axes, .markersize=1.0/50);
+    cplot_title(axes, "otsikko");
 
     cplot_axislabel(cplot_xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
     cplot_axislabel(cplot_yaxis0(axes), "y-nimiö\njatkuu täällä");
@@ -90,7 +91,9 @@ int main() {
 	    kohina[i] = rand() % pit + i;
 	struct cplot_axis *y1axis = cplot_axis_new(layout->axes[1], 'y');
 	y1axis->pos = 1;
-	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis, .markersize=1/60.0,
+	struct cplot_axis *caxis = cplot_coloraxis_new(layout->axes[1], 'y');
+	caxis->pos = 1;
+	cplot_yz(kohina, y, .len=pit, .yaxis=y1axis, .caxis=caxis, .markersize=1/60.0,
 	    .label="värillinen kohina", .cmh_enum=cmh_turbo_e);
     }
 
