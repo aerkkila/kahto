@@ -40,7 +40,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 6
+#define __cplot_version_in_program 7
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -84,9 +84,9 @@ struct cplot_linestyle {
     enum cplot_linestyle_e style;
     unsigned color;
     float thickness;
-    float *pattern;
+    float *pattern; // always before patternlen
+    int patternlen; // always after pattern
     unsigned *colors; // for future use
-    int patternlen;
     int align; // (y = 0, thickness = 3) => y:={-1,0,1} (align = 0), y:={-2,-1,0} (align = -1), y:={0,1,2} (align = 1)
 };
 
@@ -353,7 +353,12 @@ static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
 }
 #define cplot_plot(...) cplot_plot_inl((struct cplot_args){__VA_ARGS__})
 
-#define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){.marker="", .linestyle.style=cplot_line_normal_e, .linestyle.thickness=1.0/800, __VA_ARGS__})
+#define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){	\
+    __cplot_defaultargs,			\
+    .marker="",					\
+    .linestyle.style=cplot_line_normal_e,	\
+    __VA_ARGS__					\
+    })
 
 static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, float x1, struct cplot_args args) {
     double *buff = malloc(4*sizeof(double));
