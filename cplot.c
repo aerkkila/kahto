@@ -182,6 +182,8 @@ struct cplot_axes* cplot_axes_new() {
     axes->ttra = calloc(1, sizeof(struct ttra));
     axes->ttra->fonttype = ttra_sans_e;
 
+    axes->title.rowheight = 0.05;
+
     axes->legend.rowheight = 1.0 / 40;
     axes->legend.symbolspace_per_rowheight = 1.25;
     axes->legend.posx = 0;
@@ -636,6 +638,12 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
     for (int i=0; i<axes->ndata; i++)
 	cplot_data_render(axes->data[i], canvas, axes->wh[0], axes->wh[1], ystride);
     cplot_legend_draw(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
+
+    if (!axes->title.text)
+	return;
+    struct ttra *ttra = axes->ttra;
+    ttra_set_fontheight(ttra, axes->title.rowheight * axes->wh[1]);
+    put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation100, axes->title.ro_area, 0);
 }
 
 static void init_datastyle(struct cplot_data *data) {

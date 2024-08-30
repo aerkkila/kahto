@@ -189,7 +189,7 @@ struct cplot_axistext {
 };
 
 struct cplot_text {
-    char *text;
+    const char *text;
     float pos, rowheight, rotation100;
     float hvalign[2];
     int ro_area[4];
@@ -243,6 +243,7 @@ struct cplot_axes {
     float margin[4];
     struct cplot_data **data;
     int ndata, mem_data, icolor;
+    struct cplot_text title;
 
     struct legend {
 	float rowheight, symbolspace_per_rowheight;

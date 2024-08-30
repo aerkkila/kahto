@@ -370,7 +370,7 @@ static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *a
     return carry;
 }
 
-static int put_text(struct ttra *ttra, char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
+static int put_text(struct ttra *ttra, const char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
     int wh[2], x0, y0;
 
     if ((int)rot % 25)

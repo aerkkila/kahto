@@ -308,6 +308,11 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     };
     if (!axes->ttra->text_initialized)
 	ttra_init(axes->ttra);
+    if (axes->title.text) {
+	ttra_set_fontheight(axes->ttra, axes->title.rowheight * axes->wh[1]);
+	put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation100, axes->title.ro_area, 1);
+	margin[1] += axes->title.ro_area[3];
+    }
 
     float overgoing[2/*xy*/][2/*side:-+*/][2/*direction:-+*/] = {0};
 

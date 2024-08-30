@@ -14,6 +14,7 @@ int main() {
 	xdata[i] = sin(2*π/pit*10 * i) * i * 0.1;
     }
     struct cplot_axes *axes = cplot_yx(ydata, xdata, .len=pit, .linestyle.style=cplot_line_normal_e,);
+    axes->title.text = "otsikko";
 
     const int pit1 = 45;
     float ydata1[pit1], xdata1[pit1];
