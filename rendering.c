@@ -716,8 +716,6 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
 	}
 }
 
-static void draw_errorbar(struct draw_data_args *restrict ar);
-
 static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
     int axis_area[] = xywh_to_area(args->axis_xywh);
     unsigned carry = 0;
@@ -911,8 +909,9 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 		line[2] += xywh[0];
 		line[1] += xywh[1];
 		line[3] += xywh[1];
-		if (!check_line(line, area))
-		    draw_line_y(canvas, ystride, line, data->color);
+		draw_line(canvas, ystride, line, area, &data->errstyle, axesheight, 0);
+		/*if (!check_line(line, area))
+		    draw_line_y(canvas, ystride, line, data->errstyle.color);*/
 	    }
 	}
 	istart = iend;

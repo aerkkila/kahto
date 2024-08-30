@@ -40,7 +40,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 7
+#define __cplot_version_in_program 8
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -220,7 +220,7 @@ struct cplot_data {
     float nofill;
     int literal_marker;
     unsigned color;
-    struct cplot_linestyle linestyle;
+    struct cplot_linestyle linestyle, errstyle;
     const unsigned char *cmap;
     int cmh_enum;
 };
@@ -288,7 +288,7 @@ struct cplot_args {
     float nofill;
     int literal_marker;
     unsigned color;
-    struct cplot_linestyle linestyle;
+    struct cplot_linestyle linestyle, errstyle;
     const char *cmap;
     int cmh_enum;
 
@@ -301,13 +301,15 @@ struct cplot_drawarea {
     int axeswidth, axesheight, ystride;
 };
 
-#define __cplot_defaultargs	\
-    .markersize = 1./60,	\
-    .marker = "o",		\
-    .ystride = 1,		\
-    .xstride = 1,		\
-    .zstride = 1,		\
-    .linestyle.thickness = 1./600
+#define __cplot_defaultargs			\
+    .markersize = 1./60,			\
+    .marker = "o",				\
+    .ystride = 1,				\
+    .xstride = 1,				\
+    .zstride = 1,				\
+    .linestyle.thickness = 1./600,		\
+    .errstyle.style = cplot_line_normal_e,	\
+    .errstyle.thickness = 1./600
 
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
