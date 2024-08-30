@@ -648,12 +648,16 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 
 static void init_datastyle(struct cplot_data *data) {
     int next_color = 0;
-    if (!data->color) {
+    if (!data->color && data->marker && data->marker[0]) {
 	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
 	next_color = 1;
     }
-    if (!data->linestyle.color) {
+    if (!data->linestyle.color && data->linestyle.style) {
 	data->linestyle.color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
+	next_color = 1;
+    }
+    if (!data->errstyle.color && data->errstyle.style && (data->err.list.y0 || data->err.list.x0)) {
+	data->errstyle.color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
 	next_color = 1;
     }
     data->yxaxis[0]->axes->icolor += next_color;
@@ -765,6 +769,13 @@ void cplot_destroy_axis(struct cplot_axis *axis) {
     free(axis);
 }
 
+void cplot_destroy_data(struct cplot_data *data) {
+    for (int j=0; j<3; j++)
+	if (data->owner[j])
+	    free(data->yxzdata[j]);
+    free(data);
+}
+
 void cplot_destroy_axes(struct cplot_axes *axes) {
     for (int i=0; i<axes->naxis; i++)
 	cplot_destroy_axis(axes->axis[i]);
@@ -772,13 +783,8 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
     ttra_destroy(axes->ttra);
     free(axes->ttra);
 
-    for (int i=0; i<axes->ndata; i++) {
-	struct cplot_data *data = axes->data[i];
-	for (int j=0; j<3; j++)
-	    if (data->owner[j])
-		free(data->yxzdata[j]);
-	free(data);
-    }
+    for (int i=0; i<axes->ndata; i++)
+	cplot_destroy_data(axes->data[i]);
     free(axes->data);
 
     memset(axes, 0, sizeof(*axes));

@@ -301,6 +301,12 @@ struct cplot_drawarea {
     int axeswidth, axesheight, ystride;
 };
 
+/* To change the defaultargs, use the following macro before #include <cplot.h>, e.g.
+#define cplot_update_defaultargs ,.linestyle.thickness = 1./400 */
+#ifndef cplot_update_defaultargs
+#define cplot_update_defaultargs
+#endif
+
 #define __cplot_defaultargs			\
     .markersize = 1./60,			\
     .marker = "o",				\
@@ -309,7 +315,7 @@ struct cplot_drawarea {
     .zstride = 1,				\
     .linestyle.thickness = 1./600,		\
     .errstyle.style = cplot_line_normal_e,	\
-    .errstyle.thickness = 1./600
+    .errstyle.thickness = 1./600 cplot_update_defaultargs
 
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
@@ -384,6 +390,7 @@ void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
 void* cplot_show(void *axes_or_layout); // returns the input
 void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
+void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
 
