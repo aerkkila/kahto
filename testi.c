@@ -31,7 +31,6 @@ int main() {
 	xdata2[i] = i*0.1;
     }
     cplot_yx(ydata2, xdata2, .len=pit2, .marker="+", .literal_marker=1, .axes=axes, .markersize=1.0/50);
-    cplot_title(axes, "otsikko");
 
     cplot_axislabel(cplot_xaxis0(axes), "x-nimiö\n\033[4;91mtoinen rivi\033[0m");
     cplot_axislabel(cplot_yaxis0(axes), "y-nimiö\njatkuu täällä");

@@ -738,14 +738,6 @@ struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_
     return text;
 }
 
-struct cplot_axistext* cplot_title(struct cplot_axes *axes, char *title) {
-    struct cplot_axis *axis = cplot_axis_void_new(axes); // direction = position = 0, i.e. top
-    axis->outside = 1;
-    struct cplot_axistext *atext = cplot_axislabel(axis, title);
-    atext->hvalign[1] = -1.4;
-    return atext;
-}
-
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
     struct cplot_axistext *text = malloc(sizeof(struct cplot_axistext));
     *text = (struct cplot_axistext) {

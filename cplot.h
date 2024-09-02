@@ -393,8 +393,6 @@ void cplot_destroy(void *axes_or_layout);
 void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
-struct cplot_axistext* cplot_title(struct cplot_axes *axes, char *title)
-    __attribute__((warning("Ei toimi vielä.")));
 void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
