@@ -171,7 +171,7 @@ struct cplot_axis {
     int ro_linetick_area[4];
 
     float po[4]; // parallel and orthogonal lengths
-    const unsigned char *cmap;
+    unsigned char *cmap;
     int reverse_cmap;
     int ro_area[4] /* area of the finitely thick line */, ro_tot_area[4];
 };
@@ -211,7 +211,7 @@ struct cplot_data {
     struct cplot_axis *yxaxis[2], *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
-    char owner[3];
+    char owner[3], cmap_owner;
     char *label;
     union cplot_errorbars err;
     /* style */
@@ -221,7 +221,7 @@ struct cplot_data {
     int literal_marker;
     unsigned color;
     struct cplot_linestyle linestyle, errstyle;
-    const unsigned char *cmap;
+    unsigned char *cmap;
     int cmh_enum;
 };
 
@@ -279,7 +279,7 @@ struct cplot_args {
     struct cplot_axis *yaxis, *xaxis, *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
-    char yxzowner[3];
+    char yxzowner[3], cmap_owner;
     char *label;
     union cplot_errorbars err;
 
@@ -289,7 +289,7 @@ struct cplot_args {
     int literal_marker;
     unsigned color;
     struct cplot_linestyle linestyle, errstyle;
-    const char *cmap;
+    unsigned char *cmap;
     int cmh_enum;
 
     /* end struct cplot_data */
@@ -394,6 +394,7 @@ void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
+unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(int n);
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);

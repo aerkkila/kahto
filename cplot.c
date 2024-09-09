@@ -30,6 +30,27 @@ unsigned cplot_colorscheme[] = {
 
 int cplot_ncolors = arrlen(cplot_colorscheme);
 
+unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(int ncolors) {
+    if (ncolors > cplot_ncolors)
+	ncolors = cplot_ncolors;
+    unsigned char *cmap = malloc(256*3);
+    int n = 256 / ncolors;
+    for (int i=0; i<ncolors; i++)
+	for (int ii=0; ii<n; ii++) {
+	    unsigned char *rgb = cmap + i*n*3 + ii*3;
+	    rgb[0] = cplot_colorscheme[i] >> 16 & 0xff;
+	    rgb[1] = cplot_colorscheme[i] >> 8 & 0xff;
+	    rgb[2] = cplot_colorscheme[i] >> 0 & 0xff;
+	}
+    for (int i=ncolors*n; i<256; i++) {
+	unsigned char *rgb = cmap + i*3;
+	rgb[0] = cplot_colorscheme[ncolors-1] >> 16 & 0xff;
+	rgb[1] = cplot_colorscheme[ncolors-1] >> 8 & 0xff;
+	rgb[2] = cplot_colorscheme[ncolors-1] >> 0 & 0xff;
+    }
+    return cmap;
+}
+
 int cplot_default_width = 1200, cplot_default_height = 1000;
 
 static inline int __attribute__((const)) iround(float f) {
@@ -649,7 +670,7 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
 
 static void init_datastyle(struct cplot_data *data) {
     int next_color = 0;
-    if (!data->color && data->marker && data->marker[0]) {
+    if (!data->color && data->marker && data->marker[0] && !data->yxzdata[2]) {
 	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
 	next_color = 1;
     }
@@ -774,6 +795,8 @@ void cplot_destroy_data(struct cplot_data *data) {
     for (int j=0; j<3; j++)
 	if (data->owner[j])
 	    free(data->yxzdata[j]);
+    if (data->cmap_owner)
+	free(data->cmap);
     free(data);
 }
 
