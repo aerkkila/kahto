@@ -812,6 +812,9 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
 	cplot_destroy_data(axes->data[i]);
     free(axes->data);
 
+    if (axes->title.textowner)
+	free(axes->title.text);
+
     memset(axes, 0, sizeof(*axes));
     free(axes);
 }

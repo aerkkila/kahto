@@ -191,10 +191,11 @@ struct cplot_axistext {
 };
 
 struct cplot_text {
-    const char *text;
+    char *text;
     float pos, rowheight, rotation100;
     float hvalign[2];
     int ro_area[4];
+    char textowner;
 };
 
 union cplot_errorbars {
