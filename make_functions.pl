@@ -45,6 +45,12 @@ sub main {
 	print file_out "};\n";
     }
     close file_in;
+
+    print file_out "\nconst unsigned char cplot_sizes[] = {\n";
+    for (my $i=0; $i<@enumtypes; $i++) {
+        print file_out "    [cplot_$enumtypes[$i]] = sizeof($ctypes[$i]),\n"; }
+    print file_out "};\n";
+    close file_out;
 }
 
 main();

@@ -716,7 +716,7 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesh
     *y += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
 }
 
-static void add_data(struct cplot_args *args) {
+static struct cplot_data* add_data(struct cplot_args *args) {
     if (args->axes->mem_data < args->axes->ndata+1)
 	args->axes->data = realloc(args->axes->data, (args->axes->mem_data = args->axes->ndata+3) * sizeof(void*));
     struct cplot_data *data;
@@ -750,6 +750,7 @@ static void add_data(struct cplot_args *args) {
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;
     init_datastyle(data);
+    return data;
 }
 
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text) {
@@ -837,8 +838,19 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 	    args->xaxis ? args->xaxis->axes :
 	    cplot_axes_new();
     args->axes = *axes;
-    if (args->ydata)
-	add_data(args);
+    struct cplot_data *data = add_data(args);
+
+    /* copy if necessary */
+    for (int idim=0; idim<3; idim++) {
+	if (!args->copy[idim] || !data->yxzdata[idim])
+	    continue;
+	size_t size = cplot_sizes[data->yxztype[idim]] * data->length;
+	void *old = data->yxzdata[idim];
+	if (!(data->yxzdata[idim] = malloc(size)))
+	    fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
+	memcpy(data->yxzdata[idim], old, size);
+	data->owner[idim] = 1;
+    }
     return *axes;
 }
 

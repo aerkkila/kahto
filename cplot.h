@@ -29,6 +29,8 @@
 	    /* floating point */ \
 	    : sizeof(a) + 20 ))		/* floating point number is enumerated as size + 20 */
 
+extern const unsigned char cplot_sizes[];
+
 /* If axis has range_isset & cplot_minbit, range will be edited so that markers don't cut on the edges.
    With additional cplot_minbit_const, range will not be edited.
    To zoom axis to some piece of data, use cplot_minbit|cplot_minbit_const and cplot_maxbit|cplot_maxbit_const. */
@@ -40,7 +42,7 @@
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 8
+#define __cplot_version_in_program 9
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -293,7 +295,7 @@ struct cplot_args {
     int cmh_enum;
 
     /* end struct cplot_data */
-    int copy[3]; // not used yet
+    char copy[3];
 };
 
 struct cplot_drawarea {
