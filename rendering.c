@@ -371,26 +371,23 @@ static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *a
 }
 
 static int put_text(struct ttra *ttra, const char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
-    int wh[2], x0, y0;
+    int wh[2];
+    float farea[4], fw, fh;
 
     ttra_get_textdims_pixels(ttra, text, wh+0, wh+1);
+    get_rotated_area(wh[0], wh[1], farea, rot);
+    fw = farea[2] - farea[0];
+    fh = farea[3] - farea[1];
 
-    y0 = y + wh[(int)rot%50 == 0] * yalignment; // height if not rotated
-    x0 = x + wh[(int)rot%50 != 0] * xalignment; // height if rotated
-
-    int quarter = (int)round(rot) % 50 != 0;
-    area_out[0] = x0;
-    area_out[1] = y0;
-    area_out[2] = x0+wh[quarter];
-    area_out[3] = y0+wh[!quarter];
-
-    if ((int)round(rot) % 25)
-	get_rotated_wh(wh[0], wh[1], area_out+2, area_out+3, NULL, rot);
+    area_out[0] = x + round(fw * xalignment);
+    area_out[1] = y + round(fh * yalignment);
+    area_out[2] = area_out[0] + round(fw);
+    area_out[3] = area_out[1] + round(fh);
 
     if (area_only)
 	return 0;
 
-    if (y0 < 0 || x0 < 0)
+    if (area_out[0] < 0 || area_out[1] < 0)
 	return -1;
 
     if ((int)rot % 100) {
@@ -407,7 +404,7 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	ttra->clean_line = 1;
 	ttra_set_xy0(ttra, 0, 0);
 	ttra_print(ttra, text);
-	rotate(canvas+y0*width0 + x0, width0, height0, ttra->canvas, wh[0], wh[1], rot);
+	rotate(canvas+area_out[1]*width0 + area_out[0], width0, height0, ttra->canvas, wh[0], wh[1], rot);
 
 	free(ttra->canvas);
 	ttra->canvas = canvas;
@@ -417,7 +414,7 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	return 0;
     }
 
-    ttra_set_xy0(ttra, x0, y0);
+    ttra_set_xy0(ttra, area_out[0], area_out[1]);
     ttra_print(ttra, text);
     return 0;
 }
