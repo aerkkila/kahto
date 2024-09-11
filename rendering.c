@@ -373,19 +373,20 @@ static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *a
 static int put_text(struct ttra *ttra, const char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
     int wh[2], x0, y0;
 
-    if ((int)rot % 25)
-	fprintf(stderr, "Tekstin pyöräytys on toteutettu vain suorakulmille.\n");
-
     ttra_get_textdims_pixels(ttra, text, wh+0, wh+1);
 
     y0 = y + wh[(int)rot%50 == 0] * yalignment; // height if not rotated
     x0 = x + wh[(int)rot%50 != 0] * xalignment; // height if rotated
 
-    int quarter = (int)rot % 50 != 0;
+    int quarter = (int)round(rot) % 50 != 0;
     area_out[0] = x0;
     area_out[1] = y0;
     area_out[2] = x0+wh[quarter];
     area_out[3] = y0+wh[!quarter];
+
+    if ((int)round(rot) % 25)
+	get_rotated_wh(wh[0], wh[1], area_out+2, area_out+3, NULL, rot);
+
     if (area_only)
 	return 0;
 
