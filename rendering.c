@@ -840,7 +840,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 	.maph = height,
 	.axis_xywh = xywh,
 	.xpix_per_unit = xpix_per_unit,
-	.xpos0 = iround(-data->yxaxis[1]->min * xpix_per_unit),
+	.xpos0 = iround((data->yxz0[1]-data->yxaxis[1]->min) * xpix_per_unit),
 	.cmap = data->caxis ? data->caxis->cmap : NULL,
 	.reverse_cmap = data->caxis ? data->caxis->reverse_cmap : 0,
 	.color = data->color,

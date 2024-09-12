@@ -42,7 +42,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 9
+#define __cplot_version_in_program 10
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -207,14 +207,17 @@ union cplot_errorbars {
 
 /* If changed, cplot_args must be changed similarily. */
 struct cplot_data {
+    /* fixed order below */
     void *yxzdata[3];
     int yxztype[3];
     long length;
+    /* fixed order above */
     short yxzstride[3];
     struct cplot_axis *yxaxis[2], *caxis;
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char owner[3], cmap_owner;
+    double yxz0[3];
     char *label;
     union cplot_errorbars err;
     /* style */
@@ -283,6 +286,7 @@ struct cplot_args {
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char yxzowner[3], cmap_owner;
+    double y0, x0, z0;
     char *label;
     union cplot_errorbars err;
 

@@ -375,9 +375,9 @@ void cplot_axis_datarange(struct cplot_axis *axis) {
 
 	if (data->yxztype[yxz] == cplot_notype) {
 	    if (!(data->have_minmax[yxz] & cplot_minbit))
-		data->minmax[yxz][0] = get_first_for_data(data, yxz);
+		data->minmax[yxz][0] = data->yxz0[yxz] + get_first_for_data(data, yxz);
 	    if (!(data->have_minmax[yxz] & cplot_maxbit))
-		data->minmax[yxz][1] = get_last_for_data(data, yxz);
+		data->minmax[yxz][1] = data->yxz0[yxz] + get_last_for_data(data, yxz);
 	}
 	else
 	    switch (data->have_minmax[yxz]) {
