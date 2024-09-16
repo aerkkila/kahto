@@ -832,6 +832,8 @@ void cplot_destroy(void *axes_or_layout) {
 }
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
+    if (args->argsfun)
+	args->argsfun(args);
     struct cplot_axes *axes1 = NULL;
     struct cplot_axes **axes = args->axesptr ? args->axesptr : &axes1;
     if (!*axes)

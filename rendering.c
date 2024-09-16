@@ -356,6 +356,8 @@ static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *a
 		style->pattern = __default_dashpattern;
 		style->patternlen = 2;
 	    }
+	    if (!style->patternlen)
+		style->patternlen = 2;
 	    struct _cplot_dashed_line_args args = {
 		canvas, style->color, ystride, xy, ithickness, area, nosteep,
 		style->patternlen, axesheight, style->pattern };

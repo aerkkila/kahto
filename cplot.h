@@ -42,7 +42,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 10
+#define __cplot_version_in_program 11
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -301,6 +301,8 @@ struct cplot_args {
 
     /* end struct cplot_data */
     char copy[3];
+    /* Excecuted in cplot_plot_args before anything else is done. Intended for changing the default arguments. */
+    void (*argsfun)(struct cplot_args*);
 };
 
 struct cplot_drawarea {
@@ -326,6 +328,7 @@ struct cplot_drawarea {
 
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
+    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .ytype=cplot_type(*(y)),					\
     .ztype=0,							\
@@ -333,6 +336,7 @@ struct cplot_drawarea {
     })
 #define cplot_yx(y, x, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
+    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .xdata=(x),							\
     .ytype=cplot_type(*(y)),					\
@@ -342,6 +346,7 @@ struct cplot_drawarea {
     })
 #define cplot_yz(y, z, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
+    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .zdata=(z),							\
     .ytype=cplot_type(*(y)),					\
@@ -350,6 +355,7 @@ struct cplot_drawarea {
     })
 #define cplot_yxz(y, x, z, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
+    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .xdata=(x),							\
     .zdata=(z),							\
