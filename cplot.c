@@ -24,8 +24,8 @@
 const int __cplot_version_in_library = __cplot_version_in_program;
 
 unsigned cplot_colorscheme[] = {
-    0xffc20700, 0xff377eb8, 0xff4daf4a, 0xff984ea3,
-    0xffff7f00, 0xffffff33, 0xffa65628, 0xfff781bf, 0xff999999
+    0xff000000, 0xfff20700, 0xff505eff, 0xfff781bf, 0xff108a4f, 0xff66ccff, 0xffffc73a,
+    0xff986eff, 0xffffff33, 0xffa65628, 0xff999999
 };
 
 int cplot_ncolors = arrlen(cplot_colorscheme);
