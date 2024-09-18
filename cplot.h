@@ -328,7 +328,6 @@ struct cplot_drawarea {
 
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
-    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .ytype=cplot_type(*(y)),					\
     .ztype=0,							\
@@ -336,7 +335,6 @@ struct cplot_drawarea {
     })
 #define cplot_yx(y, x, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
-    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .xdata=(x),							\
     .ytype=cplot_type(*(y)),					\
@@ -346,7 +344,6 @@ struct cplot_drawarea {
     })
 #define cplot_yz(y, z, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
-    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .zdata=(z),							\
     .ytype=cplot_type(*(y)),					\
@@ -355,7 +352,6 @@ struct cplot_drawarea {
     })
 #define cplot_yxz(y, x, z, ...) cplot_plot_inl((struct cplot_args){	\
     __cplot_defaultargs,					\
-    .len=sizeof(y)/sizeof(*(y)),				\
     .ydata=(y),							\
     .xdata=(x),							\
     .zdata=(z),							\
