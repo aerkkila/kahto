@@ -338,9 +338,9 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	struct cplot_data *data = axes->data[i];
 	for (int iaxis=0; iaxis<2; iaxis++) {
 	    struct cplot_axis *axis = data->yxaxis[iaxis];
-	    if (!axis || !cplot_visible_marker(data->marker))
+	    if (!axis || !cplot_visible_marker(data->markerstyle.marker))
 		continue;
-	    double sizedata = data->markersize * axes->wh[1] * (axis->max - axis->min) / axes->ro_inner_xywh[2];
+	    double sizedata = data->markerstyle.size * axes->wh[1] * (axis->max - axis->min) / axes->ro_inner_xywh[2];
 	    if (!(axis->range_isset & cplot_minbit_const))
 		update_min(axis->min, data->minmax[iaxis][0] - sizedata*0.5);
 	    if (!(axis->range_isset & cplot_maxbit_const))

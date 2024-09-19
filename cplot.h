@@ -31,18 +31,18 @@
 
 extern const unsigned char cplot_sizes[];
 
-/* If axis has range_isset & cplot_minbit, range will be edited so that markers don't cut on the edges.
+/* If axis has range_isset & cplot_minbit, range will be edited so that markers don't get clipped at the edges.
    With additional cplot_minbit_const, range will not be edited.
    To zoom axis to some piece of data, use cplot_minbit|cplot_minbit_const and cplot_maxbit|cplot_maxbit_const. */
 #define cplot_minbit 1
 #define cplot_maxbit 2
 #define cplot_minbit_const 4
 #define cplot_maxbit_const 8
-#define cplot_automatic -9010
+#define cplot_automatic -9010 // assumed to be negative
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 11
+#define __cplot_version_in_program 12
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -73,8 +73,8 @@ fail: __attribute__((cold));
 typedef float cplot_f4si __attribute__((vector_size (16)));
 typedef float cplot_f2si __attribute__((vector_size (8)));
 
-extern unsigned cplot_colorscheme[];
-extern int cplot_ncolors;
+extern unsigned *cplot_colorschemes[];
+extern int cplot_ncolors[];
 extern int cplot_default_width, cplot_default_height;
 
 struct cplot_axis;
@@ -90,6 +90,14 @@ struct cplot_linestyle {
     int patternlen; // always after pattern
     unsigned *colors; // for future use
     int align; // (y = 0, thickness = 3) => y:={-1,0,1} (align = 0), y:={-2,-1,0} (align = -1), y:={0,1,2} (align = 1)
+};
+
+struct cplot_markerstyle {
+    const char* marker;
+    float size;
+    float nofill;
+    int literal;
+    unsigned color;
 };
 
 struct cplot_tickerdata_linear {
@@ -221,14 +229,11 @@ struct cplot_data {
     char *label;
     union cplot_errorbars err;
     /* style */
-    const char* marker;
-    float markersize;
-    float nofill;
-    int literal_marker;
-    unsigned color;
+    struct cplot_markerstyle markerstyle;
     struct cplot_linestyle linestyle, errstyle;
+    unsigned color; // overridden by style.color
     unsigned char *cmap;
-    int cmh_enum;
+    int cmh_enum, icolor;
 };
 
 enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
@@ -248,7 +253,9 @@ struct cplot_axes {
     int ro_inner_xywh[4];
     float margin[4];
     struct cplot_data **data;
-    int ndata, mem_data, icolor;
+    int ndata, mem_data;
+    unsigned *colorscheme;
+    int ncolors, icolor;
     struct cplot_text title;
 
     struct legend {
@@ -290,14 +297,11 @@ struct cplot_args {
     char *label;
     union cplot_errorbars err;
 
-    const char* marker;
-    float markersize;
-    float nofill;
-    int literal_marker;
-    unsigned color;
+    struct cplot_markerstyle markerstyle;
     struct cplot_linestyle linestyle, errstyle;
+    unsigned color;
     unsigned char *cmap;
-    int cmh_enum;
+    int cmh_enum, icolor;
 
     /* end struct cplot_data */
     char copy[3];
@@ -317,13 +321,14 @@ struct cplot_drawarea {
 #endif
 
 #define __cplot_defaultargs			\
-    .markersize = 1./60,			\
-    .marker = "o",				\
+    .markerstyle.marker = "o",			\
+    .markerstyle.size = 1./60,			\
     .ystride = 1,				\
     .xstride = 1,				\
     .zstride = 1,				\
     .linestyle.thickness = 1./600,		\
     .errstyle.style = cplot_line_normal_e,	\
+    .icolor = cplot_automatic,			\
     .errstyle.thickness = 1./600 cplot_update_defaultargs
 
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
@@ -374,8 +379,8 @@ static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
 
 #define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){	\
     __cplot_defaultargs,			\
-    .marker="",					\
-    .linestyle.style=cplot_line_normal_e,	\
+    .markerstyle.marker = "",			\
+    .linestyle.style = cplot_line_normal_e,	\
     __VA_ARGS__					\
     })
 
@@ -403,7 +408,7 @@ void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
-unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(int n);
+unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);

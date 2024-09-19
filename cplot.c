@@ -23,30 +23,37 @@
 
 const int __cplot_version_in_library = __cplot_version_in_program;
 
-unsigned cplot_colorscheme[] = {
+unsigned cplot_colorscheme_a[] = { // color deficient semi friendly, semi dark
     0xff000000, 0xfff20700, 0xff505eff, 0xfff781bf, 0xff108a4f, 0xff66ccff, 0xffffc73a,
-    0xff986eff, 0xffffff33, 0xffa65628, 0xff999999
+    0xff986eff, 0xffffff33, 0xffa65628, 0xff999999, 0,
+};
+unsigned cplot_colorscheme_b[] = { // color deficient friendly, semi dark
+    0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, 0xff9f4a96, 0xff56b4e9, 0,
+};
+unsigned *cplot_colorschemes[] = {
+    cplot_colorscheme_a,
+    cplot_colorscheme_b,
+};
+int cplot_ncolors[] = {
+    arrlen(cplot_colorscheme_a) - 1,
+    arrlen(cplot_colorscheme_b) - 1,
 };
 
-int cplot_ncolors = arrlen(cplot_colorscheme);
-
-unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(int ncolors) {
-    if (ncolors > cplot_ncolors)
-	ncolors = cplot_ncolors;
+unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *colorscheme, int ncolors) {
     unsigned char *cmap = malloc(256*3);
     int n = 256 / ncolors;
     for (int i=0; i<ncolors; i++)
 	for (int ii=0; ii<n; ii++) {
 	    unsigned char *rgb = cmap + i*n*3 + ii*3;
-	    rgb[0] = cplot_colorscheme[i] >> 16 & 0xff;
-	    rgb[1] = cplot_colorscheme[i] >> 8 & 0xff;
-	    rgb[2] = cplot_colorscheme[i] >> 0 & 0xff;
+	    rgb[0] = colorscheme[i] >> 16 & 0xff;
+	    rgb[1] = colorscheme[i] >> 8 & 0xff;
+	    rgb[2] = colorscheme[i] >> 0 & 0xff;
 	}
     for (int i=ncolors*n; i<256; i++) {
 	unsigned char *rgb = cmap + i*3;
-	rgb[0] = cplot_colorscheme[ncolors-1] >> 16 & 0xff;
-	rgb[1] = cplot_colorscheme[ncolors-1] >> 8 & 0xff;
-	rgb[2] = cplot_colorscheme[ncolors-1] >> 0 & 0xff;
+	rgb[0] = colorscheme[ncolors-1] >> 16 & 0xff;
+	rgb[1] = colorscheme[ncolors-1] >> 8 & 0xff;
+	rgb[2] = colorscheme[ncolors-1] >> 0 & 0xff;
     }
     return cmap;
 }
@@ -204,6 +211,7 @@ struct cplot_axes* cplot_axes_new() {
     axes->ttra = calloc(1, sizeof(struct ttra));
     axes->ttra->fonttype = ttra_sans_e;
 
+    axes->colorscheme = cplot_colorschemes[0];
     axes->title.rowheight = 0.05;
 
     axes->legend.rowheight = 1.0 / 40;
@@ -668,21 +676,19 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
     put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation100, axes->title.ro_area, 0);
 }
 
-static void init_datastyle(struct cplot_data *data) {
-    int next_color = 0;
-    if (!data->color && data->marker && data->marker[0] && !data->yxzdata[2]) {
-	data->color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
-	next_color = 1;
-    }
-    if (!data->linestyle.color && data->linestyle.style) {
-	data->linestyle.color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
-	next_color = 1;
-    }
-    if (!data->errstyle.color && data->errstyle.style && (data->err.list.y0 || data->err.list.x0)) {
-	data->errstyle.color = cplot_colorscheme[(data->yxaxis[0]->axes->icolor) % cplot_ncolors];
-	next_color = 1;
-    }
-    data->yxaxis[0]->axes->icolor += next_color;
+static void set_icolor(struct cplot_data *data) {
+    if (data->icolor != cplot_automatic)
+	return;
+    struct cplot_axes *axes = data->yxaxis[0]->axes;
+    data->icolor = axes->icolor;
+    if (data->color)
+	return;
+    if (!data->markerstyle.color && data->markerstyle.marker && data->markerstyle.marker[0] && !data->yxzdata[2])
+	axes->icolor++;
+    else if (!data->linestyle.color && data->linestyle.style)
+	axes->icolor++;
+    else if (!data->errstyle.color && data->errstyle.style && (data->err.list.y0 || data->err.list.x0))
+	axes->icolor++;
 }
 
 void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols) {
@@ -749,7 +755,7 @@ static struct cplot_data* add_data(struct cplot_args *args) {
 	data->yxaxis[1]->ticks->ticker.integers_only = 1;
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;
-    init_datastyle(data);
+    set_icolor(data);
     return data;
 }
 
@@ -859,7 +865,30 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
     return *axes;
 }
 
+void cplot_forward_datacolor(struct cplot_data *data) {
+    if (!data->markerstyle.color)
+	data->markerstyle.color = data->color;
+    if (!data->linestyle.color)
+	data->linestyle.color = data->color;
+    if (!data->errstyle.color)
+	data->errstyle.color = data->color;
+}
+
+void set_colors(struct cplot_axes *axes) {
+    if (axes->ncolors <= 0) {
+	int n = 0;
+	while (axes->colorscheme[n++]);
+	axes->ncolors = n;
+    }
+    for (int i=0; i<axes->ndata; i++) {
+	if (!axes->data[i]->color)
+	    axes->data[i]->color = axes->colorscheme[axes->data[i]->icolor % axes->ncolors];
+	cplot_forward_datacolor(axes->data[i]);
+    }
+}
+
 void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride) {
+    set_colors(axes);
     if (cplot_axes_commit(axes))
 	return; // too small window to draw
     cplot_axes_render(axes, canvas+axes->startcanvas, ystride);

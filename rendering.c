@@ -759,10 +759,10 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 	int bw, bh;
 	unsigned char *bm;
 	ttra_set_fontheight(ttra, 50);
-	ttra_get_bitmap(ttra, data->marker, &bw, &bh);
+	ttra_get_bitmap(ttra, data->markerstyle.marker, &bw, &bh);
 	ttra_set_fontheight(ttra, h * ttra->fontheight / (float)bh);
 
-	bm = ttra_get_bitmap(ttra, data->marker, &bw, &bh);
+	bm = ttra_get_bitmap(ttra, data->markerstyle.marker, &bw, &bh);
 	memset(bmap, 0, w*h);
 	int minw = bw < w ? bw : w;
 	int minh = bh < h ? bh : h;
@@ -772,12 +772,12 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 
     *has_marker = 1;
     typeof(init_circle) *initfun = literal_initfun;
-    if (!data->marker) {
+    if (!data->markerstyle.marker) {
 	*has_marker = 0;
 	return NULL;
     }
-    else if (!data->literal_marker)
-	switch (*data->marker) {
+    else if (!data->markerstyle.literal)
+	switch (*data->markerstyle.marker) {
 	    case ' ':
 	    case  0 : *has_marker = 0;
 	    case '.': return NULL;
@@ -791,10 +791,10 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 
     initfun(bmap, *width, *height);
 
-    if (data->nofill) {
+    if (data->markerstyle.nofill) {
 	int W = *width, H = *height;
-	int w = W * data->nofill,
-	    h = *height * data->nofill;
+	int w = W * data->markerstyle.nofill,
+	    h = *height * data->markerstyle.nofill;
 	int x0 = (W - w) / 2,
 	    y0 = (H - h) / 2;
 	unsigned char *bmap1 = malloc(w * h);
@@ -825,7 +825,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
     unsigned char zlevels[npoints];
 
     int width, height, marker;
-    width = height = iroundpos(data->markersize * axesheight);
+    width = height = iroundpos(data->markerstyle.size * axesheight);
     unsigned char bmap_buff[width*height];
     unsigned char *bmap = cplot_data_marker_bmap(data, bmap_buff, &marker, &width, &height);
 
@@ -920,7 +920,7 @@ static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axe
 
 static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea area, int x0, int y0, int text_left) {
     int width, height, marker;
-    width = height = iroundpos(data->markersize * area.axesheight);
+    width = height = iroundpos(data->markerstyle.size * area.axesheight);
     unsigned char bmap_buff[width*height];
     unsigned char *bmap = cplot_data_marker_bmap(data, bmap_buff, &marker, &width, &height);
     int *xywh = data->yxaxis[0]->axes->ro_inner_xywh;
