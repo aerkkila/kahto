@@ -28,7 +28,7 @@ unsigned cplot_colorscheme_a[] = { // color deficient semi friendly, semi dark
     0xff986eff, 0xffffff33, 0xffa65628, 0xff999999, 0,
 };
 unsigned cplot_colorscheme_b[] = { // color deficient friendly, semi dark
-    0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, 0xff9f4a96, 0xff56b4e9, 0,
+    0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, /*0xff9f4a96, */0xff56b4e9, 0,
 };
 unsigned *cplot_colorschemes[] = {
     cplot_colorscheme_a,
