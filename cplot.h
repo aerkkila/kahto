@@ -42,7 +42,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 12
+#define __cplot_version_in_program 13
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -245,6 +245,9 @@ struct cplot_axes {
     int wh[2];
     unsigned background;
     struct waylandhelper *wlh;
+    /* For animated plot. */
+    int (*update)(struct cplot_axes*); // return 1 if screen has to be updated
+    void *userdata;
     /* end shared */
     int startcanvas;
     struct cplot_axis **axis, *last_caxis;
@@ -274,6 +277,9 @@ struct cplot_layout {
     int wh[2];
     unsigned background;
     struct waylandhelper *wlh;
+    /* For animated plot. */
+    int (*update)(struct cplot_layout*); // return 1 if screen has to be updated
+    void *userdata;
     /* end shared */
     struct cplot_axes **axes;
     float (*xywh)[4];
@@ -427,6 +433,12 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride);
 int  cplot_axes_commit(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
+
+/* For animated plot to be used in the cplot_axes.update(). */
+void cplot_legend_draw(struct cplot_axes*, struct cplot_drawarea);
+void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride);
+void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int ystride);
+void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 
 /* Käyttäjä ei tarvitse näitä. */
 void cplot_layout_to_axes(struct cplot_layout *layout);

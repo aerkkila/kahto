@@ -929,6 +929,59 @@ void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, 
     }
 }
 
+void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int realw) {
+    char bg[4];
+    uint32_t background = axes->background;
+    memcpy(bg, &background, 4);
+    int ystart = axes->ro_inner_xywh[1];
+    int yend = ystart + axes->ro_inner_xywh[3];
+    int xstart = axes->ro_inner_xywh[0];
+    int xend = xstart + axes->ro_inner_xywh[2];
+    for (int i=1; i<4; i++)
+	if (bg[i] != bg[0])
+	    goto loop;
+
+    int width = (xend - xstart) * 4;
+    for (int i=ystart; i<yend; i++)
+	memset(canvas + i * realw + xstart, bg[0], width);
+    return;
+
+loop:
+    for (int i=ystart; i<yend; i++) {
+	int y = i * realw;
+	for (int ii=xstart; ii<xend; ii++)
+	    canvas[y + ii] = background;
+    }
+}
+
+/* For animation purposes. Selectively copied from draw_ticks. */
+void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
+    int naxis = axes->naxis;
+    int *xywh = axes->ro_inner_xywh;
+    int inner_area[] = xywh_to_area(xywh);
+    for (int iaxis=0; iaxis<naxis; iaxis++) {
+	struct cplot_axis *axis = axes->axis[iaxis];
+	struct cplot_ticks *ticks = axis->ticks;
+	if (!ticks || !ticks->gridstyle.style)
+	    continue;
+	int nticks = ticks->ticker.tickerdata.common.nticks;
+	int isx = axis->direction == 0;
+	const double axisdatamin = axis->min;
+	const double axisdatalen = axis->max - axisdatamin;
+	int gridline[4];
+	gridline[isx] = xywh[isx];
+	gridline[isx+2] = xywh[isx] + xywh[isx+2];
+	for (int itick=0; itick<nticks; itick++) {
+	    double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, NULL, 0);
+	    double pos_rel = (pos_data - axisdatamin) / axisdatalen;
+	    if (!isx)
+		pos_rel = 1 - pos_rel;
+	    gridline[!isx] = gridline[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
+	    draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes->wh[1], 0);
+	}
+    }
+}
+
 void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
     if (((struct cplot_axes*)vplot)->whatisthis == cplot_axes_e)
 	cplot_axes_draw(vplot, canvas, ystride);
@@ -944,23 +997,32 @@ void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
 }
 
 void* cplot_show(void *vplot) {
-    struct cplot_axes *axes = vplot;
-    struct waylandhelper wlh = axes->wlh ? *axes->wlh : (struct waylandhelper){
+    struct cplot_axes *axes_or_layout = vplot;
+    struct waylandhelper wlh = axes_or_layout->wlh ? *axes_or_layout->wlh : (struct waylandhelper){
 	.xresmin = 20,
 	.yresmin = 20,
     };
-    wlh.xres = axes->wh[0];
-    wlh.yres = axes->wh[1];
+    wlh.xres = axes_or_layout->wh[0];
+    wlh.yres = axes_or_layout->wh[1];
+    struct waylandhelper *old_wlh = axes_or_layout->wlh;
+    axes_or_layout->wlh = &wlh;
     wlh_init(&wlh);
     while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
-	if (wlh.redraw && wlh.can_redraw) {
-	    axes->wh[0] = wlh.xres;
-	    axes->wh[1] = wlh.yres;
-	    cplot_draw(axes, wlh.data, axes->wh[0]);
-	    wlh_commit(&wlh);
+	if (wlh.can_redraw) {
+	    axes_or_layout->wh[0] = wlh.xres;
+	    axes_or_layout->wh[1] = wlh.yres;
+	    int should_commit = 0;
+	    if (wlh.redraw) {
+		cplot_draw(axes_or_layout, wlh.data, axes_or_layout->wh[0]);
+		should_commit++;
+	    }
+	    should_commit += axes_or_layout->update && axes_or_layout->update(axes_or_layout);
+	    if (should_commit)
+		wlh_commit(&wlh);
 	}
 	usleep(10000);
     }
     wlh_destroy(&wlh);
+    axes_or_layout->wlh = old_wlh;
     return vplot;
 }

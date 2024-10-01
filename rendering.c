@@ -807,7 +807,7 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
     return bmap;
 }
 
-static void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
     double yxzmin[] = {
 	data->yxaxis[0]->min,
 	data->yxaxis[1]->min,
@@ -1009,7 +1009,7 @@ void cplot_fill_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xyw
     cplot_fill_box(canvas, ystride, axesheight, area, color);
 }
 
-static void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
+void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
     if (!axes->legend.visible || (axes->legend.visible < 0 && !axes->legend.ro_place_found))
 	return;
     unsigned fillcolor = axes->background;

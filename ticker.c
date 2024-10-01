@@ -35,6 +35,8 @@ double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, i
 	   base = this->tickerdata.lin.base,
 	   min = this->tickerdata.lin.min;
     double val = ind * step + min;
+    if (!sizelabel)
+	return val;
     int baseten = this->tickerdata.lin.baseten;
     this->tickerdata.lin.out_omitted_coef = 0;
 
