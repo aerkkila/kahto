@@ -7,7 +7,7 @@
 #endif
 #include "cplot.h"
 
-static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
+static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
     int eulav = 255 - value;
     int fg2 = color >> 16 & 0xff,
 	fg1 = color >> 8 & 0xff,
@@ -21,7 +21,7 @@ static inline void tocanvas(unsigned *ptr, int value, unsigned color) {
     *ptr = *ptr>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
 }
 
-static void draw_line_x(unsigned *canvas, int ystride, const int *xy, unsigned color) {
+static void draw_line_x(uint32_t *canvas, int ystride, const int *xy, uint32_t color) {
     int imin = xy[2] < xy[0];
     int x0 = xy[imin*2];
     int x1 = xy[!imin*2];
@@ -29,7 +29,7 @@ static void draw_line_x(unsigned *canvas, int ystride, const int *xy, unsigned c
 	canvas[xy[1]*ystride + i] = color;
 }
 
-static void draw_line_y(unsigned *canvas, int ystride, const int *xy, unsigned color) {
+static void draw_line_y(uint32_t *canvas, int ystride, const int *xy, uint32_t color) {
     int imin = xy[3] < xy[1];
     int y0 = xy[imin*2+1];
     int y1 = xy[!imin*2+1];
@@ -39,7 +39,7 @@ static void draw_line_y(unsigned *canvas, int ystride, const int *xy, unsigned c
 
 /* https://en.wikipedia.org/wiki/Bresenham's_line_algorithm */
 /* This method is nice because it uses only integers. */
-static void draw_line_bresenham(unsigned *canvas, int ystride, const int *xy, unsigned color) {
+static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, uint32_t color) {
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
     int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
     int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
@@ -66,7 +66,7 @@ static void draw_line_bresenham(unsigned *canvas, int ystride, const int *xy, un
 }
 
 struct _cplot_dashed_line_args {
-    unsigned *canvas, color;
+    uint32_t *canvas, color;
     int ystride, *xy, ithickness, *axis_area, nosteep, patternlength, axesheight;
     float *pattern;
 };
@@ -74,16 +74,16 @@ struct _cplot_dashed_line_args {
 struct _cplot_line_args {
     const short *xypixels;
     long x0, len;
-    unsigned *canvas;
+    uint32_t *canvas;
     const int ystride, *axis_xywh, axesheight;
     double xpix_per_unit, xpos0;
 };
 
-static unsigned draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args, unsigned carry) {
+static uint32_t draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args, uint32_t carry) {
     int nosteep		= args->nosteep,
 	axesheight	= args->axesheight,
 	ystride		= args->ystride;
-    unsigned *canvas	= args->canvas,
+    uint32_t *canvas	= args->canvas,
 	     color	= args->color;
 
     int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
@@ -134,8 +134,8 @@ static unsigned draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
 }
 
 /* anti-aliased line */
-static void draw_line_xiaolin(unsigned *canvas_, int ystride, const int *xy, unsigned color) {
-    unsigned (*canvas)[ystride] = (void*)canvas_;
+static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uint32_t color) {
+    uint32_t (*canvas)[ystride] = (void*)canvas_;
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
     int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
     int    m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep];
@@ -163,10 +163,10 @@ static void draw_line_xiaolin(unsigned *canvas_, int ystride, const int *xy, uns
     }
 }
 
-static unsigned draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, unsigned carry) {
+static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, uint32_t carry) {
     int nosteep = args->nosteep,
 	axesheight = args->axesheight;
-    unsigned (*canvas)[args->ystride] = (void*)args->canvas,
+    uint32_t (*canvas)[args->ystride] = (void*)args->canvas,
 	     color = args->color;
 
     int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
@@ -282,7 +282,7 @@ static int check_line(int *line, const int *area) {
     return 0;
 }
 
-static void _draw_thick_line(unsigned *canvas, int ystride, int xy[4], unsigned color, int ithickness, int *axis_area, int nosteep) {
+static void _draw_thick_line(uint32_t *canvas, int ystride, int xy[4], uint32_t color, int ithickness, int *axis_area, int nosteep) {
     if (!check_line(xy, axis_area))
 	draw_line_xiaolin(canvas, ystride, xy, color);
     xy[nosteep+0]++;
@@ -298,8 +298,8 @@ static void _draw_thick_line(unsigned *canvas, int ystride, int xy[4], unsigned 
 	draw_line_xiaolin(canvas, ystride, xy, color);
 }
 
-static unsigned _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, unsigned carry) {
-    unsigned new_carry = carry;
+static uint32_t _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, uint32_t carry) {
+    uint32_t new_carry = carry;
     if (!check_line(args->xy, args->axis_area))
 	new_carry = draw_line_xiaolin_dashed(args, carry);
     args->xy[args->nosteep+0]++;
@@ -316,7 +316,7 @@ static unsigned _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, un
     return new_carry;
 }
 
-static unsigned draw_line(unsigned *canvas, int ystride, const int *xy_c, int *area, struct cplot_linestyle *style, int axesheight, unsigned carry) {
+static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *area, struct cplot_linestyle *style, int axesheight, uint32_t carry) {
     int xy[4];
     memcpy(xy, xy_c, sizeof(xy));
     int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
@@ -393,12 +393,12 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	return -1;
 
     if ((int)rot % 100) {
-	unsigned *canvas = ttra->canvas;
+	uint32_t *canvas = ttra->canvas;
 	int width0 = ttra->realw;
 	int height0 = ttra->realh;
 
-	if (!(ttra->canvas = malloc(wh[0]*wh[1] * sizeof(unsigned)))) {
-	    warn("malloc %i * %i * %zu epäonnistui", wh[0], wh[1], sizeof(unsigned));
+	if (!(ttra->canvas = malloc(wh[0]*wh[1] * sizeof(uint32_t)))) {
+	    warn("malloc %i * %i * %zu epäonnistui", wh[0], wh[1], sizeof(uint32_t));
 	    return 1;
 	}
 	ttra->realw = wh[0];
@@ -596,7 +596,7 @@ static void init_4star(unsigned char *to, int tow, int toh) {
     free(to16);
 }
 
-static inline unsigned from_cmap(const unsigned char *ptr) {
+static inline uint32_t from_cmap(const unsigned char *ptr) {
     return
 	(ptr[0] << 16 ) |
 	(ptr[1] << 8 ) |
@@ -605,12 +605,12 @@ static inline unsigned from_cmap(const unsigned char *ptr) {
 }
 
 struct draw_data_args {
-    unsigned *canvas;
+    uint32_t *canvas;
     int ystride;
     const unsigned char *bmap;
     int mapw, maph, x, y;
     const int *axis_xywh;
-    unsigned color;
+    uint32_t color;
 
     short *xypixels;
     long x0;
@@ -633,7 +633,7 @@ static inline void draw_datum(struct draw_data_args *ar) {
 	    int iaxis = ar->x - ar->mapw/2 + i;
 	    if (iaxis < 0 || iaxis >= ar->axis_xywh[2]) continue;
 	    int value = ar->bmap[j*ar->mapw + i];
-	    unsigned *ptr = &ar->canvas[(ar->axis_xywh[1]+jaxis) * ar->ystride + ar->axis_xywh[0] + iaxis];
+	    uint32_t *ptr = &ar->canvas[(ar->axis_xywh[1]+jaxis) * ar->ystride + ar->axis_xywh[0] + iaxis];
 	    tocanvas(ptr, value, ar->color);
 	}
     }
@@ -655,9 +655,9 @@ static inline void draw_datum_cmap(struct draw_data_args *restrict ar) {
 	    int iaxis = ar->x - ar->mapw/2 + i;
 	    if (iaxis < 0 || iaxis >= ar->axis_xywh[2]) continue;
 	    int value = ar->bmap[j*ar->mapw + i];
-	    unsigned *ptr = &ar->canvas[(ar->axis_xywh[1]+jaxis) * ar->ystride + ar->axis_xywh[0] + iaxis];
+	    uint32_t *ptr = &ar->canvas[(ar->axis_xywh[1]+jaxis) * ar->ystride + ar->axis_xywh[0] + iaxis];
 	    int colorind = iroundpos(0.5 * (ylevel + colors_per_x * i));
-	    unsigned color = from_cmap(ar->cmap + colorind*3);
+	    uint32_t color = from_cmap(ar->cmap + colorind*3);
 	    tocanvas(ptr, value, color);
 	}
     }
@@ -718,7 +718,7 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
 
 static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
     int axis_area[] = xywh_to_area(args->axis_xywh);
-    unsigned carry = 0;
+    uint32_t carry = 0;
     for (int i=0; i<args->len-1; i++) {
 	int xy[] = {
 	    iroundpos((args->x0+i) * args->xpix_per_unit) + args->xpos0 + args->axis_xywh[0],
@@ -735,7 +735,7 @@ static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_
 static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
     int axis_area[] = xywh_to_area(args->axis_xywh);
 
-    unsigned carry = 0;
+    uint32_t carry = 0;
     for (int i=0; i<args->len-1; i++) {
 	int xy[] = {
 	    args->xypixels[0] + args->axis_xywh[0],
@@ -807,7 +807,7 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
     return bmap;
 }
 
-void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight) {
     double yxzmin[] = {
 	data->yxaxis[0]->min,
 	data->yxaxis[1]->min,
@@ -959,7 +959,7 @@ static void legend_draw_marker(struct cplot_data *data, struct cplot_drawarea ar
     }
 }
 
-void cplot_draw_box(unsigned *canvas, int ystride, int axesheight, int *area, struct cplot_linestyle *linestyle) {
+void cplot_draw_box(uint32_t *canvas, int ystride, int axesheight, int *area, struct cplot_linestyle *linestyle) {
     int linewidth = iround1(linestyle->thickness * axesheight);
     struct cplot_linestyle lstyle = *linestyle;
     lstyle.thickness = 1.0/axesheight;
@@ -993,18 +993,18 @@ void cplot_draw_box(unsigned *canvas, int ystride, int axesheight, int *area, st
     }
 }
 
-void cplot_fill_box(unsigned *canvas, int ystride, int axesheight, const int *restrict area, unsigned color) {
+void cplot_fill_box(uint32_t *canvas, int ystride, int axesheight, const int *restrict area, uint32_t color) {
     for (int j=area[1]; j<area[3]; j++)
 	for (int i=area[0]; i<area[2]; i++)
 	    canvas[j*ystride+i] = color;
 }
 
-void cplot_draw_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xywh, struct cplot_linestyle *linestyle) {
+void cplot_draw_box_xywh(uint32_t *canvas, int ystride, int axesheight, int *xywh, struct cplot_linestyle *linestyle) {
     int area[] = xywh_to_area(xywh);
     cplot_draw_box(canvas, ystride, axesheight, area, linestyle);
 }
 
-void cplot_fill_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xywh, unsigned color) {
+void cplot_fill_box_xywh(uint32_t *canvas, int ystride, int axesheight, int *xywh, uint32_t color) {
     int area[] = xywh_to_area(xywh);
     cplot_fill_box(canvas, ystride, axesheight, area, color);
 }
@@ -1012,7 +1012,7 @@ void cplot_fill_box_xywh(unsigned *canvas, int ystride, int axesheight, int *xyw
 void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
     if (!axes->legend.visible || (axes->legend.visible < 0 && !axes->legend.ro_place_found))
 	return;
-    unsigned fillcolor = axes->background;
+    uint32_t fillcolor = axes->background;
     switch (axes->legend.fill) {
 	case cplot_fill_color_e:
 	    fillcolor = axes->legend.fillcolor;
@@ -1042,7 +1042,7 @@ void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
 	/* drawing a literal marker changes fontheight */
 	if (axes->data[i]->label) {
 	    ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * area.axesheight));
-	    unsigned mem = axes->ttra->bg_default;
+	    uint32_t mem = axes->ttra->bg_default;
 	    axes->ttra->bg_default = fillcolor;
 	    ttra_printf(axes->ttra, "\033[0m%s\n", axes->data[i]->label);
 	    axes->ttra->bg_default = mem;

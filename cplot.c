@@ -437,7 +437,7 @@ void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight
 	height = axes->wh[1];
     unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
     for (int i=0; i<axes->ndata; i++)
-	cplot_data_render(axes->data[i], (void*)image, width, height, width);
+	cplot_data_render(axes->data[i], (void*)image, width, width, height);
 
     int x0 = axes->ro_inner_xywh[0],
 	y0 = axes->ro_inner_xywh[1],
@@ -656,7 +656,8 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
 	cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
 
-void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
+void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
+    canvas += axes->startcanvas;
     unsigned bg = axes->background;
     for (int j=0; j<axes->wh[1]; j++) {
 	unsigned ind0 = j * ystride;
@@ -666,7 +667,7 @@ void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride) {
     for (int i=0; i<axes->naxis; i++)
 	cplot_axis_draw(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
     for (int i=0; i<axes->ndata; i++)
-	cplot_data_render(axes->data[i], canvas, axes->wh[0], axes->wh[1], ystride);
+	cplot_data_render(axes->data[i], canvas, ystride, axes->wh[0], axes->wh[1]);
     cplot_legend_draw(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
 
     if (!axes->title.text)
@@ -887,11 +888,11 @@ void set_colors(struct cplot_axes *axes) {
     }
 }
 
-void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride) {
+void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
     set_colors(axes);
     if (cplot_axes_commit(axes))
 	return; // too small window to draw
-    cplot_axes_render(axes, canvas+axes->startcanvas, ystride);
+    cplot_axes_render(axes, canvas, ystride);
 }
 
 void cplot_xywh_to_pixels(struct cplot_layout *layout, int islot, int px[4]) {
@@ -982,7 +983,7 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
     }
 }
 
-void cplot_draw(void *vplot, unsigned *canvas, int ystride) {
+void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
     if (((struct cplot_axes*)vplot)->whatisthis == cplot_axes_e)
 	cplot_axes_draw(vplot, canvas, ystride);
     else {
@@ -1016,7 +1017,8 @@ void* cplot_show(void *vplot) {
 		cplot_draw(axes_or_layout, wlh.data, axes_or_layout->wh[0]);
 		should_commit++;
 	    }
-	    should_commit += axes_or_layout->update && axes_or_layout->update(axes_or_layout);
+	    should_commit += axes_or_layout->update &&
+		axes_or_layout->update(axes_or_layout, wlh.data, wlh.xres);
 	    if (should_commit)
 		wlh_commit(&wlh);
 	}

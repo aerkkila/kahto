@@ -246,7 +246,7 @@ struct cplot_axes {
     unsigned background;
     struct waylandhelper *wlh;
     /* For animated plot. */
-    int (*update)(struct cplot_axes*); // return 1 if screen has to be updated
+    int (*update)(struct cplot_axes*, uint32_t*, int ystride); // return 1 if screen has to be updated
     void *userdata;
     /* end shared */
     int startcanvas;
@@ -316,7 +316,7 @@ struct cplot_args {
 };
 
 struct cplot_drawarea {
-    unsigned *canvas;
+    uint32_t *canvas;
     int axeswidth, axesheight, ystride;
 };
 
@@ -429,20 +429,20 @@ void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min,
 static inline struct cplot_axis* cplot_xaxis0(struct cplot_axes *axes) { return axes->axis[cplot_ix0axis]; }
 static inline struct cplot_axis* cplot_yaxis0(struct cplot_axes *axes) { return axes->axis[cplot_iy0axis]; }
 
-void cplot_axes_render(struct cplot_axes *axes, unsigned *canvas, int ystride);
+void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 int  cplot_axes_commit(struct cplot_axes *axes);
-void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride);
+void cplot_clear_slot(struct cplot_layout *layout, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
 
 /* For animated plot to be used in the cplot_axes.update(). */
 void cplot_legend_draw(struct cplot_axes*, struct cplot_drawarea);
-void cplot_data_render(struct cplot_data *data, unsigned *canvas, int axeswidth, int axesheight, int ystride);
+void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight);
 void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 
 /* Käyttäjä ei tarvitse näitä. */
 void cplot_layout_to_axes(struct cplot_layout *layout);
-void cplot_axes_draw(struct cplot_axes *axes, unsigned *canvas, int ystride);
+void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 
 void cplot__sprint_supernum(char *out, int sizeout, int num);
 
