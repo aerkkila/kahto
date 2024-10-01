@@ -278,7 +278,7 @@ struct cplot_layout {
     unsigned background;
     struct waylandhelper *wlh;
     /* For animated plot. */
-    int (*update)(struct cplot_layout*); // return 1 if screen has to be updated
+    int (*update)(struct cplot_layout*, uint32_t*, int ystride); // return 1 if screen has to be updated
     void *userdata;
     /* end shared */
     struct cplot_axes **axes;
@@ -439,6 +439,7 @@ void cplot_legend_draw(struct cplot_axes*, struct cplot_drawarea);
 void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight);
 void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride);
+void cplot_draw(void *vplot, uint32_t *canvas, int ystride);
 
 /* Käyttäjä ei tarvitse näitä. */
 void cplot_layout_to_axes(struct cplot_layout *layout);
