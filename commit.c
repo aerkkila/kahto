@@ -74,14 +74,14 @@ void cplot_ticks_commit(struct cplot_ticks *ticks, int axesheight, const int axi
     ticks->ro_lines[1] = line_px[isx+2];
     int minmaxpos[2];
     memcpy(ticks->ro_labelarea, ticks->axis->ro_line, sizeof(ticks->ro_labelarea));
-    int nticks = ticks->ticker.tickerdata.common.nticks;
+    int nticks = ticks->tickerdata.common.nticks;
     char tickbuff[500];
     char *tick = tickbuff;
     int side = ticks->axis->pos >= 0.5;
 
     /* Silmukan käyminen takaperin muuttaisi minmaxpos-muuttujaa. */
     for (int itick=0; itick<nticks; itick++) {
-	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, &tick, sizeof(tick));
+	double pos_data = ticks->get_tick(ticks, itick, &tick, sizeof(tick));
 	double pos_rel = (pos_data - ticks->axis->min) / (ticks->axis->max - ticks->axis->min);
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
@@ -167,12 +167,12 @@ int cplot_axis_commit_parallel(struct cplot_axis *axis, float *out[2], int xywh[
 
     if (tk && tk->have_labels) {
 	ttra_set_fontheight(ttra, iroundpos(tk->rowheight * axis->axes->wh[1]));
-	int nlabels = tk->ticker.tickerdata.common.nticks,
+	int nlabels = tk->tickerdata.common.nticks,
 	    area[4], max01[2] = {0}, pos_xy[2] = {0}, size=xywh[!isx+2];
 	char labbuff[128];
 	char *lab = labbuff;
 	for (int ilab=0; ilab<nlabels; ilab++) {
-	    double pos_data = tk->ticker.get_tick(&tk->ticker, ilab, &lab, sizeof(lab));
+	    double pos_data = tk->get_tick(tk, ilab, &lab, sizeof(lab));
 	    double pos_rel = (pos_data - axis->min) / (axis->max - axis->min);
 	    if (!isx)
 		pos_rel = 1 - pos_rel;
@@ -231,7 +231,7 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out_[2], int ma
     }
 
     struct cplot_ticks *tk = axis->ticks;
-    if (tk && tk->ticker.init) {
+    if (tk && tk->init) {
 	out[0] += get_ticks_underaxislength(tk);
 	out[1] += get_ticks_overaxislength(tk);
     }
@@ -240,12 +240,12 @@ void cplot_axis_commit_orthogonal(struct cplot_axis *axis, float out_[2], int ma
     ttra_set_fontheight(ttra, 50);
 
     if (tk && tk->have_labels) {
-	int nlabels = tk->ticker.tickerdata.common.nticks,
+	int nlabels = tk->tickerdata.common.nticks,
 	    area[4], max01[2] = {0};
 	char labbuff[128];
 	char *lab = labbuff;
 	for (int i=0; i<nlabels; i++) {
-	    tk->ticker.get_tick(&tk->ticker, i, &lab, 128);
+	    tk->get_tick(tk, i, &lab, 128);
 	    put_text(ttra, lab, 0, 0, tk->hvalign_text[!isx], tk->hvalign_text[isx], tk->rotation100, area, 1);
 	    if (-area[isx] > max01[0])
 		max01[0] = -area[isx];
@@ -327,8 +327,8 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    cplot_axis_datarange(axis);
 	if (axis->pos != (int)axis->pos)
 	    continue;
-	if (axis->ticks && axis->ticks->ticker.init)
-	    axis->ticks->ticker.init(&axis->ticks->ticker, axis->min, axis->max);
+	if (axis->ticks && axis->ticks->init)
+	    axis->ticks->init(axis->ticks, axis->min, axis->max);
 	cplot_axis_commit_orthogonal(axis, overgoing[axis->direction==0][axis->pos==1], margin);
     }
     update_xywh(axes, overgoing, margin);

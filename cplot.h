@@ -43,7 +43,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 13
+#define __cplot_version_in_program 14
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -52,7 +52,7 @@ static void __attribute__((constructor)) cplot_check_version() {
     return;
 fail: __attribute__((cold));
     /* Use assembly to avoid including stdio or unistd in the header. */
-    const char errmsg[] = "The program has to be recompiled due to a change in cplot library.\n";
+    const char errmsg[] = "The program has to be recompiled (" __FILE__ ").\n";
     asm (
 	"movq $2, %%rdi\n" // stderr
 	"movq %0, %%rsi\n"
@@ -136,17 +136,6 @@ union cplot_tickerdata { // cplot_tickerdata_common defines how each struct must
 
 enum cplot_tickere {cplot_ticker_linear, cplot_ticker_datetime, cplot_ticker_arbitrary};
 
-struct cplot_ticker {
-    enum cplot_tickere species;
-    void (*init)(struct cplot_ticker *this, double min, double max);
-    double (*get_tick)(struct cplot_ticker *this, int ind, char **label, int sizelabel);
-    int (*get_maxn_subticks)(struct cplot_ticker *this);
-    int (*get_subticks)(struct cplot_ticker *this, float *out);
-    union cplot_tickerdata tickerdata;
-    int integers_only;
-    struct cplot_ticks *ticks;
-};
-
 /* crossaxis: Where ticks are parallel to the axis?
  *	0: Ticks start at the axis i.e. are right or below.
  *	1: Ticks end at the axis i.e. are left or above.
@@ -154,7 +143,15 @@ struct cplot_ticker {
  */
 struct cplot_ticks {
     struct cplot_axis *axis;
-    struct cplot_ticker ticker;
+
+    enum cplot_tickere species;
+    void (*init)(struct cplot_ticks *this, double min, double max);
+    double (*get_tick)(struct cplot_ticks *this, int ind, char **label, int sizelabel);
+    int (*get_maxn_subticks)(struct cplot_ticks *this);
+    int (*get_subticks)(struct cplot_ticks *this, float *out);
+    union cplot_tickerdata tickerdata;
+    int integers_only;
+
     unsigned color, color1;
     float crossaxis, length, crossaxis1, length1;
 
@@ -170,7 +167,7 @@ struct cplot_ticks {
 
 struct cplot_axis {
     struct cplot_axes *axes;
-    int direction, outside; // x=0, y=1
+    int direction, outside; // direction: x=0, y=1
     float pos;
     double min, max;
     int range_isset, ro_line[4], ro_tick_area[4];
@@ -230,8 +227,8 @@ struct cplot_data {
     char *label;
     union cplot_errorbars err;
     /* style */
-    struct cplot_markerstyle markerstyle;
-    struct cplot_linestyle linestyle, errstyle;
+    struct cplot_markerstyle markerstyle;	// fixed order
+    struct cplot_linestyle linestyle, errstyle;	// fixed order
     unsigned color; // overridden by style.color
     unsigned char *cmap;
     int cmh_enum, icolor;
@@ -248,7 +245,7 @@ struct cplot_axes {
     struct waylandhelper *wlh;
     /* For animated plot. */
     /* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
-    int (*update)(struct cplot_axes*, uint32_t*, int ystride, long count, double elapsed);
+    int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);
     void *userdata;
     /* end shared */
     int startcanvas;
@@ -281,7 +278,7 @@ struct cplot_layout {
     struct waylandhelper *wlh;
     /* For animated plot. */
     /* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
-    int (*update)(struct cplot_axes*, uint32_t*, int ystride, long count, double elapsed);
+    int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);
     void *userdata;
     /* end shared */
     struct cplot_axes **axes;
@@ -428,12 +425,12 @@ static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double
     return axis;
 }
 
-void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
-void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);
-void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max);
-void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max);
-void cplot_init_ticker_arbitrary_datacoord_enum(struct cplot_ticker *this, double min, double max);
-void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max);
+void cplot_init_ticker_default(struct cplot_ticks *this, double min, double max);
+void cplot_init_ticker_simple(struct cplot_ticks *this, double min, double max);
+void cplot_init_ticker_datetime(struct cplot_ticks *this, double min, double max);
+void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticks *this, double min, double max);
+void cplot_init_ticker_arbitrary_datacoord_enum(struct cplot_ticks *this, double min, double max);
+void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticks *this, double min, double max);
 
 #define cplot_ix0axis 0
 #define cplot_iy0axis 1

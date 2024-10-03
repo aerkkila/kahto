@@ -30,7 +30,7 @@ void cplot__sprint_supernum(char *out, int sizeout, int num) {
     }
 }
 
-double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
+double cplot_get_tick_linear(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
     double step = this->tickerdata.lin.step,
 	   base = this->tickerdata.lin.base,
 	   min = this->tickerdata.lin.min;
@@ -72,11 +72,11 @@ double cplot_get_tick_linear(struct cplot_ticker *this, int ind, char **label, i
     return val;
 }
 
-int cplot_get_maxn_subticks_linear(struct cplot_ticker *this) {
+int cplot_get_maxn_subticks_linear(struct cplot_ticks *this) {
     return this->tickerdata.lin.nsubticks * (this->tickerdata.lin.nticks + 1);
 }
 
-int cplot_get_subticks_linear(struct cplot_ticker *this, float *pos) {
+int cplot_get_subticks_linear(struct cplot_ticks *this, float *pos) {
     double min = this->tickerdata.lin.min,
 	   step = this->tickerdata.lin.step;
     int nsub = this->tickerdata.lin.nsubticks,
@@ -84,7 +84,7 @@ int cplot_get_subticks_linear(struct cplot_ticker *this, float *pos) {
     int itick = 0;
     double substep = step / nsub;
 
-    double room = min - this->ticks->axis->min;
+    double room = min - this->axis->min;
     int n_under = (int)(room / substep);
     double min_under = min - n_under * substep;
     for (int i=0; i<n_under; i++)
@@ -96,7 +96,7 @@ int cplot_get_subticks_linear(struct cplot_ticker *this, float *pos) {
     return itick;
 }
 
-double cplot_get_tick_datetime_annual(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
+double cplot_get_tick_datetime_annual(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
     int step = this->tickerdata.datetime.step;
     time_t min = this->tickerdata.datetime.min;
     struct tm tm = *gmtime(&min);
@@ -111,7 +111,7 @@ double cplot_get_tick_datetime_annual(struct cplot_ticker *this, int ind, char *
     return val;
 }
 
-double cplot_get_tick_datetime_monthly(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
+double cplot_get_tick_datetime_monthly(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
     int step = this->tickerdata.datetime.step;
     time_t min = this->tickerdata.datetime.min;
     struct tm tm = *gmtime(&min);
@@ -126,7 +126,7 @@ double cplot_get_tick_datetime_monthly(struct cplot_ticker *this, int ind, char 
     return val;
 }
 
-double cplot_get_tick_datetime_daily(struct cplot_ticker *this, int ind, char **label, int sizelabel) {
+double cplot_get_tick_datetime_daily(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
     int step = this->tickerdata.datetime.step;
     time_t min = this->tickerdata.datetime.min;
     struct tm tm = *gmtime(&min);
@@ -139,17 +139,17 @@ double cplot_get_tick_datetime_daily(struct cplot_ticker *this, int ind, char **
     return val;
 }
 
-double cplot_get_tick_arbitrary_datacoord(struct cplot_ticker *this, int ind, char **label, int _) {
+double cplot_get_tick_arbitrary_datacoord(struct cplot_ticks *this, int ind, char **label, int _) {
     *label = this->tickerdata.arb.labels[ind];
     return this->tickerdata.arb.ticks[ind];
 }
 
-double cplot_get_tick_arbitrary_datacoord_enum(struct cplot_ticker *this, int ind, char **label, int _) {
+double cplot_get_tick_arbitrary_datacoord_enum(struct cplot_ticks *this, int ind, char **label, int _) {
     *label = this->tickerdata.arb.labels[ind];
     return ind;
 }
 
-double cplot_get_tick_arbitrary_relcoord(struct cplot_ticker *this, int ind, char **label, int _) {
+double cplot_get_tick_arbitrary_relcoord(struct cplot_ticks *this, int ind, char **label, int _) {
     *label = this->tickerdata.arb.labels[ind];
     double min = this->tickerdata.arb.min,
 	   max = this->tickerdata.arb.max;
@@ -187,7 +187,7 @@ static double get_linticker_base(double max, int *maxpower_out) {
     return base;
 }
 
-void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max) {
+void cplot_init_ticker_simple(struct cplot_ticks *this, double min, double max) {
     this->species = cplot_ticker_linear;
     this->get_tick = cplot_get_tick_linear;
     double target_nticks0 = this->tickerdata.lin.target_nticks;
@@ -201,28 +201,28 @@ void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max)
     this->tickerdata.lin.baseten = maxpower;
 }
 
-void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticker *this, double min, double max) {
+void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticks *this, double min, double max) {
     this->species = cplot_ticker_arbitrary;
     this->get_tick = cplot_get_tick_arbitrary_datacoord;
     this->tickerdata.arb.min = min;
     this->tickerdata.arb.max = max;
 }
 
-void cplot_init_ticker_arbitrary_datacoord_enum(struct cplot_ticker *this, double min, double max) {
+void cplot_init_ticker_arbitrary_datacoord_enum(struct cplot_ticks *this, double min, double max) {
     this->species = cplot_ticker_arbitrary;
     this->get_tick = cplot_get_tick_arbitrary_datacoord_enum;
     this->tickerdata.arb.min = min;
     this->tickerdata.arb.max = max;
 }
 
-void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticker *this, double min, double max) {
+void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticks *this, double min, double max) {
     this->species = cplot_ticker_arbitrary;
     this->get_tick = cplot_get_tick_arbitrary_relcoord;
     this->tickerdata.arb.min = min;
     this->tickerdata.arb.max = max;
 }
 
-void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max) {
+void cplot_init_ticker_default(struct cplot_ticks *this, double min, double max) {
     double step_opts0[] = {1, 1.5, 2, 2.5, 5};
     int subticks_mul0[] = {4, 3, 4, 5, 5};
     int nstep_opt0 = arrlen(step_opts0);
@@ -311,7 +311,7 @@ void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max
     this->tickerdata.lin.nsubticks = subticks_mul[best.iopt];
 }
 
-void cplot_init_ticker_datetime(struct cplot_ticker *this, double min, double max) {
+void cplot_init_ticker_datetime(struct cplot_ticks *this, double min, double max) {
     time_t time = min;
     struct tm tm0 = *gmtime(&time);
     time = max;

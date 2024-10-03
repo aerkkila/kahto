@@ -178,8 +178,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     struct cplot_ticks *ticks = calloc(1, sizeof(struct cplot_ticks));
     ticks->axis = axis;
     ticks->color = fg;
-    ticks->ticker.init = cplot_init_ticker_default;
-    ticks->ticker.ticks = ticks;
+    ticks->init = cplot_init_ticker_default;
     ticks->length = 1.0 / 80;
     ticks->hvalign_text[0] = -0.5;
 
@@ -543,7 +542,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     int line_px[4];
     line_px[isx+0] = ticks->ro_lines[0];
     line_px[isx+2] = ticks->ro_lines[1];
-    int nticks = ticks->ticker.tickerdata.common.nticks;
+    int nticks = ticks->tickerdata.common.nticks;
     int gridline[4];
     int *xywh = ticks->axis->axes->ro_inner_xywh;
     gridline[isx] = xywh[isx];
@@ -554,7 +553,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     const double axisdatamin = ticks->axis->min;
     const double axisdatalen = ticks->axis->max - axisdatamin;
     for (int itick=0; itick<nticks; itick++) {
-	double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, &tick, 32);
+	double pos_data = ticks->get_tick(ticks, itick, &tick, 32);
 	double pos_rel = (pos_data - axisdatamin) / axisdatalen;
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
@@ -569,10 +568,10 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	}
     }
 
-    if (ticks->ticker.get_maxn_subticks) {
-	nticks = ticks->ticker.get_maxn_subticks(&ticks->ticker);
+    if (ticks->get_maxn_subticks) {
+	nticks = ticks->get_maxn_subticks(ticks);
 	float posdata[nticks];
-	nticks = ticks->ticker.get_subticks(&ticks->ticker, posdata);
+	nticks = ticks->get_subticks(ticks, posdata);
 	line_px[isx+0] = ticks->ro_lines1[0];
 	line_px[isx+2] = ticks->ro_lines1[1];
 	for (int i=0; i<nticks; i++) {
@@ -768,7 +767,7 @@ static struct cplot_data* add_data(struct cplot_args *args) {
 	    data->caxis->reverse_cmap = 1;
     }
     if (!data->yxzdata[1])
-	data->yxaxis[1]->ticks->ticker.integers_only = 1;
+	data->yxaxis[1]->ticks->integers_only = 1;
     data->yxaxis[0]->range_isset = 0;
     data->yxaxis[1]->range_isset = 0;
     set_icolor(data);
@@ -797,9 +796,9 @@ struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
 }
 
 void cplot_ticklabels(struct cplot_axis *axis, char **names, int howmany) {
-    axis->ticks->ticker.init = cplot_init_ticker_arbitrary_datacoord_enum;
-    axis->ticks->ticker.tickerdata.arb.labels = names;
-    axis->ticks->ticker.tickerdata.arb.nticks = howmany;
+    axis->ticks->init = cplot_init_ticker_arbitrary_datacoord_enum;
+    axis->ticks->tickerdata.arb.labels = names;
+    axis->ticks->tickerdata.arb.nticks = howmany;
     axis->ticks->rotation100 = 75;
 }
 
@@ -980,7 +979,7 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 	struct cplot_ticks *ticks = axis->ticks;
 	if (!ticks || !ticks->gridstyle.style)
 	    continue;
-	int nticks = ticks->ticker.tickerdata.common.nticks;
+	int nticks = ticks->tickerdata.common.nticks;
 	int isx = axis->direction == 0;
 	const double axisdatamin = axis->min;
 	const double axisdatalen = axis->max - axisdatamin;
@@ -988,7 +987,7 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 	gridline[isx] = xywh[isx];
 	gridline[isx+2] = xywh[isx] + xywh[isx+2];
 	for (int itick=0; itick<nticks; itick++) {
-	    double pos_data = ticks->ticker.get_tick(&ticks->ticker, itick, NULL, 0);
+	    double pos_data = ticks->get_tick(ticks, itick, NULL, 0);
 	    double pos_rel = (pos_data - axisdatamin) / axisdatalen;
 	    if (!isx)
 		pos_rel = 1 - pos_rel;
