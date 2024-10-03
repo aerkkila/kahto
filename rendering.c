@@ -18,7 +18,7 @@ static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
     int c2 = (fg2 * value + bg2 * eulav) / 255,
 	c1 = (fg1 * value + bg1 * eulav) / 255,
 	c0 = (fg0 * value + bg0 * eulav) / 255;
-    *ptr = *ptr>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
+    *ptr = color>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
 }
 
 static void draw_line_x(uint32_t *canvas, int ystride, const int *xy, uint32_t color) {
