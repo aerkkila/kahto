@@ -11,7 +11,9 @@ isinstalled() {
     for a in $@; do
 	libs="$libs -l$a"
     done
-    gcc -o $tmpfile -x c $libs - 2>/dev/null <<< "int main() {}"
+    gcc -o $tmpfile -x c $libs - 2>/dev/null <<-eof
+	int main() {}
+	eof
 }
 
 make_dependency() {
@@ -19,7 +21,6 @@ make_dependency() {
     shift
     if ! isinstalled $@; then
 	printf "#" >> $file
-	break
     fi
     printf "use_$name = 1\n" >> $file
 }
