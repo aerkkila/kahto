@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 14
+#define __cplot_version_in_program 15
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -218,7 +218,8 @@ struct cplot_data {
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char owner[3], cmap_owner;
     double yxz0[3];
-    char *label;
+    char *label;	// 1. fixed order
+    int labelowner;	// 2. fixed order
     union cplot_errorbars err;
     /* style */
     struct cplot_markerstyle markerstyle;	// fixed order
@@ -294,7 +295,8 @@ struct cplot_args {
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char yxzowner[3], cmap_owner;
     double y0, x0, z0;
-    char *label;
+    char *label;	// 1. fixed order
+    int labelowner;	// 2. fixed order
     union cplot_errorbars err;
 
     struct cplot_markerstyle markerstyle;

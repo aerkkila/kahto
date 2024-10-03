@@ -402,6 +402,8 @@ void cplot_axis_datarange(struct cplot_axis *axis) {
     axis->range_isset |= cplot_minbit | cplot_maxbit;
 }
 
+/* If rectangle of size (rwidth,rheight) fits to position (i,j), return negative.
+   Otherwise return the next i-coordinate (x) to try. */
 static int rectangle_nexti(int j, int i, int rwidth, int rheight, const short (*right)[], const short (*down)[], int w, int h) {
     const short (*spaceright)[w] = right;
     const short (*spacedown)[w] = down;
@@ -414,6 +416,8 @@ static int rectangle_nexti(int j, int i, int rwidth, int rheight, const short (*
     return -1;
 }
 
+/* If rectangle of size (rwidth,rheight) fits to position (i,j), return negative.
+   Otherwise return the next j-coordinate (y) to try. */
 static int rectangle_nextj(int j, int i, int rwidth, int rheight, const short (*right)[], const short (*down)[], int w, int h) {
     const short (*spaceright)[w] = right;
     const short (*spacedown)[w] = down;
@@ -792,6 +796,8 @@ void cplot_destroy_data(struct cplot_data *data) {
 	    free(data->yxzdata[j]);
     if (data->cmap_owner)
 	free(data->cmap);
+    if (data->labelowner)
+	free(data->label);
     free(data);
 }
 
