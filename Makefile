@@ -7,6 +7,7 @@ CFLAGS += -Wall -g -DHAVE_PNG
 CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
+cplot_sources = cplot.h rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
 
 ifdef use_libttra
 	LDLIBS += -lttra
@@ -23,12 +24,18 @@ else
 	LDLIBS += -lxkbcommon -lwayland-client
 endif
 
+ifdef use_ffmpeg
+	LDLIBS += -lavcodec -lavutil -lavformat
+	CFLAGS += -DHAVE_ffmpeg
+	cplot_sources += cplot_video.c
+endif
+
 all: libcplot.so
 
 testi.out: testi.c cplot.o $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-cplot.o: cplot.c cplot.h rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
+cplot.o: cplot.c $(cplot_sources)
 	$(CC) $(CFLAGS_OBJ) -o $@ $<
 
 libcplot.so: cplot.c cplot.h rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile

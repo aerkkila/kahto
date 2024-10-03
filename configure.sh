@@ -3,24 +3,32 @@
 tmpfile=/tmp/cplot_configure_test
 LIBS=
 OBJS=
+file=config.mk
 
 isinstalled() {
-	gcc -o $tmpfile -x c -l$1 - 2>/dev/null <<-EOF
-		int main() {}
-	EOF
+    libs=-l$1
+    shift
+    for a in $@; do
+	libs="$libs -l$a"
+    done
+    gcc -o $tmpfile -x c $libs - 2>/dev/null <<< "int main() {}"
 }
 
-file=config.mk
-printf "#Automatically created by $0. Comment out those which you don't want.\n" > $file
+make_dependency() {
+    name=$1
+    shift
+    if ! isinstalled $@; then
+	printf "#" >> $file
+	break
+    fi
+    printf "use_$name = 1\n" >> $file
+}
 
-if ! isinstalled ttra; then
-    printf "#" >> $file
-fi
-printf "use_libttra = 1\n" >> $file
+printf "# Automatically created by $0. Comment out those which you don't want.\n" > $file
 
-if ! isinstalled waylandhelper; then
-    printf "#" >> $file
-fi
-printf "use_libwaylandhelper = 1\n" >> $file
+make_dependency libttra ttra
+make_dependency libwaylandhelper waylandhelper
+printf "# Needed by cplot_write_mp4\n" >> $file
+make_dependency ffmpeg avcodec avutil avformat
 
 rm -f $tmpfile

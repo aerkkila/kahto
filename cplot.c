@@ -5,6 +5,7 @@
 #include <float.h>
 #include <cmh_colormaps.h>
 #include <waylandhelper.h>
+#include <sys/time.h>
 #define CPLOT_NO_VERSION_CHECK
 #include "cplot.h"
 #include "png.c"
@@ -116,11 +117,25 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
 
+static double get_time() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec * 1e-6;
+}
+
 #include "functions.c"
 #include "rotate.c"
 #include "rendering.c"
 #include "ticker.c"
 #include "commit.c"
+#ifdef HAVE_ffmpeg
+#include "cplot_video.c"
+#else
+void* cplot_write_mp4(void *axes_or_layout, const char *name, float fps) {
+    fprintf(stderr, "cplot library was compiled without support for %s\n", __func__);
+    return axes_or_layout;
+}
+#endif
 
 struct cplot_axis* cplot_axis_void_new(struct cplot_axes *axes) {
     struct cplot_axis *axis = calloc(1, sizeof(struct cplot_axis));
@@ -437,7 +452,7 @@ void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight
 	height = axes->wh[1];
     unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
     for (int i=0; i<axes->ndata; i++)
-	cplot_data_render(axes->data[i], (void*)image, width, width, height);
+	cplot_data_render(axes->data[i], (void*)image, width, width, height, 0);
 
     int x0 = axes->ro_inner_xywh[0],
 	y0 = axes->ro_inner_xywh[1],
@@ -667,7 +682,7 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
     for (int i=0; i<axes->naxis; i++)
 	cplot_axis_draw(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
     for (int i=0; i<axes->ndata; i++)
-	cplot_data_render(axes->data[i], canvas, ystride, axes->wh[0], axes->wh[1]);
+	cplot_data_render(axes->data[i], canvas, ystride, axes->wh[0], axes->wh[1], 0);
     cplot_legend_draw(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
 
     if (!axes->title.text)
@@ -1008,6 +1023,8 @@ void* cplot_show(void *vplot) {
     struct waylandhelper *old_wlh = axes_or_layout->wlh;
     axes_or_layout->wlh = &wlh;
     wlh_init(&wlh);
+    long updatecount = 0;
+    double starttime = -1;
     while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
 	if (wlh.can_redraw) {
 	    axes_or_layout->wh[0] = wlh.xres;
@@ -1017,8 +1034,14 @@ void* cplot_show(void *vplot) {
 		cplot_draw(axes_or_layout, wlh.data, axes_or_layout->wh[0]);
 		should_commit++;
 	    }
-	    should_commit += axes_or_layout->update &&
-		axes_or_layout->update(axes_or_layout, wlh.data, wlh.xres);
+	    if (starttime < 0)
+		starttime = get_time();
+	    if (axes_or_layout->update) {
+		int ret = axes_or_layout->update(axes_or_layout, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
+		if (ret < 0)
+		    break;
+		should_commit += ret;
+	    }
 	    if (should_commit)
 		wlh_commit(&wlh);
 	}

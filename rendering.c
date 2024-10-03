@@ -807,7 +807,7 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
     return bmap;
 }
 
-void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight) {
+void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight, long start) {
     double yxzmin[] = {
 	data->yxaxis[0]->min,
 	data->yxaxis[1]->min,
@@ -853,7 +853,7 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, i
 	 */
     };
 
-    for (long istart=0; istart<data->length; ) {
+    for (long istart=start; istart<data->length; ) {
 	long iend = min(istart+npoints, data->length);
 	long num = iend - istart;
 	if (data->yxzdata[1])

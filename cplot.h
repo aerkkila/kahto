@@ -38,6 +38,7 @@ extern const unsigned char cplot_sizes[];
 #define cplot_maxbit 2
 #define cplot_minbit_const 4
 #define cplot_maxbit_const 8
+#define cplot_range_isset (cplot_minbit|cplot_maxbit|cplot_minbit_const|cplot_maxbit_const)
 #define cplot_automatic -9010 // assumed to be negative
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
@@ -246,7 +247,8 @@ struct cplot_axes {
     unsigned background;
     struct waylandhelper *wlh;
     /* For animated plot. */
-    int (*update)(struct cplot_axes*, uint32_t*, int ystride); // return 1 if screen has to be updated
+    /* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
+    int (*update)(struct cplot_axes*, uint32_t*, int ystride, long count, double elapsed);
     void *userdata;
     /* end shared */
     int startcanvas;
@@ -278,7 +280,8 @@ struct cplot_layout {
     unsigned background;
     struct waylandhelper *wlh;
     /* For animated plot. */
-    int (*update)(struct cplot_layout*, uint32_t*, int ystride); // return 1 if screen has to be updated
+    /* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
+    int (*update)(struct cplot_axes*, uint32_t*, int ystride, long count, double elapsed);
     void *userdata;
     /* end shared */
     struct cplot_axes **axes;
@@ -375,6 +378,7 @@ struct cplot_drawarea {
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
 struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y);
 struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y);
+struct cplot_axes* cplot_axes_new();
 struct cplot_layout* cplot_layout_new(int nrows, int ncols);
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args);
@@ -414,7 +418,15 @@ void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
+/* Available only if compiled with video support. Function axes->update has to be defined. */
+void* cplot_write_mp4(void *axes_or_layout, const char *name, float fps);
 unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);
+static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double min, double max) {
+    axis->min = min;
+    axis->max = max;
+    axis->range_isset = cplot_range_isset;
+    return axis;
+}
 
 void cplot_init_ticker_default(struct cplot_ticker *this, double min, double max);
 void cplot_init_ticker_simple(struct cplot_ticker *this, double min, double max);
@@ -436,7 +448,7 @@ void cplot_axis_datarange(struct cplot_axis*);
 
 /* For animated plot to be used in the cplot_axes.update(). */
 void cplot_legend_draw(struct cplot_axes*, struct cplot_drawarea);
-void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight);
+void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight, long start);
 void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 void cplot_draw(void *vplot, uint32_t *canvas, int ystride);
