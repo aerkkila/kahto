@@ -204,6 +204,7 @@ struct cplot_axes* cplot_axes_new() {
 
     axes->ttra = calloc(1, sizeof(struct ttra));
     axes->ttra->fonttype = ttra_sans_e;
+    axes->ttra->chop_lines = 1;
 
     axes->colorscheme = cplot_colorschemes[0];
     axes->title.rowheight = 0.05;

@@ -38,7 +38,7 @@ void get_rotated_area(float w, float h, float *restrict area, float rot100) {
     }
 }
 
-static void laita(unsigned *to, int tw, float y, float x, unsigned color) {
+static void laita(unsigned *to, int length, int tw, float y, float x, unsigned color) {
     float yx[] = {y, x};
     int yxind0[2], yxind1[2];
     float yxlength0[2], yxlength1[2];
@@ -57,23 +57,31 @@ static void laita(unsigned *to, int tw, float y, float x, unsigned color) {
     }
 
     int ind = yxind0[0]*tw + yxind0[1];
-    int value = round(255 * yxlength0[0] * yxlength0[1]);
-    value = value < 128 ? value*2 : 255;
-    tocanvas(to+ind, value, color);
+    if (ind >= 0 && ind < length) {
+	int value = round(255 * yxlength0[0] * yxlength0[1]);
+	value = value < 128 ? value*2 : 255;
+	tocanvas(to+ind, value, color);
+    }
 
     ind = yxind0[0]*tw + yxind1[1];
-    value = round(255 * yxlength0[0] * yxlength1[1]);
-    value = value < 128 ? value*2 : 255;
-    tocanvas(to+ind, value, color);
+    if (ind >= 0 && ind < length) {
+	int value = round(255 * yxlength0[0] * yxlength1[1]);
+	value = value < 128 ? value*2 : 255;
+	tocanvas(to+ind, value, color);
+    }
 
     ind = yxind1[0]*tw + yxind0[1];
-    value = round(255 * yxlength1[0] * yxlength0[1]);
-    value = value < 128 ? value*2 : 255;
-    tocanvas(to+ind, value, color);
+    if (ind >= 0 && ind < length) {
+	int value = round(255 * yxlength1[0] * yxlength0[1]);
+	value = value < 128 ? value*2 : 255;
+	tocanvas(to+ind, value, color);
+    }
 
     ind = yxind1[0]*tw + yxind1[1];
-    value = round(255 * yxlength1[0] * yxlength1[1]);
-    tocanvas(to+ind, value, color);
+    if (ind >= 0 && ind < length) {
+	int value = round(255 * yxlength1[0] * yxlength1[1]);
+	tocanvas(to+ind, value, color);
+    }
 }
 
 void rotate(
@@ -81,10 +89,19 @@ void rotate(
     const unsigned *from, int fw, int fh,
     float rot100)
 {
-    if (rot100 == 25)
-	return rotate25(to, tw, from, fw, fh);
-    if (rot100 == 75)
-	return rotate75(to, tw, from, fw, fh);
+    int irot = rot100;
+    if (irot == rot100) {
+	if (irot < 0)
+	    irot += 100 * (-irot/100 + !!(irot%100));
+	else if (irot >= 100)
+	    irot -= irot/100 * 100;
+	if (irot == 25)
+	    return rotate25(to, tw, from, fw, fh);
+	if (irot == 75)
+	    return rotate75(to, tw, from, fw, fh);
+	/* if (irot == 50)
+	    return rotate50(to, tw, from, fw, fh);*/
+    }
 
     float si = sinf(rot100 * 3.14159265358979 / 50);
     float co = cosf(rot100 * 3.14159265358979 / 50);
@@ -93,15 +110,18 @@ void rotate(
     get_rotated_area(fw, fh, area, rot100);
     int new_w = area[2] - area[0] + 2;
     int new_h = area[3] - area[1] + 2;
-    unsigned *apu = malloc(new_w * new_h * sizeof(unsigned));
-    memset(apu, -1, new_w * new_h * sizeof(unsigned));
+    int apulen = new_w * new_h;
+    unsigned *apu = malloc(apulen * sizeof(unsigned));
+    memset(apu, -1, apulen * sizeof(unsigned));
     int shift = round(-area[0]) + round(-area[1])*new_w; // tärkeä pyöristää erikseen
     apu += shift;
+    static int lasku = 0;
+    lasku++;
     for (int y0=0; y0<fh; y0++) {
 	for (int x0=0; x0<fw; x0++) {
 	    float x1 = (x0+0.5)*co - (y0+0.5)*si;
 	    float y1 = (x0+0.5)*si + (y0+0.5)*co;
-	    laita(apu, new_w, y1, x1, from[y0*fw + x0]);
+	    laita(apu, apulen, new_w, y1, x1, from[y0*fw + x0]);
 	}
     }
     apu -= shift;
