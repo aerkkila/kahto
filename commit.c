@@ -18,10 +18,10 @@ void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
 	axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
 	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
     do {
-	if (!axes->legend.automatic_placement)
+	if (!axes->legend.placement)
 	    break;
 	int iplace, jplace;
-	cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace);
+	cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace, axes->legend.placement);
 	if (iplace < 0) {
 	    axes->legend.ro_place_found = 0;
 	    break;

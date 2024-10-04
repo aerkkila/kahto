@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 15
+#define __cplot_version_in_program 16
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -231,6 +231,7 @@ struct cplot_data {
 
 enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
 enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
+enum cplot_placement {cplot_placement_none, cplot_placement_first, cplot_placement_singlemaxdist};
 
 struct cplot_axes {
     /* Shared between axes and layout. Order matters here. */
@@ -257,11 +258,12 @@ struct cplot_axes {
 
     struct legend {
 	float rowheight, symbolspace_per_rowheight;
-	int ro_xywh[4], ro_text_left, automatic_placement, visible, ro_place_found;
+	int ro_xywh[4], ro_text_left, visible, ro_place_found;
 	float posx, posy, hvalign[2];
 	struct cplot_linestyle borderstyle;
 	enum cplot_fill fill;
 	unsigned fillcolor;
+	enum cplot_placement placement;
     } legend;
 };
 
