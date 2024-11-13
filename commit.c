@@ -159,13 +159,12 @@ void limits_to_conflicts(struct cplot_axis *axis, int *limits) {
 }
 
 struct commit_args {
-    int *imargin_xyxy, axesheight, iort, iouter, iinner, iside;
-    float ortw;
+    int *imargin_xyxy, iort, iouter, iinner, iside, iortw;
+    struct cplot_axes *axes;
 };
 
 #define unpack_args(a)\
     int __attribute__((unused)) *imargin_xyxy = a->imargin_xyxy, \
-    axesheight = a->axesheight, \
     iort = a->iort, \
     iouter = a->iouter, \
     iinner = a->iinner, \
@@ -182,7 +181,7 @@ static void _axis_line_orthogonal(struct cplot_axis *axis, struct commit_args *a
 	fw = axis->linestyle.thickness; // regular axis
 
     unpack_args(args);
-    int iw = iroundpos(fw * axesheight);
+    int iw = topixels(fw, args->axes);
     if (iside) {
 	axis->ro_area[iouter] = axis->axes->wh[iort] - imargin_xyxy[iouter];
 	axis->ro_area[iinner] = axis->ro_area[iouter] - iw;
@@ -193,7 +192,7 @@ static void _axis_line_orthogonal(struct cplot_axis *axis, struct commit_args *a
     }
     imargin_xyxy[iouter] += iw;
     axis->ro_line[iort] = axis->ro_line[iort+2] = axis->ro_area[iinner];
-    args->ortw += fw;
+    args->iortw += iw;
 }
 
 static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_args *args) {
@@ -203,8 +202,8 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_a
     unpack_args(args);
     if (tk->length1 > tk->length)
 	tk->length1 = tk->length;
-    int length = iroundpos(tk->length * axesheight);
-    int length1 = iroundpos(tk->length1 * axesheight);
+    int length = topixels(tk->length, args->axes);
+    int length1 = topixels(tk->length1, args->axes);
     if (iside) {
 	tk->ro_lines[iside] = axis->axes->wh[iort] - imargin_xyxy[iouter];
 	tk->ro_lines1[!iside] = tk->ro_lines[!iside] = tk->ro_lines[iside] - length;
@@ -215,7 +214,7 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_a
 	tk->ro_lines1[iside] = tk->ro_lines[iside] + length-length1;
 	tk->ro_lines[!iside] = tk->ro_lines1[!iside] = tk->ro_lines[iside] + length;
     }
-    args->ortw += tk->length;
+    args->iortw += length;
     imargin_xyxy[iouter] += length;
 }
 
@@ -228,6 +227,7 @@ static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_
 	area[4], max01[2] = {0};
     char labelbuff[128];
     char *label = labelbuff;
+    ttra_set_fontheight(ttra, topixels(tk->rowheight, args->axes));
     for (int i=0; i<nlabels; i++) {
 	tk->get_tick(tk, i, &label, 128);
 	put_text(ttra, label, 0, 0, tk->hvalign_text[!iort], tk->hvalign_text[iort], tk->rotation100, area, 1);
@@ -236,8 +236,8 @@ static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_
 	if (area[iort+2] > max01[1])
 	    max01[1] = area[iort+2];
     }
-    float size = (float)max01[iside] / ttra->fontheight * tk->rowheight;
-    int length = iroundpos(size * axesheight);
+    int reserved = max01[iside];
+    int length = max01[1] - max01[0];
     if (iside) {
 	tk->ro_labelarea[iouter] = axis->axes->wh[iort] - imargin_xyxy[iouter];
 	tk->ro_labelarea[iinner] = tk->ro_labelarea[iouter] - length;
@@ -246,32 +246,32 @@ static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_
 	tk->ro_labelarea[iouter] = imargin_xyxy[iouter];
 	tk->ro_labelarea[iinner] = tk->ro_labelarea[iouter] + length;
     }
-    imargin_xyxy[iouter] += length;
-    args->ortw += size;
+    imargin_xyxy[iouter] += reserved;
+    args->iortw += reserved;
 }
 
 static void _axis_texts_orthogonal(struct cplot_axis *axis, struct commit_args *args, struct ttra *ttra) {
-    float maxtext = 0;
+    int imaxtext = 0;
     unpack_args(args);
-    float sizes[axis->ntext];
+    int sizes[axis->ntext];
     for (int itext=0; itext<axis->ntext; itext++) {
 	if (!axis->text[itext])
 	    continue;
 	struct cplot_axistext *axistext = axis->text[itext];
+	ttra_set_fontheight(ttra, topixels(axistext->rowheight, args->axes));
 	int area[4];
 	put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation100, area, 1);
-	sizes[itext] = (iside ? (float)area[iort+2] : -(float)area[iort]) / ttra->fontheight * axistext->rowheight;
-	update_max(maxtext, sizes[itext]);
-	axistext->ro_area[!iort] = iround(area[!iort] * axistext->rowheight / ttra->fontheight * axesheight);
-	axistext->ro_area[!iort+2] = iround(area[!iort+2] * axistext->rowheight / ttra->fontheight * axesheight);
+	sizes[itext] = iside ? area[iort+2] : -area[iort];
+	update_max(imaxtext, sizes[itext]);
+	axistext->ro_area[!iort] = area[!iort];
+	axistext->ro_area[!iort+2] = area[!iort+2];
     }
-    int imaxtext = iroundpos(maxtext * axesheight);
     if (iside) {
 	int centerpos = axis->axes->wh[iort] - imargin_xyxy[iouter] - imaxtext;
 	for (int itext=0; itext<axis->ntext; itext++)
 	    if (axis->text[itext]) {
 		axis->text[itext]->ro_area[iinner] = centerpos;
-		axis->text[itext]->ro_area[iouter] = centerpos + iroundpos(sizes[itext] * axesheight);
+		axis->text[itext]->ro_area[iouter] = centerpos + sizes[itext];
 	    }
     }
     else {
@@ -279,14 +279,14 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct commit_args *
 	for (int itext=0; itext<axis->ntext; itext++)
 	    if (axis->text[itext]) {
 		axis->text[itext]->ro_area[iinner] = centerpos;
-		axis->text[itext]->ro_area[iouter] = centerpos - iroundpos(sizes[itext] * axesheight);
+		axis->text[itext]->ro_area[iouter] = centerpos - sizes[itext];
 	    }
     }
     imargin_xyxy[iouter] += imaxtext;
-    args->ortw += maxtext;
+    args->iortw += imaxtext;
 }
 
-float cplot_axis_get_orthogonal(struct cplot_axis *axis, float *margin_xyxy) {
+int cplot_axis_get_orthogonal(struct cplot_axis *axis, float *margin_xyxy) {
     if (axis->direction < 0)
 	return 0;
     int isx = axis->direction == 0;
@@ -295,19 +295,18 @@ float cplot_axis_get_orthogonal(struct cplot_axis *axis, float *margin_xyxy) {
     ttra_set_fontheight(ttra, 30);
     int axesheight = axis->axes->wh[1];
 
-    /* ei ole hyvä juttu tehdä näin */
-    int imargin_xyxy[4]; // constantly updated and used
+    int imargin_xyxy[4];
     for (int i=0; i<4; i++)
 	imargin_xyxy[i] = iroundpos(margin_xyxy[i] * axesheight);
 
     struct commit_args args = {
 	.imargin_xyxy = imargin_xyxy,
-	.axesheight = axesheight,
 	.iort = iort,
 	.iouter = iort + 2*(axis->pos >= 0.5),
 	.iinner = iort + 2*(axis->pos < 0.5),
 	.iside = axis->pos >= 0.5,
-	.ortw = 0,
+	.iortw = 0,
+	.axes = axis->axes,
     };
 
     /* from outside in */
@@ -316,8 +315,8 @@ float cplot_axis_get_orthogonal(struct cplot_axis *axis, float *margin_xyxy) {
     _axis_tick_lines_orthogonal(axis, &args);
     _axis_line_orthogonal(axis, &args);
 
-    margin_xyxy[args.iouter] += args.ortw;
-    return args.ortw;
+    margin_xyxy[args.iouter] += args.iortw / (float)axis->axes->wh[1];
+    return args.iortw;
 }
 
 void cplot_make_range(struct cplot_axes *axes) {
@@ -389,8 +388,8 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation100, axes->title.ro_area, 1);
 	margin_xyxy[1] += axes->title.ro_area[3] / (float)axes->ttra->fontheight * axes->title.rowheight;
     }
-    ttra_set_fontheight(axes->ttra, 30);
 
+    ttra_set_fontheight(axes->ttra, 30);
     cplot_make_range(axes);
 
     /* tick initialization */
