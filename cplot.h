@@ -1,7 +1,7 @@
 #ifndef __cplot_h__
 #define __cplot_h__
 #define CMH_ENUM_ONLY
-#include "cmh_colormaps.h"
+#include <cmh_colormaps.h> // not mandatory
 #include <ttra.h>
 #include <waylandhelper.h>
 #include <stdlib.h> // cplot_line_inl uses malloc

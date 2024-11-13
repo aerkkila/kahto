@@ -7,6 +7,7 @@ CFLAGS += -Wall -g -DHAVE_PNG
 CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
+OBJECTS =
 cplot_sources = cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
 
 ifdef use_libttra
@@ -24,6 +25,10 @@ else
 	LDLIBS += -lxkbcommon -lwayland-client
 endif
 
+ifndef use_cmh_colormaps
+	cplot_sources += colormap-headers/cmh_colormaps.h
+endif
+
 ifdef use_ffmpeg
 	LDLIBS += -lavcodec -lavutil -lavformat
 	CFLAGS += -DHAVE_ffmpeg
@@ -38,7 +43,7 @@ testi.out: testi.c cplot.o $(OBJECTS)
 cplot.o: cplot.c $(cplot_sources)
 	$(CC) $(CFLAGS_OBJ) -o $@ $<
 
-libcplot.so: cplot.c cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
+libcplot.so: cplot.c cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile $(OBJECTS)
 	$(CC) $(CFLAGS_LIB) -o $@ $< $(OBJECTS) $(LDLIBS)
 
 functions.c: make_functions.pl functions.in.c
@@ -55,6 +60,9 @@ ttra:
 
 ttra/ttra.o: ttra
 	cd ttra && $(MAKE) ttra.o
+
+colormap-headers/cmh_colormaps.h:
+	git clone https://codeberg.org/aerkkila/colormap-headers
 
 clean:
 	rm -f *.out *.so *.o functions.c

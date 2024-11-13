@@ -6,12 +6,18 @@ OBJS=
 file=config.mk
 
 isinstalled() {
-    libs=-l$1
-    shift
+    libs=
+    headers=
     for a in $@; do
-	libs="$libs -l$a"
+	if echo $a |grep -q "\.h$"; then
+	    headers="$headers#include <$a>
+"
+	else
+	    libs="$libs -l$a"
+	fi
     done
     gcc -o $tmpfile -x c $libs - 2>/dev/null <<-eof
+	$headers
 	int main() {}
 	eof
 }
@@ -31,8 +37,10 @@ printf "# Needed by cplot_write_png\n" >> $file
 make_dependency libpng png
 printf "# Needed by cplot_write_mp4\n" >> $file
 make_dependency ffmpeg avcodec avutil avformat
-printf "\n# Always used but whether to link dynamically or download and link statically.\n" >> $file
+printf "\n# Small libraries which will be downloaded and linked statically, if commented out.\n" >> $file
+printf "# Comment these out, if you don't have them installed.\n" >> $file
 make_dependency libttra ttra
 make_dependency libwaylandhelper waylandhelper
+make_dependency cmh_colormaps cmh_colormaps.h
 
 rm -f $tmpfile

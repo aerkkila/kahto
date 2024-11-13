@@ -7,5 +7,5 @@ vgcore*
 functions.c
 ttra
 waylandhelper
-Makefile.inc
+colormap-headers
 config.mk
