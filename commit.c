@@ -372,6 +372,20 @@ void cplot_make_inner_margin(struct cplot_axes *axes) {
     }
 }
 
+static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, int limits[2][2], int *moveaxis) {
+    for (int iaxis=0; iaxis<4; iaxis++) {
+	if (!axis_xyxy[iaxis])
+	    continue;
+	struct cplot_ticks *tk = axis_xyxy[iaxis]->ticks;
+	if (!tk)
+	    continue;
+	int try = limits[iaxis][0] - tk->ro_labelarea[iaxis%2];
+	update_max(moveaxis[iaxis%2 + 0*2], try);
+	try = tk->ro_labelarea[iaxis%2 + 2] - limits[iaxis][1];
+	update_max(moveaxis[iaxis%2 + 1*2], try);
+    }
+}
+
 int cplot_axes_commit(struct cplot_axes *axes) {
     float margin_xyxy[4];
     memcpy(margin_xyxy, axes->margin, sizeof(margin_xyxy));
@@ -430,9 +444,16 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    axis_xyxy[!!axes->axis[i]->direction + ipos*2] = axes->axis[i];
     }
 
+    int imargin0[] = {
+	iroundpos(axes->margin[0] * axes->wh[1]),
+	iroundpos(axes->margin[1] * axes->wh[1]),
+	iroundpos(axes->margin[2] * axes->wh[1]),
+	iroundpos(axes->margin[3] * axes->wh[1]),
+    };
+
     /* while (1) but avoid unexpected halting */
     int firsttime = 1;
-    for (int iloop=0; iloop<10; iloop++) {
+    for (int iloop=0; iloop<30; iloop++) {
 	/* parallel size */
 	for (int i=0; i<axes->naxis; i++)
 	    axis_set_parallel_sizes(axes->axis[i], firsttime);
@@ -447,16 +468,21 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	 *      ¹¹              ³¹
 	 *
 	 * Limits[iaxis] (iaxis is the big number above)
-	 * shows many pixels the labelarea conflicts with other stuff
+	 * shows first, until which point there is room in the parallel direction.
+	 * Then it is converted to show, how many pixels the labelarea conflicts with other stuff
 	 * in the parallel directions.
 	 */
+
 	int limits[4][2] = {
-	    {0, axes->wh[0]},
-	    {0, axes->wh[1]},
-	    {0, axes->wh[0]},
-	    {0, axes->wh[1]},
+	    {imargin0[0], axes->wh[0]-imargin0[2]},
+	    {imargin0[1], axes->wh[1]-imargin0[3]},
+	    {imargin0[0], axes->wh[0]-imargin0[2]},
+	    {imargin0[1], axes->wh[1]-imargin0[3]},
 	},
 	    moveaxis[4] = {0};
+	/* Make sure everything fits into the figure. */
+	fit_to_axes(axes, axis_xyxy, limits, moveaxis);
+	/* The rest makes sure that two axis do not conflict. */
 	for (int i=0; i<4; i++)
 	    if (axis_xyxy[i]) {
 		get_parallel_limits(axis_xyxy[i], limits[i]);
@@ -484,12 +510,13 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	else update_max(moveaxis[3], limits[3][1]);
 
 	for (int i=0; i<4; i++)
-	    if (moveaxis[i])
+	    if (moveaxis[i]) {
+		for (; i<4; i++)
+		    axes->ro_inner_margin[i] += moveaxis[i];
 		goto next;
+	    }
 	break;
 next:
-	for (int i=0; i<4; i++)
-	    axes->ro_inner_margin[i] += moveaxis[i];
 	if (axes->ro_inner_margin[0] + axes->ro_inner_margin[2] >= axis_xywh[2] ||
 	    axes->ro_inner_margin[1] + axes->ro_inner_margin[3] >= axis_xywh[3])
 	    return 1;
