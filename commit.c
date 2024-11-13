@@ -107,27 +107,13 @@ static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
     }
     int *area = axis->ticks->ro_labelarea;
 
+    if (ipar == 1)
+	update_max(limits[0], axes->title.ro_area[3]);
+
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	struct cplot_axis *ax1 = axes->axis[iaxis];
 	if (ax1->direction == axis->direction)
 	    continue;
-	for (int i=0; i<ax1->ntext; i++) {
-	    if (side) {
-		if (ax1->text[i]->ro_area[iort+side*2] <= area[iort]) // not seen by axis
-		    continue;
-	    }
-	    else if (ax1->text[i]->ro_area[iort] >= area[iort+2]) // not seen by axis
-		continue;
-	    if (ax1->pos < 0.5) {
-		int val = ax1->text[i]->ro_area[ipar+2];
-		update_max(limits[0], val);
-	    }
-	    else {
-		int val = ax1->text[i]->ro_area[ipar];
-		update_min(limits[1], val);
-	    }
-	}
-
 	struct cplot_ticks *tk1 = ax1->ticks;
 	if (!tk1)
 	    continue;
@@ -235,7 +221,7 @@ static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_
 	    max01[1] = area[iort+2];
     }
     int reserved = max01[iside];
-    int length = max01[1] - max01[0];
+    int length = max01[1] + max01[0]; // positive is always away from the baseline
     if (iside) {
 	tk->ro_labelarea[iouter] = axis->axes->wh[iort] - imargin_xyxy[iouter];
 	tk->ro_labelarea[iinner] = tk->ro_labelarea[iouter] - length;
@@ -350,6 +336,42 @@ void cplot_make_inner_margin(struct cplot_axes *axes) {
     }
 }
 
+static void adjust_moveaxis(int *area, int iort, int side, int *testarea, const int *limits, int *moveaxis) {
+    if (side) {
+	if (testarea[iort+side*2] <= area[iort]) // not in line with the axis
+	    return;
+    }
+    else if (testarea[iort] >= area[iort+2]) // not in line with the axis
+	return;
+    int ipar = !iort;
+    if (testarea[ipar] < area[ipar])
+	update_max(moveaxis[ipar], testarea[ipar+2]-area[ipar]);
+    else
+	update_max(moveaxis[ipar+2], area[ipar+2]-testarea[ipar]);
+}
+
+static void set_moveaxis_based_on_texts(struct cplot_axis *axis, const int *limits, int *moveaxis) {
+    struct cplot_axes *axes = axis->axes;
+    struct cplot_ticks *tk;
+    if (!axis || !(tk = axis->ticks) || !tk || !tk->visible || !tk->have_labels)
+	return;
+    int *area = tk->ro_labelarea,
+	iort = axis->direction == 0,
+	ipar = axis->direction == 1,
+	side = axis->pos >= 0.5;
+
+    if (ipar == 1 && axes->title.text && axes->title.text[0])
+	adjust_moveaxis(area, iort, side, axes->title.ro_area, limits, moveaxis);
+
+    for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
+	struct cplot_axis *ax1 = axes->axis[iaxis];
+	if (ax1->direction == axis->direction)
+	    continue;
+	for (int i=0; i<ax1->ntext; i++)
+	    adjust_moveaxis(area, iort, side, ax1->text[i]->ro_area, limits, moveaxis);
+    }
+}
+
 static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, int limits[4][2], int *moveaxis) {
     for (int iaxis=0; iaxis<4; iaxis++) {
 	if (!axis_xyxy[iaxis])
@@ -458,6 +480,10 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    moveaxis[4] = {0};
 	/* Make sure everything fits into the figure. */
 	fit_to_axes(axes, axis_xyxy, limits, moveaxis);
+
+	for (int i=0; i<4; i++)
+	    if (axis_xyxy[i])
+		set_moveaxis_based_on_texts(axis_xyxy[i], limits[i], moveaxis);
 
 	/* The rest makes sure that two axis do not conflict. */
 	for (int i=0; i<4; i++)
