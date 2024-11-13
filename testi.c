@@ -97,14 +97,14 @@ int main() {
 	    .label="värillinen kohina", .cmh_enum=cmh_turbo_e);
     }
 
-    struct cplot_layout *layout = cplot_layout_new(2, 2);
-    layout->background = 0;
-    layout->axes[0] = axes0;
-    layout->axes[1] = axes1;
-    layout->axes[3] = axes3;
+    struct cplot_subplots *subplots = cplot_subplots_new(2, 2);
+    subplots->background = 0;
+    subplots->axes[0] = axes0;
+    subplots->axes[1] = axes1;
+    subplots->axes[3] = axes3;
 
-    cplot_write_png(layout, "testi.png");
-    cplot_show(layout);
+    cplot_write_png(subplots, "testi.png");
+    cplot_show(subplots);
 
-    cplot_destroy(layout);
+    cplot_destroy(subplots);
 }

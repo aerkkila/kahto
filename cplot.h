@@ -222,12 +222,12 @@ struct cplot_data {
     int cmh_enum, icolor;
 };
 
-enum cplot_whatisthis {cplot_axes_e, cplot_layout_e};
+enum cplot_whatisthis {cplot_axes_e, cplot_subplots_e};
 enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
 enum cplot_placement {cplot_placement_none, cplot_placement_first, cplot_placement_singlemaxdist};
 
 struct cplot_axes {
-    /* Shared between axes and layout. Order matters here. */
+    /* Shared between axes and subplots. Order matters here. */
     enum cplot_whatisthis whatisthis;
     int wh[2];
     unsigned background;
@@ -260,8 +260,8 @@ struct cplot_axes {
     } legend;
 };
 
-struct cplot_layout {
-    /* Shared between axes and layout. Order matters here. */
+struct cplot_subplots {
+    /* Shared between axes and subplots. Order matters here. */
     enum cplot_whatisthis whatisthis;
     int wh[2];
     unsigned background;
@@ -367,7 +367,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
 struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y, float position);
 struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y);
 struct cplot_axes* cplot_axes_new();
-struct cplot_layout* cplot_layout_new(int nrows, int ncols);
+struct cplot_subplots* cplot_subplots_new(int nrows, int ncols);
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args);
 static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
@@ -399,14 +399,14 @@ static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, fl
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
-void* cplot_show(void *axes_or_layout); // returns the input
-void cplot_destroy(void *axes_or_layout);
+void* cplot_show(void *axes_or_subplots); // returns the input
+void cplot_destroy(void *axes_or_subplots);
 void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
-void* cplot_write_png(void *axes_or_layout, const char *name); // returns the input axes_or_layout
+void* cplot_write_png(void *axes_or_subplots, const char *name); // returns the input axes_or_subplots
 /* Available only if compiled with video support. Function axes->update has to be defined. */
-void* cplot_write_mp4(void *axes_or_layout, const char *name, float fps);
+void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps);
 unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);
 static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double min, double max) {
     axis->min = min;
@@ -430,7 +430,7 @@ static inline struct cplot_axis* cplot_yaxis0(struct cplot_axes *axes) { return 
 
 void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 int  cplot_axes_commit(struct cplot_axes *axes);
-void cplot_clear_slot(struct cplot_layout *layout, int islot, uint32_t *canvas, int ystride);
+void cplot_clear_slot(struct cplot_subplots *subplots, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
 
 /* For animated plot to be used in the cplot_axes.update(). */
@@ -441,7 +441,7 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 void cplot_draw(void *vplot, uint32_t *canvas, int ystride);
 
 /* Käyttäjä ei tarvitse näitä. */
-void cplot_layout_to_axes(struct cplot_layout *layout);
+void cplot_subplots_to_axes(struct cplot_subplots *subplots);
 void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 
 void cplot__sprint_supernum(char *out, int sizeout, int num);

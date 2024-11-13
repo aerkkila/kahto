@@ -118,9 +118,9 @@ static double __attribute__((unused)) get_time() {
 #ifdef HAVE_ffmpeg
 #include "cplot_video.c"
 #else
-void* cplot_write_mp4(void *axes_or_layout, const char *name, float fps) {
+void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps) {
     fprintf(stderr, "cplot library was compiled without support for %s\n", __func__);
-    return axes_or_layout;
+    return axes_or_subplots;
 }
 #endif
 
@@ -229,7 +229,7 @@ struct cplot_axes* cplot_axes_new() {
     return axes;
 }
 
-void cplot_layout_put_rows_and_cols(struct cplot_layout *layout, int nrows, int ncols) {
+void cplot_subplots_put_rows_and_cols(struct cplot_subplots *subplots, int nrows, int ncols) {
     float height = 1.0 / nrows,
 	  width = 1.0 / ncols;
     float x[ncols];
@@ -239,26 +239,26 @@ void cplot_layout_put_rows_and_cols(struct cplot_layout *layout, int nrows, int 
     for (int j=0; j<nrows; j++) {
 	float y1 = (j+1) * height;
 	for (int i=0; i<ncols; i++) {
-	    layout->xywh[j*ncols+i][0] = x[i];
-	    layout->xywh[j*ncols+i][1] = y0;
-	    layout->xywh[j*ncols+i][2] = width;
-	    layout->xywh[j*ncols+i][3] = height;
+	    subplots->xywh[j*ncols+i][0] = x[i];
+	    subplots->xywh[j*ncols+i][1] = y0;
+	    subplots->xywh[j*ncols+i][2] = width;
+	    subplots->xywh[j*ncols+i][3] = height;
 	}
 	y0 = y1;
     }
 }
 
-struct cplot_layout* cplot_layout_new(int nrows, int ncols) {
-    struct cplot_layout *layout = calloc(1, sizeof(struct cplot_layout));
-    layout->whatisthis = cplot_layout_e;
-    layout->axes = calloc(ncols*nrows, sizeof(void*));
-    layout->xywh = calloc(ncols*nrows, sizeof(float[4]));
-    layout->naxes = ncols * nrows;
-    layout->wh[0] = cplot_default_width;
-    layout->wh[1] = cplot_default_height;
-    layout->background = -1;
-    cplot_layout_put_rows_and_cols(layout, nrows, ncols);
-    return layout;
+struct cplot_subplots* cplot_subplots_new(int nrows, int ncols) {
+    struct cplot_subplots *subplots = calloc(1, sizeof(struct cplot_subplots));
+    subplots->whatisthis = cplot_subplots_e;
+    subplots->axes = calloc(ncols*nrows, sizeof(void*));
+    subplots->xywh = calloc(ncols*nrows, sizeof(float[4]));
+    subplots->naxes = ncols * nrows;
+    subplots->wh[0] = cplot_default_width;
+    subplots->wh[1] = cplot_default_height;
+    subplots->background = -1;
+    cplot_subplots_put_rows_and_cols(subplots, nrows, ncols);
+    return subplots;
 }
 
 static void get_min_for_data(struct cplot_data *data, int yxz) {
@@ -925,16 +925,16 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
     free(axes);
 }
 
-void cplot_destroy(void *axes_or_layout) {
-    struct cplot_layout *layout = axes_or_layout;
-    if (layout->whatisthis == cplot_axes_e)
-	return cplot_destroy_axes(axes_or_layout);
-    for (int i=0; i<layout->naxes; i++)
-	if (layout->axes[i])
-	    cplot_destroy_axes(layout->axes[i]);
-    free(layout->axes);
-    free(layout->xywh);
-    free(layout);
+void cplot_destroy(void *axes_or_subplots) {
+    struct cplot_subplots *subplots = axes_or_subplots;
+    if (subplots->whatisthis == cplot_axes_e)
+	return cplot_destroy_axes(axes_or_subplots);
+    for (int i=0; i<subplots->naxes; i++)
+	if (subplots->axes[i])
+	    cplot_destroy_axes(subplots->axes[i]);
+    free(subplots->axes);
+    free(subplots->xywh);
+    free(subplots);
 }
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
@@ -994,34 +994,34 @@ void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
     cplot_axes_render(axes, canvas, ystride);
 }
 
-void cplot_xywh_to_pixels(struct cplot_layout *layout, int islot, int px[4]) {
-    px[0] = iroundpos(layout->xywh[islot][0] * layout->wh[0]);
-    px[1] = iroundpos(layout->xywh[islot][1] * layout->wh[1]);
-    px[2] = iroundpos(layout->wh[0] * layout->xywh[islot][2]);
-    px[3] = iroundpos(layout->wh[1] * layout->xywh[islot][3]);
-    if (px[0] + px[2] > layout->wh[0])
-	px[2] = layout->wh[0] - px[0];
-    if (px[1] + px[3] > layout->wh[1])
-	px[3] = layout->wh[1] - px[1];
+void cplot_xywh_to_pixels(struct cplot_subplots *subplots, int islot, int px[4]) {
+    px[0] = iroundpos(subplots->xywh[islot][0] * subplots->wh[0]);
+    px[1] = iroundpos(subplots->xywh[islot][1] * subplots->wh[1]);
+    px[2] = iroundpos(subplots->wh[0] * subplots->xywh[islot][2]);
+    px[3] = iroundpos(subplots->wh[1] * subplots->xywh[islot][3]);
+    if (px[0] + px[2] > subplots->wh[0])
+	px[2] = subplots->wh[0] - px[0];
+    if (px[1] + px[3] > subplots->wh[1])
+	px[3] = subplots->wh[1] - px[1];
 }
 
-void cplot_layout_to_axes(struct cplot_layout *layout) {
-    for (int i=0; i<layout->naxes; i++) {
-	if (!layout->axes[i])
+void cplot_subplots_to_axes(struct cplot_subplots *subplots) {
+    for (int i=0; i<subplots->naxes; i++) {
+	if (!subplots->axes[i])
 	    continue;
 	int xywh_px[4];
-	cplot_xywh_to_pixels(layout, i, xywh_px);
-	layout->axes[i]->wh[0] = xywh_px[2];
-	layout->axes[i]->wh[1] = xywh_px[3];
-	layout->axes[i]->startcanvas = xywh_px[1] * layout->wh[0] + xywh_px[0];
+	cplot_xywh_to_pixels(subplots, i, xywh_px);
+	subplots->axes[i]->wh[0] = xywh_px[2];
+	subplots->axes[i]->wh[1] = xywh_px[3];
+	subplots->axes[i]->startcanvas = xywh_px[1] * subplots->wh[0] + xywh_px[0];
     }
 }
 
-void cplot_clear_slot(struct cplot_layout *layout, int islot, unsigned *canvas, int ystride) {
+void cplot_clear_slot(struct cplot_subplots *subplots, int islot, unsigned *canvas, int ystride) {
     int xywh[4];
-    cplot_xywh_to_pixels(layout, islot, xywh);
+    cplot_xywh_to_pixels(subplots, islot, xywh);
     const int area[] = xywh_to_area(xywh);
-    unsigned color = layout->background;
+    unsigned color = subplots->background;
     for (int j=area[1]; j<area[3]; j++) {
 	int ind0 = j * ystride;
 	for (int i=area[0]; i<area[2]; i++)
@@ -1086,43 +1086,43 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
     if (((struct cplot_axes*)vplot)->whatisthis == cplot_axes_e)
 	cplot_axes_draw(vplot, canvas, ystride);
     else {
-	struct cplot_layout *layout = vplot;
-	cplot_layout_to_axes(layout);
-	for (int i=0; i<layout->naxes; i++)
-	    if (layout->axes[i])
-		cplot_axes_draw(layout->axes[i], canvas, ystride);
+	struct cplot_subplots *subplots = vplot;
+	cplot_subplots_to_axes(subplots);
+	for (int i=0; i<subplots->naxes; i++)
+	    if (subplots->axes[i])
+		cplot_axes_draw(subplots->axes[i], canvas, ystride);
 	    else
-		cplot_clear_slot(layout, i, canvas, ystride);
+		cplot_clear_slot(subplots, i, canvas, ystride);
     }
 }
 
 void* cplot_show(void *vplot) {
 #ifdef HAVE_wlh
-    struct cplot_axes *axes_or_layout = vplot;
-    struct waylandhelper wlh = axes_or_layout->wlh ? *axes_or_layout->wlh : (struct waylandhelper){
+    struct cplot_axes *axes_or_subplots = vplot;
+    struct waylandhelper wlh = axes_or_subplots->wlh ? *axes_or_subplots->wlh : (struct waylandhelper){
 	.xresmin = 20,
 	.yresmin = 20,
     };
-    wlh.xres = axes_or_layout->wh[0];
-    wlh.yres = axes_or_layout->wh[1];
-    struct waylandhelper *old_wlh = axes_or_layout->wlh;
-    axes_or_layout->wlh = &wlh;
+    wlh.xres = axes_or_subplots->wh[0];
+    wlh.yres = axes_or_subplots->wh[1];
+    struct waylandhelper *old_wlh = axes_or_subplots->wlh;
+    axes_or_subplots->wlh = &wlh;
     wlh_init(&wlh);
     long updatecount = 0;
     double starttime = -1;
     while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
 	if (wlh.can_redraw) {
-	    axes_or_layout->wh[0] = wlh.xres;
-	    axes_or_layout->wh[1] = wlh.yres;
+	    axes_or_subplots->wh[0] = wlh.xres;
+	    axes_or_subplots->wh[1] = wlh.yres;
 	    int should_commit = 0;
 	    if (wlh.redraw) {
-		cplot_draw(axes_or_layout, wlh.data, axes_or_layout->wh[0]);
+		cplot_draw(axes_or_subplots, wlh.data, axes_or_subplots->wh[0]);
 		should_commit++;
 	    }
 	    if (starttime < 0)
 		starttime = get_time();
-	    if (axes_or_layout->update) {
-		int ret = axes_or_layout->update(axes_or_layout, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
+	    if (axes_or_subplots->update) {
+		int ret = axes_or_subplots->update(axes_or_subplots, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
 		if (ret < 0)
 		    break;
 		should_commit += ret;
@@ -1133,7 +1133,7 @@ void* cplot_show(void *vplot) {
 	usleep(10000);
     }
     wlh_destroy(&wlh);
-    axes_or_layout->wlh = old_wlh;
+    axes_or_subplots->wlh = old_wlh;
 #else
     fprintf(stderr, "%s: cplot library was compiled without support for this function.\n"
 	"Install waylandhelper and compile again.\n",

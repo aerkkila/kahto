@@ -56,27 +56,27 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
     }
 }
 
-void* cplot_write_png(void *axes_or_layout, const char *name) {
-    struct cplot_layout *layout = axes_or_layout;
-    unsigned *argb = malloc(layout->wh[0] * layout->wh[1] * sizeof(unsigned));
+void* cplot_write_png(void *axes_or_subplots, const char *name) {
+    struct cplot_subplots *subplots = axes_or_subplots;
+    unsigned *argb = malloc(subplots->wh[0] * subplots->wh[1] * sizeof(unsigned));
 
-    if (layout->whatisthis == cplot_axes_e)
-	cplot_axes_draw(axes_or_layout, argb, layout->wh[0]);
+    if (subplots->whatisthis == cplot_axes_e)
+	cplot_axes_draw(axes_or_subplots, argb, subplots->wh[0]);
     else {
-	cplot_layout_to_axes(layout);
-	for (int i=0; i<layout->naxes; i++)
-	    if (layout->axes[i])
-		cplot_axes_draw(layout->axes[i], argb, layout->wh[0]);
+	cplot_subplots_to_axes(subplots);
+	for (int i=0; i<subplots->naxes; i++)
+	    if (subplots->axes[i])
+		cplot_axes_draw(subplots->axes[i], argb, subplots->wh[0]);
 	    else
-		cplot_clear_slot(layout, i, argb, layout->wh[0]);
+		cplot_clear_slot(subplots, i, argb, subplots->wh[0]);
     }
 
-    unsigned char *bgr  = malloc(layout->wh[0] * layout->wh[1] * 3);
-    argb_to_bgr(argb, bgr, layout->wh[0] * layout->wh[1]);
+    unsigned char *bgr  = malloc(subplots->wh[0] * subplots->wh[1] * 3);
+    argb_to_bgr(argb, bgr, subplots->wh[0] * subplots->wh[1]);
     free(argb);
-    write_png(bgr, name, layout->wh[0], layout->wh[1]);
+    write_png(bgr, name, subplots->wh[0], subplots->wh[1]);
     free(bgr);
-    return axes_or_layout;
+    return axes_or_subplots;
 }
 
 #endif // HAVE_PNG
