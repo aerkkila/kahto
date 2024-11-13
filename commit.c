@@ -204,6 +204,8 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_a
     if (!tk || !tk->init)
 	return;
     unpack_args(args);
+    if (tk->length1 > tk->length)
+	tk->length1 = tk->length;
     int length = iroundpos(tk->length * axesheight);
     int length1 = iroundpos(tk->length1 * axesheight);
     if (iside) {
@@ -212,9 +214,9 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_a
 	tk->ro_lines1[iside] = tk->ro_lines1[!iside] + length1;
     }
     else {
-	tk->ro_lines1[iside] = tk->ro_lines[iside] = imargin_xyxy[iouter];
-	tk->ro_lines[!iside] = tk->ro_lines[iside] + length;
-	tk->ro_lines1[!iside] = tk->ro_lines1[iside] + length1;
+	tk->ro_lines[iside] = imargin_xyxy[iouter];
+	tk->ro_lines1[iside] = tk->ro_lines[iside] + length-length1;
+	tk->ro_lines[!iside] = tk->ro_lines1[!iside] = tk->ro_lines[iside] + length;
     }
     args->ortw += tk->length;
     imargin_xyxy[iouter] += length;
@@ -385,11 +387,12 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     memset(axes->ro_inner_margin, 0, sizeof(axes->ro_inner_margin));
     if (!axes->ttra->text_initialized)
 	ttra_init(axes->ttra);
-    ttra_set_fontheight(axes->ttra, 30);
     if (axes->title.text) {
+	ttra_set_fontheight(axes->ttra, topixels(axes, title.rowheight));
 	put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation100, axes->title.ro_area, 1);
 	margin_xyxy[1] += axes->title.ro_area[3] / (float)axes->ttra->fontheight * axes->title.rowheight;
     }
+    ttra_set_fontheight(axes->ttra, 30);
 
     cplot_make_range(axes);
 
