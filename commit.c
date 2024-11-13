@@ -159,7 +159,7 @@ void limits_to_conflicts(struct cplot_axis *axis, int *limits) {
 }
 
 struct commit_args {
-    int *imargin_xyxy, iort, iouter, iinner, iside, iortw;
+    int *imargin_xyxy, iort, iouter, iinner, iside;
     struct cplot_axes *axes;
 };
 
@@ -192,7 +192,6 @@ static void _axis_line_orthogonal(struct cplot_axis *axis, struct commit_args *a
     }
     imargin_xyxy[iouter] += iw;
     axis->ro_line[iort] = axis->ro_line[iort+2] = axis->ro_area[iinner];
-    args->iortw += iw;
 }
 
 static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_args *args) {
@@ -214,7 +213,6 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_a
 	tk->ro_lines1[iside] = tk->ro_lines[iside] + length-length1;
 	tk->ro_lines[!iside] = tk->ro_lines1[!iside] = tk->ro_lines[iside] + length;
     }
-    args->iortw += length;
     imargin_xyxy[iouter] += length;
 }
 
@@ -247,7 +245,6 @@ static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_
 	tk->ro_labelarea[iinner] = tk->ro_labelarea[iouter] + length;
     }
     imargin_xyxy[iouter] += reserved;
-    args->iortw += reserved;
 }
 
 static void _axis_texts_orthogonal(struct cplot_axis *axis, struct commit_args *args, struct ttra *ttra) {
@@ -283,21 +280,15 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct commit_args *
 	    }
     }
     imargin_xyxy[iouter] += imaxtext;
-    args->iortw += imaxtext;
 }
 
-int cplot_axis_get_orthogonal(struct cplot_axis *axis, float *margin_xyxy) {
+void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
     if (axis->direction < 0)
-	return 0;
+	return;
     int isx = axis->direction == 0;
     int iort = isx;
     struct ttra *ttra = axis->axes->ttra;
     ttra_set_fontheight(ttra, 30);
-    int axesheight = axis->axes->wh[1];
-
-    int imargin_xyxy[4];
-    for (int i=0; i<4; i++)
-	imargin_xyxy[i] = iroundpos(margin_xyxy[i] * axesheight);
 
     struct commit_args args = {
 	.imargin_xyxy = imargin_xyxy,
@@ -305,18 +296,14 @@ int cplot_axis_get_orthogonal(struct cplot_axis *axis, float *margin_xyxy) {
 	.iouter = iort + 2*(axis->pos >= 0.5),
 	.iinner = iort + 2*(axis->pos < 0.5),
 	.iside = axis->pos >= 0.5,
-	.iortw = 0,
 	.axes = axis->axes,
     };
 
-    /* from outside in */
+    /* From outside in. These change imargin_xyxy and the object.*/
     _axis_texts_orthogonal(axis, &args, ttra);
     _axis_tick_labels_orthogonal(axis, &args, ttra);
     _axis_tick_lines_orthogonal(axis, &args);
     _axis_line_orthogonal(axis, &args);
-
-    margin_xyxy[args.iouter] += args.iortw / (float)axis->axes->wh[1];
-    return args.iortw;
 }
 
 void cplot_make_range(struct cplot_axes *axes) {
@@ -378,15 +365,16 @@ static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, 
 }
 
 int cplot_axes_commit(struct cplot_axes *axes) {
-    float margin_xyxy[4];
-    memcpy(margin_xyxy, axes->margin, sizeof(margin_xyxy));
+    int imargin_xyxy[4];
+    for (int i=0; i<4; i++)
+	imargin_xyxy[i] = topixels(axes->margin[i], axes);
     memset(axes->ro_inner_margin, 0, sizeof(axes->ro_inner_margin));
     if (!axes->ttra->text_initialized)
 	ttra_init(axes->ttra);
     if (axes->title.text) {
 	ttra_set_fontheight(axes->ttra, topixels(axes->title.rowheight, axes));
 	put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation100, axes->title.ro_area, 1);
-	margin_xyxy[1] += axes->title.ro_area[3] / (float)axes->ttra->fontheight * axes->title.rowheight;
+	imargin_xyxy[1] += axes->title.ro_area[3];
     }
 
     ttra_set_fontheight(axes->ttra, 30);
@@ -407,25 +395,20 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	    struct cplot_axis *axis = axes->axis[iaxis];
 	    if (axis->pos == (int)axis->pos && axis->outside == outside)
-		cplot_axis_get_orthogonal(axis, margin_xyxy);
+		cplot_axis_get_orthogonal(axis, imargin_xyxy);
 	}
 
-    {
-	float aspect_ratio = (float)axes->wh[0] / axes->wh[1];
-	float wh[] = {aspect_ratio, 1};
-	wh[0] -= margin_xyxy[0] + margin_xyxy[2];
-	wh[1] -= margin_xyxy[1] + margin_xyxy[3];
-	if (wh[0] < 0 || wh[1] < 0)
-	    return 1;
-    }
-
-    if (margin_xyxy[0] < 0 || margin_xyxy[1] < 0)
+    if (axes->wh[0] <= imargin_xyxy[0]+imargin_xyxy[2] ||
+	axes->wh[1] <= imargin_xyxy[1]+imargin_xyxy[3])
 	return 1;
 
-    axes->ro_inner_xywh[0] = iroundpos(margin_xyxy[0] * axes->wh[1]);
-    axes->ro_inner_xywh[1] = iroundpos(margin_xyxy[1] * axes->wh[1]);
-    axes->ro_inner_xywh[2] = axes->wh[0] - iroundpos(margin_xyxy[2] * axes->wh[1]) - axes->ro_inner_xywh[0];
-    axes->ro_inner_xywh[3] = axes->wh[1] - iroundpos(margin_xyxy[3] * axes->wh[1]) - axes->ro_inner_xywh[1];
+    if (imargin_xyxy[0] < 0 || imargin_xyxy[1] < 0)
+	return 1;
+
+    axes->ro_inner_xywh[0] = imargin_xyxy[0];
+    axes->ro_inner_xywh[1] = imargin_xyxy[1];
+    axes->ro_inner_xywh[2] = axes->wh[0] - imargin_xyxy[2] - axes->ro_inner_xywh[0];
+    axes->ro_inner_xywh[3] = axes->wh[1] - imargin_xyxy[3] - axes->ro_inner_xywh[1];
     const int *axis_xywh = axes->ro_inner_xywh;
     if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0 || axis_xywh[0] >= axes->wh[0] || axis_xywh[1] >= axes->wh[1])
 	return 1;
