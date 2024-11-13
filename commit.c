@@ -17,15 +17,12 @@ void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
     axes->legend.ro_xywh[1] =
 	axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
 	axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
-    do {
-	if (!axes->legend.placement)
-	    break;
-	int iplace, jplace;
-	if ((axes->legend.ro_place_err = cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace, axes->legend.placement)))
-	    break;
-	axes->legend.ro_xywh[0] = iplace;
-	axes->legend.ro_xywh[1] = jplace;
-    } while (0);
+    if (!axes->legend.placement)
+	return;
+    int iplace=0, jplace=0;
+    axes->legend.ro_place_err = cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace, axes->legend.placement);
+    axes->legend.ro_xywh[0] = iplace;
+    axes->legend.ro_xywh[1] = jplace;
 }
 
 static void cplot_ticks_set_parameters(struct cplot_ticks *ticks) {

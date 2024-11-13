@@ -83,16 +83,16 @@ struct cplot_linestyle {
     enum cplot_linestyle_e style;
     unsigned color;
     float thickness;
-    float *pattern; // always before patternlen
-    int patternlen; // always after pattern
+    float *pattern; // 1. fixed order
+    int patternlen; // 2. fixed order
     unsigned *colors; // for future use
     int align; // (y = 0, thickness = 3) => y:={-1,0,1} (align = 0), y:={-2,-1,0} (align = -1), y:={0,1,2} (align = 1)
 };
 
 struct cplot_markerstyle {
-    const char* marker;
-    float size;
-    float nofill;
+    const char* marker;	// 1. fixed order
+    float size;		// 2. fixed order
+    float nofill;	// 3. fixed order
     int literal;
     unsigned color;
 };
@@ -326,7 +326,7 @@ struct cplot_drawarea {
 
 #define __cplot_defaultargs			\
     .markerstyle.marker = "o",			\
-    .markerstyle.size = 1./60,			\
+    .markerstyle.size = 1./70,			\
     .ystride = 1,				\
     .xstride = 1,				\
     .zstride = 1,				\
@@ -380,7 +380,6 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args);
 static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
     return cplot_plot_args(&args);
 }
-#define cplot_plot(...) cplot_plot_inl((struct cplot_args){__VA_ARGS__})
 
 #define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){	\
     __cplot_defaultargs,			\

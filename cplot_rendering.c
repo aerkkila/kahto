@@ -1019,7 +1019,7 @@ void cplot_fill_box_xywh(uint32_t *canvas, int ystride, int axesheight, int *xyw
 }
 
 void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
-    if (!axes->legend.visible || no_room_for_legend(axes) || (axes->legend.visible < 0 && !axes->legend.ro_place_err))
+    if (!axes->legend.visible || no_room_for_legend(axes) || (axes->legend.visible < 0 && axes->legend.ro_place_err))
 	return;
     uint32_t fillcolor = axes->background;
     switch (axes->legend.fill) {

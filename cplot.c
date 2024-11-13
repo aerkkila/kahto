@@ -487,6 +487,9 @@ jump_found:
     return -closest;
 }
 
+/* Return negative if does not fit to image.
+   Return positive if no empty slot is available.
+   Return zero on success. */
 int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement method) {
     int x0 = axes->ro_inner_xywh[0],
 	y0 = axes->ro_inner_xywh[1],
@@ -863,7 +866,7 @@ struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
     *text = (struct cplot_axistext) {
 	.text = label,
 	.pos = 0.5,
-	.hvalign = {-0.5, -1.4 * (axis->pos < 0.5)},
+	.hvalign = {-0.5, -1.2 * (axis->pos < 0.5)},
 	.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
 	.axis = axis,
 	.rotation100 = 75 * (axis->direction == 1),
