@@ -92,7 +92,7 @@ static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *
 }
 
 #define no_room_for_legend(axes) ((axes)->legend.ro_place_err < 0)
-#define topixels(axes, member) iroundpos((axes)->member * (axes)->wh[1])
+#define topixels(flength, axes) iroundpos((flength) * (axes)->wh[1])
 
 void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
@@ -176,16 +176,15 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->gridstyle.color = 0xffcccccc;
 
     ticks->rowheight = 2.4*ticks->length;
+    ticks->visible = 1;
     ticks->have_labels = 1;
 
-    ticks->crossaxis = cplot_automatic;
     ticks->hvalign_text[1] = cplot_automatic;
 
-    ticks->crossaxis1 = cplot_automatic;
     ticks->linestyle1.style = cplot_line_normal_e;
     ticks->linestyle1.thickness = 1.0 / 1200;
     ticks->linestyle1.color = 0xff666666;
-    ticks->length1 = 1.0 / 140;
+    ticks->length1 = 1.0 / 180;
 
     return ticks;
 }
@@ -768,7 +767,7 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
     if (!axes->title.text)
 	return;
     struct ttra *ttra = axes->ttra;
-    ttra_set_fontheight(ttra, topixels(axes, title.rowheight));
+    ttra_set_fontheight(ttra, topixels(axes->title.rowheight, axes));
     put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation100, axes->title.ro_area, 0);
 }
 

@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 17
+#define __cplot_version_in_program 19
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -132,11 +132,6 @@ union cplot_tickerdata { // cplot_tickerdata_common defines how each struct must
 
 enum cplot_tickere {cplot_ticker_linear, cplot_ticker_datetime, cplot_ticker_arbitrary};
 
-/* crossaxis: Where ticks are parallel to the axis?
- *	0: Ticks start at the axis i.e. are right or below.
- *	1: Ticks end at the axis i.e. are left or above.
- * variable1: variable for minor ticks
- */
 struct cplot_ticks {
     struct cplot_axis *axis;
 
@@ -148,12 +143,13 @@ struct cplot_ticks {
     union cplot_tickerdata tickerdata;
     int integers_only;
 
+    /* variable1: variable for minor ticks */
     unsigned color, color1;
-    float crossaxis, length, crossaxis1, length1;
+    float length, length1;
 
     struct cplot_linestyle linestyle, gridstyle, linestyle1, gridstyle1;
 
-    int have_labels;
+    int visible, have_labels;
     float hvalign_text[2];
     float rowheight, rotation100;
 

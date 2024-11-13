@@ -9,6 +9,8 @@ void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
 	return;
     int height, width;
     cplot_get_legend_dims_px(axes, &height, &width, axesheight);
+    if (!height || !width)
+	return;
     axes->legend.ro_xywh[2] = width;
     axes->legend.ro_xywh[3] = height;
     axes->legend.ro_xywh[0] =
@@ -29,18 +31,10 @@ static void cplot_ticks_set_parameters(struct cplot_ticks *ticks) {
     if (ticks->axis->pos >= 0.5) {
 	if (ticks->hvalign_text[1] == cplot_automatic)
 	    ticks->hvalign_text[1] = 0;
-	if (ticks->crossaxis == cplot_automatic)
-	    ticks->crossaxis = 0;
-	if (ticks->crossaxis1 == cplot_automatic)
-	    ticks->crossaxis1 = 0;
     }
     else {
 	if (ticks->hvalign_text[1] == cplot_automatic)
 	    ticks->hvalign_text[1] = -1;
-	if (ticks->crossaxis == cplot_automatic)
-	    ticks->crossaxis = -1;
-	if (ticks->crossaxis1 == cplot_automatic)
-	    ticks->crossaxis1 = -1;
     }
 }
 
@@ -79,7 +73,7 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *t
 }
 
 static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
-    int *xywh = axis->axes->ro_inner_xywh;
+    const int *xywh = axis->axes->ro_inner_xywh;
     int ipar = axis->direction == 1;
     axis->ro_line[ipar] = axis->ro_area[ipar] = xywh[ipar];
     axis->ro_line[ipar+2] = axis->ro_area[ipar+2] = xywh[ipar] + xywh[ipar+2];
@@ -94,7 +88,7 @@ static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
 
     struct cplot_axes *axes = axis->axes;
     struct cplot_ticks *tk = axis->ticks;
-    if (!tk)
+    if (!tk || !tk->visible)
 	return;
     int edges_axespx[] = {xywh[2+ipar], -xywh[2+ipar]};
     get_ticklabel_parallel_area(axes->ttra, tk, ipar, edges_axespx);
@@ -107,7 +101,7 @@ static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
     int ipar = !iort;
     struct cplot_axes *axes = axis->axes;
     int side = axis->pos >= 0.5;
-    if (!axis->ticks) {
+    if (!axis->ticks || !axis->ticks->visible) {
 	limits[0] = limits[1] = 0;
 	return;
     }
@@ -204,7 +198,7 @@ static void _axis_line_orthogonal(struct cplot_axis *axis, struct commit_args *a
 
 static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_args *args) {
     struct cplot_ticks *tk = axis->ticks;
-    if (!tk || !tk->init)
+    if (!tk || !tk->visible || !tk->init)
 	return;
     unpack_args(args);
     if (tk->length1 > tk->length)
@@ -227,7 +221,7 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_a
 
 static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_args *args, struct ttra *ttra) {
     struct cplot_ticks *tk = axis->ticks;
-    if (!tk || !tk->have_labels)
+    if (!tk || !tk->visible || !tk->have_labels)
 	return;
     unpack_args(args);
     int nlabels = tk->tickerdata.common.nticks,
@@ -332,7 +326,7 @@ void cplot_make_range(struct cplot_axes *axes) {
 	struct cplot_data *data = axes->data[i];
 	for (int iaxis=0; iaxis<2; iaxis++) {
 	    struct cplot_axis *axis = data->yxaxis[iaxis];
-	    if (!axis || !cplot_visible_marker(data->markerstyle.marker))
+	    if (!axis || !cplot_visible_data(data))
 		continue;
 	    if ((axis->range_isset & minmax) != minmax)
 		cplot_axis_datarange(axis);
@@ -370,12 +364,12 @@ void cplot_make_inner_margin(struct cplot_axes *axes) {
     }
 }
 
-static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, int limits[2][2], int *moveaxis) {
+static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, int limits[4][2], int *moveaxis) {
     for (int iaxis=0; iaxis<4; iaxis++) {
 	if (!axis_xyxy[iaxis])
 	    continue;
 	struct cplot_ticks *tk = axis_xyxy[iaxis]->ticks;
-	if (!tk)
+	if (!tk || !tk->visible)
 	    continue;
 	int try = limits[iaxis][0] - tk->ro_labelarea[iaxis%2];
 	update_max(moveaxis[iaxis%2 + 0*2], try);
@@ -391,7 +385,7 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     if (!axes->ttra->text_initialized)
 	ttra_init(axes->ttra);
     if (axes->title.text) {
-	ttra_set_fontheight(axes->ttra, topixels(axes, title.rowheight));
+	ttra_set_fontheight(axes->ttra, topixels(axes->title.rowheight, axes));
 	put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation100, axes->title.ro_area, 1);
 	margin_xyxy[1] += axes->title.ro_area[3] / (float)axes->ttra->fontheight * axes->title.rowheight;
     }
@@ -402,10 +396,11 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     /* tick initialization */
     for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
 	struct cplot_axis *axis = axes->axis[iaxis];
-	if (axis->ticks)
+	if (axis->ticks) {
 	    cplot_ticks_set_parameters(axis->ticks);
-	if (axis->ticks && axis->ticks->init)
-	    axis->ticks->init(axis->ticks, axis->min, axis->max);
+	    if (axis->ticks->init)
+		axis->ticks->init(axis->ticks, axis->min, axis->max);
+	}
     }
 
     /* orthogonal axis size */
@@ -428,11 +423,11 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     if (margin_xyxy[0] < 0 || margin_xyxy[1] < 0)
 	return 1;
 
-    int *axis_xywh = axes->ro_inner_xywh;
-    axis_xywh[0] = iroundpos(margin_xyxy[0] * axes->wh[1]);
-    axis_xywh[1] = iroundpos(margin_xyxy[1] * axes->wh[1]);
-    axis_xywh[2] = axes->wh[0] - iroundpos(margin_xyxy[2] * axes->wh[1]) - axis_xywh[0];
-    axis_xywh[3] = axes->wh[1] - iroundpos(margin_xyxy[3] * axes->wh[1]) - axis_xywh[1];
+    axes->ro_inner_xywh[0] = iroundpos(margin_xyxy[0] * axes->wh[1]);
+    axes->ro_inner_xywh[1] = iroundpos(margin_xyxy[1] * axes->wh[1]);
+    axes->ro_inner_xywh[2] = axes->wh[0] - iroundpos(margin_xyxy[2] * axes->wh[1]) - axes->ro_inner_xywh[0];
+    axes->ro_inner_xywh[3] = axes->wh[1] - iroundpos(margin_xyxy[3] * axes->wh[1]) - axes->ro_inner_xywh[1];
+    const int *axis_xywh = axes->ro_inner_xywh;
     if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0 || axis_xywh[0] >= axes->wh[0] || axis_xywh[1] >= axes->wh[1])
 	return 1;
 
@@ -444,10 +439,10 @@ int cplot_axes_commit(struct cplot_axes *axes) {
     }
 
     int imargin0[] = {
-	iroundpos(axes->margin[0] * axes->wh[1]),
-	iroundpos(axes->margin[1] * axes->wh[1]),
-	iroundpos(axes->margin[2] * axes->wh[1]),
-	iroundpos(axes->margin[3] * axes->wh[1]),
+	topixels(axes->margin[0], axes),
+	topixels(axes->margin[1], axes),
+	topixels(axes->margin[2], axes),
+	topixels(axes->margin[3], axes),
     };
 
     /* while (1) but avoid unexpected halting */
@@ -481,6 +476,7 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 	    moveaxis[4] = {0};
 	/* Make sure everything fits into the figure. */
 	fit_to_axes(axes, axis_xyxy, limits, moveaxis);
+
 	/* The rest makes sure that two axis do not conflict. */
 	for (int i=0; i<4; i++)
 	    if (axis_xyxy[i]) {
@@ -514,12 +510,14 @@ int cplot_axes_commit(struct cplot_axes *axes) {
 		    axes->ro_inner_margin[i] += moveaxis[i];
 		goto next;
 	    }
-	break;
+	goto loop_done;
 next:
 	if (axes->ro_inner_margin[0] + axes->ro_inner_margin[2] >= axis_xywh[2] ||
 	    axes->ro_inner_margin[1] + axes->ro_inner_margin[3] >= axis_xywh[3])
 	    return 1;
     }
+    fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
+loop_done:
 
     cplot_make_inner_margin(axes);
     commit_legend(axes, axes->wh[0], axes->wh[1]);
