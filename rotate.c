@@ -1,13 +1,17 @@
-void rotate25(unsigned *to, int tw, const unsigned *from, int fw, int fh) {
-    for (int j=0; j<fh; j++)
-	for (int i=0; i<fw; i++)
-	    to[i*tw + fh-1-j] = from[j*fw + i];
+void rotate25(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
+    int tcpw = min(tw, fh),
+	tcph = min(th, fw);
+    for (int j=0; j<tcph; j++)
+	for (int i=0; i<tcpw; i++)
+	    to[j*tostride+i] = from[(tcpw-i-1)*fw + j];
 }
 
-void rotate75(unsigned *to, int tw, const unsigned *from, int fw, int fh) {
-    for (int j=0; j<fh; j++)
-	for (int i=0; i<fw; i++)
-	    to[(fw-1-i)*tw + j] = from[j*fw + i];
+void rotate75(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
+    int tcpw = min(tw, fh),
+	tcph = min(th, fw);
+    for (int j=0; j<tcph; j++)
+	for (int i=0; i<tcpw; i++)
+	    to[j*tostride+i] = from[i*fw + tcph-j-1];
 }
 
 static inline void tocanvas(unsigned *ptr, int value, unsigned color);
@@ -85,10 +89,11 @@ static void laita(unsigned *to, int length, int tw, float y, float x, unsigned c
 }
 
 void rotate(
-    unsigned *to, int tw, int th,
+    unsigned *to, int tox, int toy, int tw, int th,
     const unsigned *from, int fw, int fh,
     float rot100)
 {
+    to += toy*tw + tox;
     int irot = rot100;
     if (irot == rot100) {
 	if (irot < 0)
@@ -96,11 +101,11 @@ void rotate(
 	else if (irot >= 100)
 	    irot -= irot/100 * 100;
 	if (irot == 25)
-	    return rotate25(to, tw, from, fw, fh);
+	    return rotate25(to, tw, tw-tox, th-toy, from, fw, fh);
 	if (irot == 75)
-	    return rotate75(to, tw, from, fw, fh);
+	    return rotate75(to, tw, tw-tox, th-toy, from, fw, fh);
 	/* if (irot == 50)
-	    return rotate50(to, tw, from, fw, fh);*/
+	    return rotate50(to, tw, tw-tox, th-toy, from, fw, fh);*/
     }
 
     float si = sinf(rot100 * 3.14159265358979 / 50);

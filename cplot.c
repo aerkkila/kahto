@@ -91,9 +91,11 @@ static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *
     }
 }
 
+#define no_room_for_legend(axes) ((axes)->legend.ro_place_err < 0)
+
 void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
-void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
+int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
@@ -485,21 +487,24 @@ jump_found:
     return -closest;
 }
 
-void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement method) {
-    if (!method)
-	return;
-    int width = axes->wh[0],
-	height = axes->wh[1];
-    unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
-    for (int i=0; i<axes->ndata; i++)
-	cplot_data_render(axes->data[i], (void*)image, width, width, height, 0);
-
+int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement method) {
     int x0 = axes->ro_inner_xywh[0],
 	y0 = axes->ro_inner_xywh[1],
 	w = axes->ro_inner_xywh[2],
 	h = axes->ro_inner_xywh[3];
     int x1 = x0 + w,
 	y1 = y0 + h;
+    if (w < rwidth || h < rheight)
+	return -1;
+    if (!method)
+	return 0;
+    int retval = 0;
+
+    int width = axes->wh[0],
+	height = axes->wh[1];
+    unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
+    for (int i=0; i<axes->ndata; i++)
+	cplot_data_render(axes->data[i], (void*)image, width, width, height, 0);
 
     /* including the pointed spot */
     short (*spaceright)[w] = malloc(w*h * sizeof(short));
@@ -586,6 +591,7 @@ void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight
 	    if ((nextpos = rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h)) < 0)
 		goto found;
 
+    retval = 1;
     goto end;
 
 found:
@@ -595,6 +601,7 @@ end:
     free(image);
     free(spacedown);
     free(spaceright);
+    return retval;
 }
 
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {

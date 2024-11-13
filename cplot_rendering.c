@@ -179,12 +179,12 @@ static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
     const float dn = fn1 - fn0;
     const float slope = dn / dm;
     const float coef = dm / sqrt(dm*dm + dn*dn); // m-yksikön pituus = coef * hypotenuusa
-    unsigned short ipat = carry>>16, try = (carry & 0xffff) + m0;
+    unsigned short ipat = carry>>16, m1dash = (carry & 0xffff) + m0;
     ipat++; // carry:ssä on ipat-1, jotta oletusarvona toimii 0
 
     if (nosteep) { // (m,n) = (x,y)
 	while (1) {
-	    int end = min(m1+1, try);
+	    int end = min(m1+1, m1dash);
 	    for (; m0<end; m0++) {
 		int n0 = fn0;
 		int level = iroundpos((fn0 - n0) * 255);
@@ -197,12 +197,15 @@ static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
 	    if (m0 > m1)
 		break;
 	    ipat = (ipat + 1) % args->patternlength;
-	    try = m0 + iroundpos(args->pattern[ipat]*axesheight * coef);
+	    int add = iroundpos(args->pattern[ipat]*axesheight * coef);
+	    if (add == 0)
+		break; // avoid halting with small axesheight
+	    m1dash = m0 + add;
 	}
     }
     else { // (m,n) = (y,x)
 	while (1) {
-	    int end = min(m1+1, try);
+	    int end = min(m1+1, m1dash);
 	    for (; m0<end; m0++) {
 		int n0 = fn0;
 		int level = iroundpos((fn0 - n0) * 255);
@@ -215,10 +218,13 @@ static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
 	    if (m0 > m1)
 		break;
 	    ipat = (ipat + 1) % args->patternlength;
-	    try = m0 + iroundpos(args->pattern[ipat]*axesheight * coef);
+	    int add = iroundpos(args->pattern[ipat]*axesheight * coef);
+	    if (add == 0)
+		break; // avoid halting with small axesheight
+	    m1dash = m0 + add;
 	}
     }
-    return (ipat-1)<<16 | (try-m0);
+    return (ipat-1)<<16 | (m1dash-m0);
 }
 
 static int check_line(int *line, const int *area) {
@@ -408,7 +414,7 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	ttra->clean_line = 1;
 	ttra_set_xy0(ttra, 0, 0);
 	ttra_print(ttra, text);
-	rotate(canvas+area_out[1]*width0 + area_out[0], width0, height0, ttra->canvas, wh[0], wh[1], rot);
+	rotate(canvas, area_out[0], area_out[1], width0, height0, ttra->canvas, wh[0], wh[1], rot);
 
 	free(ttra->canvas);
 	ttra->canvas = canvas;
@@ -1013,7 +1019,7 @@ void cplot_fill_box_xywh(uint32_t *canvas, int ystride, int axesheight, int *xyw
 }
 
 void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
-    if (!axes->legend.visible || (axes->legend.visible < 0 && !axes->legend.ro_place_found))
+    if (!axes->legend.visible || no_room_for_legend(axes) || (axes->legend.visible < 0 && !axes->legend.ro_place_err))
 	return;
     uint32_t fillcolor = axes->background;
     switch (axes->legend.fill) {
