@@ -31,14 +31,10 @@
 
 extern const unsigned char cplot_sizes[];
 
-/* If axis has range_isset & cplot_minbit, range will be edited so that markers don't get clipped at the edges.
-   With additional cplot_minbit_const, range will not be edited.
-   To zoom axis to some piece of data, use cplot_minbit|cplot_minbit_const and cplot_maxbit|cplot_maxbit_const. */
+/* To zoom axis to some piece of data, set axis->range_isset = cplot_range_isset */
 #define cplot_minbit 1
 #define cplot_maxbit 2
-#define cplot_minbit_const 4
-#define cplot_maxbit_const 8
-#define cplot_range_isset (cplot_minbit|cplot_maxbit|cplot_minbit_const|cplot_maxbit_const)
+#define cplot_range_isset (cplot_minbit|cplot_maxbit)
 #define cplot_automatic -9010 // assumed to be negative
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
@@ -159,10 +155,9 @@ struct cplot_ticks {
 
     int have_labels;
     float hvalign_text[2];
-    int ascending; // whether labels are in the end and not start
     float rowheight, rotation100;
 
-    int ro_lines[2], ro_lines1[2], ro_labelarea[4], ro_tot_area[4];
+    int ro_lines[2], ro_lines1[2], ro_labelarea[4];
 };
 
 struct cplot_axis {
@@ -170,18 +165,17 @@ struct cplot_axis {
     int direction, outside; // direction: x=0, y=1
     float pos;
     double min, max;
-    int range_isset, ro_line[4], ro_tick_area[4];
+    int range_isset, ro_line[4];
     struct cplot_ticks *ticks;
     struct cplot_axistext **text;
     int mem_text, ntext;
 
     struct cplot_linestyle linestyle;
-    int ro_linetick_area[4];
 
-    float po[4]; // parallel and orthogonal lengths
+    float po[2]; // parallel and orthogonal lengths if this is a coloraxis
     unsigned char *cmap;
     int reverse_cmap;
-    int ro_area[4] /* area of the finitely thick line */, ro_tot_area[4];
+    int ro_area[4]; // area of the finitely thick line
 };
 
 enum axistext_type {cplot_axistext_other, cplot_axistext_label, cplot_axistext_tickmul};
@@ -252,7 +246,7 @@ struct cplot_axes {
     struct cplot_axis **axis, *last_caxis;
     int naxis, mem_axis;
     struct ttra *ttra;
-    int ro_inner_xywh[4];
+    int ro_inner_xywh[4], ro_inner_margin[4];
     float margin[4];
     struct cplot_data **data;
     int ndata, mem_data;
@@ -373,7 +367,7 @@ struct cplot_drawarea {
     })
 
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
-struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y);
+struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y, float position);
 struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y);
 struct cplot_axes* cplot_axes_new();
 struct cplot_layout* cplot_layout_new(int nrows, int ncols);

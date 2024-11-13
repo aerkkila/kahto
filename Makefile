@@ -7,7 +7,7 @@ CFLAGS += -Wall -g -DHAVE_PNG
 CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
-cplot_sources = cplot.h rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
+cplot_sources = cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
 
 ifdef use_libttra
 	LDLIBS += -lttra
@@ -38,7 +38,7 @@ testi.out: testi.c cplot.o $(OBJECTS)
 cplot.o: cplot.c $(cplot_sources)
 	$(CC) $(CFLAGS_OBJ) -o $@ $<
 
-libcplot.so: cplot.c cplot.h rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
+libcplot.so: cplot.c cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
 	$(CC) $(CFLAGS_LIB) -o $@ $< $(OBJECTS) $(LDLIBS)
 
 functions.c: make_functions.pl functions.in.c

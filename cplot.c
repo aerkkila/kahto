@@ -91,25 +91,6 @@ static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *
     }
 }
 
-static inline float __attribute__((pure)) get_ticks_overlength(struct cplot_ticks *tk) {
-    float f = tk->length * (1 + tk->crossaxis) + tk->axis->pos - 1;
-    return f * (f>0);
-}
-
-static inline float __attribute__((pure)) get_ticks_underlength(struct cplot_ticks *tk) {
-    float f = -(tk->crossaxis*tk->length + tk->axis->pos);
-    return f * (f>0);
-}
-
-static inline float __attribute__((pure)) get_ticks_overaxislength(struct cplot_ticks *tk) {
-    return tk->length * (1 + tk->crossaxis);
-}
-
-static inline float __attribute__((pure)) get_ticks_underaxislength(struct cplot_ticks *tk) {
-    return -(tk->crossaxis*tk->length);
-}
-
-void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]);
 void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
 void cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout);
@@ -125,7 +106,7 @@ static double get_time() {
 
 #include "functions.c"
 #include "rotate.c"
-#include "rendering.c"
+#include "cplot_rendering.c"
 #include "ticker.c"
 #include "commit.c"
 #ifdef HAVE_ffmpeg
@@ -147,11 +128,13 @@ struct cplot_axis* cplot_axis_void_new(struct cplot_axes *axes) {
     return axis;
 }
 
-struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y) {
+struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y, float pos) {
     struct cplot_axis *axis = cplot_axis_void_new(axes);
     axis->linestyle.color = fg;
     axis->linestyle.thickness = 1.0 / 400;
     axis->linestyle.style = 1;
+    axis->linestyle.align = pos == 0 ? -1 : pos == 1 ? 1 : 0;
+    axis->pos = pos;
     axis->min = 0;
     axis->max = 1;
     axis->direction = x_or_y != 'x';
@@ -194,7 +177,6 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 
     ticks->crossaxis = cplot_automatic;
     ticks->hvalign_text[1] = cplot_automatic;
-    ticks->ascending = cplot_automatic;
 
     ticks->crossaxis1 = cplot_automatic;
     ticks->linestyle1.style = cplot_line_normal_e;
@@ -211,12 +193,10 @@ struct cplot_axes* cplot_axes_new() {
     axes->background = -1;
 
     axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
-    axes->axis[0] = cplot_axis_new(axes, 'x');
-    axes->axis[0]->pos = 1; // bottom x-axis
+    axes->axis[0] = cplot_axis_new(axes, 'x', 1);
     axes->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
 
-    axes->axis[1] = cplot_axis_new(axes, 'y');
-    axes->axis[1]->pos = 0; // left y-axis
+    axes->axis[1] = cplot_axis_new(axes, 'y', 0);
     axes->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
 
     axes->wh[0] = cplot_default_width;
@@ -538,32 +518,40 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	ttra_set_fontheight(ttra, ticks->rowheight*axesheight);
     }
 
-    int isx = ticks->axis->direction == 0;
+    int iort = ticks->axis->direction == 0;
+    int isx = iort;
     int line_px[4];
-    line_px[isx+0] = ticks->ro_lines[0];
-    line_px[isx+2] = ticks->ro_lines[1];
+    line_px[iort+0] = ticks->ro_lines[0];
+    line_px[iort+2] = ticks->ro_lines[1];
     int nticks = ticks->tickerdata.common.nticks;
-    int gridline[4];
-    int *xywh = ticks->axis->axes->ro_inner_xywh;
-    gridline[isx] = xywh[isx];
-    gridline[isx+2] = xywh[isx] + xywh[isx+2];
-    int inner_area[] = xywh_to_area(xywh);
+    int gridline[4], xywh[4], *margin=ticks->axis->axes->ro_inner_margin, *xywh_out=ticks->axis->axes->ro_inner_xywh;
+    memcpy(xywh, xywh_out, sizeof(xywh));
+    xywh[0] += margin[0];
+    xywh[1] += margin[1];
+    xywh[2] -= margin[0] + margin[2];
+    xywh[3] -= margin[1] + margin[3];
+    gridline[iort] = xywh_out[iort];
+    gridline[iort+2] = xywh_out[iort] + xywh_out[iort+2];
+    int inner_area[] = xywh_to_area(xywh_out);
     int side = ticks->axis->pos >= 0.5;
 
     const double axisdatamin = ticks->axis->min;
     const double axisdatalen = ticks->axis->max - axisdatamin;
+    int tot_area[] = {0, 0, ticks->axis->axes->wh[0], ticks->axis->axes->wh[1]};
+    tot_area[!iort] = ticks->axis->ro_line[!iort];
+    tot_area[!iort+2] = ticks->axis->ro_line[!iort+2];
     for (int itick=0; itick<nticks; itick++) {
 	double pos_data = ticks->get_tick(ticks, itick, &tick, 32);
 	double pos_rel = (pos_data - axisdatamin) / axisdatalen;
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
-	line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-	draw_line(canvas, ystride, line_px, ticks->ro_tot_area, &ticks->linestyle, axesheight, 0);
+	line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
+	draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axesheight, 0);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
 	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], ticks->rotation100, area_text, 0);
 	if (ticks->gridstyle.style) {
-	    gridline[!isx] = gridline[!isx+2] = line_px[!isx];
+	    gridline[!iort] = gridline[!iort+2] = line_px[!iort];
 	    draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axesheight, 0);
 	}
     }
@@ -572,28 +560,20 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	nticks = ticks->get_maxn_subticks(ticks);
 	float posdata[nticks];
 	nticks = ticks->get_subticks(ticks, posdata);
-	line_px[isx+0] = ticks->ro_lines1[0];
-	line_px[isx+2] = ticks->ro_lines1[1];
+	line_px[iort+0] = ticks->ro_lines1[0];
+	line_px[iort+2] = ticks->ro_lines1[1];
 	for (int i=0; i<nticks; i++) {
 	    double pos_rel = (posdata[i] - axisdatamin) / axisdatalen;
 	    if (!isx)
 		pos_rel = 1 - pos_rel;
-	    line_px[!isx] = line_px[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-	    draw_line(canvas, ystride, line_px, ticks->ro_tot_area, &ticks->linestyle1, axesheight, 0);
+	    line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
+	    draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, axesheight, 0);
 	    if (ticks->gridstyle1.style) {
-		gridline[!isx] = gridline[!isx+2] = line_px[!isx];
+		gridline[!iort] = gridline[!iort+2] = line_px[!iort];
 		draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, axesheight, 0);
 	    }
 	}
     }
-}
-
-void cplot_get_axislabel_xy(struct cplot_axistext *axistext, int xy[2]) {
-    int coord = axistext->axis->direction == 1;
-    int *axis_tot_area = axistext->axis->ro_linetick_area;
-    int axislength = axis_tot_area[coord+2] - axis_tot_area[coord];
-    xy[coord] = iroundpos(axis_tot_area[coord] + axislength * axistext->pos);
-    xy[!coord] = axis_tot_area[!coord + 2*(axistext->axis->pos >= 0.5)];
 }
 
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
@@ -606,14 +586,9 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
     ttra->fg_default = axistext->axis->linestyle.color;
     ttra->bg_default = -1;
     ttra_print(ttra, "\033[0m");
-    ttra_set_fontheight(ttra, axistext->rowheight*axesheight);
-    int xy[2];
-    int coord = axistext->axis->direction == 1;
-    int *axis_tot_area = axistext->axis->ro_linetick_area;
-    int axislength = axis_tot_area[coord+2] - axis_tot_area[coord];
-    xy[coord] = iroundpos(axis_tot_area[coord] + axislength * axistext->pos);
-    xy[!coord] = axis_tot_area[!coord + 2*(axistext->axis->pos >= 0.5)];
-    put_text(ttra, axistext->text, xy[0], xy[1], axistext->hvalign[coord], axistext->hvalign[!coord], axistext->rotation100, axistext->ro_area, 0);
+    ttra_set_fontheight(ttra, iroundpos(axistext->rowheight*axesheight));
+    int *area = axistext->ro_area;
+    put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation100, area, 0);
 }
 
 void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
@@ -649,10 +624,8 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
     }
 
     if (axis->linestyle.style != cplot_line_none_e) {
-	float thickness = axis->linestyle.thickness * axesheight;
-	int area[4] = xywh_to_area(axis->axes->ro_inner_xywh);
-	area[isx+2] += (thickness+1)/2;
-	area[isx] -= (thickness+1)/2;
+	typeof(axis->ro_area[0]) area[4];
+	memcpy(area, axis->ro_area, sizeof(area));
 	if (area[isx] < 0) area[isx] = 0;
 	if (area[isx+2] > axis->axes->wh[isx])
 	    area[isx+2] = axis->axes->wh[isx];

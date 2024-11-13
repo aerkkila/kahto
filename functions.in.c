@@ -15,7 +15,7 @@ static inline int my_isnan_double(double f) {
 }
 
 @startperl
-static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int stridein, int strideout) {
+static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int stridein, int strideout, int addthis) {
     const $dtype *data = vdata;
     axislen--;
     data += istart * stridein;
@@ -36,11 +36,11 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
 	}
 #endif
 	float pos = (data[iin] - axismin) / axisdiff;
-	out[iout] = iround(pos * axislen - 0.5);
+	out[iout] = iround(pos * axislen - 0.5) + addthis;
     }
 }
 
-static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int stridein, int strideout) {
+static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int stridein, int strideout, int addthis) {
     const $dtype *data = vdata;
     axislen--;
     data += istart * stridein;
@@ -61,7 +61,7 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 	}
 #endif
 	float pos = (data[iin] - axismin) / axisdiff;
-	out[iout] = iround((1 - pos) * axislen - 0.5);
+	out[iout] = iround((1 - pos) * axislen - 0.5) + addthis;
     }
 }
 
