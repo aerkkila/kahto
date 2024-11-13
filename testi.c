@@ -1,4 +1,5 @@
 #include "cplot.h"
+#include <cmh_enum.h>
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>

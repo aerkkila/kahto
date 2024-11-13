@@ -1,10 +1,7 @@
 #ifndef __cplot_h__
 #define __cplot_h__
-#define CMH_ENUM_ONLY
-#include <cmh_colormaps.h> // not mandatory
-#include <ttra.h>
-#include <waylandhelper.h>
 #include <stdlib.h> // cplot_line_inl uses malloc
+#include <stdint.h> // uint32_t
 
 #define cplot_notype 0
 #define cplot_i1 (10 + 1)
@@ -47,7 +44,7 @@ static void __attribute__((constructor)) cplot_check_version() {
 	goto fail;
     return;
 fail: __attribute__((cold));
-    /* Use assembly to avoid including stdio or unistd in the header. */
+    /* Using assembly here to avoid including stdio or unistd in this header. */
     const char errmsg[] = "The program has to be recompiled (" __FILE__ ").\n";
     asm (
 	"movq $2, %%rdi\n" // stderr

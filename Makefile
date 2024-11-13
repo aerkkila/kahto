@@ -14,8 +14,8 @@ ifdef use_libttra
 	LDLIBS += -lttra
 else
 	OBJECTS += ttra/ttra.o
-	LDLIBS += $(pkg-config --libs freetype2) -lutf8proc -lfontconfig
-	CFLAGS += $(pkg-config --cflags freetype2)
+	LDLIBS += `pkg-config --libs freetype2` -lutf8proc -lfontconfig
+	CFLAGS += -Ittra
 endif
 
 ifdef use_libwaylandhelper
@@ -23,10 +23,12 @@ ifdef use_libwaylandhelper
 else
 	OBJECTS += waylandhelper/waylandhelper.o
 	LDLIBS += -lxkbcommon -lwayland-client
+	CFLAGS += -Iwaylandhelper
 endif
 
 ifndef use_cmh_colormaps
 	cplot_sources += colormap-headers/cmh_colormaps.h
+	CFLAGS += -Icolormap-headers
 endif
 
 ifdef use_ffmpeg
@@ -40,10 +42,10 @@ all: libcplot.so
 testi.out: testi.c cplot.o $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-cplot.o: cplot.c $(cplot_sources)
+cplot.o: cplot.c $(cplot_sources) config.mk
 	$(CC) $(CFLAGS_OBJ) -o $@ $<
 
-libcplot.so: cplot.c cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile $(OBJECTS)
+libcplot.so: cplot.c cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile $(OBJECTS) config.mk
 	$(CC) $(CFLAGS_LIB) -o $@ $< $(OBJECTS) $(LDLIBS)
 
 functions.c: make_functions.pl functions.in.c
@@ -68,6 +70,7 @@ clean:
 	rm -f *.out *.so *.o functions.c
 	if [ -e waylandhelper ]; then cd waylandhelper && $(MAKE) clean; fi
 	if [ -e ttra ]; then cd ttra && $(MAKE) clean; fi
+	@printf "\e[93;1mDownloaded dependencies and config.mk are not removed.\e[0m\n"
 
 install: libcplot.so
 	cp cplot.h $(prefix)/include
