@@ -68,7 +68,10 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *t
 
     for (int i=0; i<nlabels; i++) {
 	double dataval = tk->get_tick(tk, i, &label, 128);
-	textloc[ipar] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
+	double relval = (dataval - min) / range;
+	if (ipar)
+	    relval = 1 - relval;
+	textloc[ipar] = iround(relval*xywh[ipar+2]) + xywh[ipar];
 	put_text(ttra, label, textloc[0], textloc[1], tk->hvalign_text[ipar], tk->hvalign_text[!ipar], tk->rotation100, area, 1);
 	update_min(edges_axespx[0], area[ipar]);
 	update_max(edges_axespx[1], area[ipar+2]);
