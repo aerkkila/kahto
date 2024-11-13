@@ -4,8 +4,11 @@
 #include <ttra.h>
 #include <float.h>
 #include <cmh_colormaps.h>
-#include <waylandhelper.h>
 #include <sys/time.h>
+#include <math.h>
+#ifdef HAVE_wlh
+#include <waylandhelper.h>
+#endif
 #define CPLOT_NO_VERSION_CHECK
 #include "cplot.h"
 #include "png.c"
@@ -101,7 +104,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
 
-static double get_time() {
+static double __attribute__((unused)) get_time() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return tv.tv_sec + tv.tv_usec * 1e-6;
@@ -1094,6 +1097,7 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 }
 
 void* cplot_show(void *vplot) {
+#ifdef HAVE_wlh
     struct cplot_axes *axes_or_layout = vplot;
     struct waylandhelper wlh = axes_or_layout->wlh ? *axes_or_layout->wlh : (struct waylandhelper){
 	.xresmin = 20,
@@ -1130,5 +1134,10 @@ void* cplot_show(void *vplot) {
     }
     wlh_destroy(&wlh);
     axes_or_layout->wlh = old_wlh;
+#else
+    fprintf(stderr, "%s: cplot library was compiled without support for this function.\n"
+	"Install waylandhelper and compile again.\n",
+	__func__);
+#endif
     return vplot;
 }
