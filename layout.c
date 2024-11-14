@@ -435,6 +435,8 @@ int cplot_axes_layout(struct cplot_axes *axes) {
 	topixels(axes->margin[3], axes),
     };
 
+    cplot_make_inner_margin(axes);
+
     /* while (1) but avoid unexpected halting */
     int firsttime = 1;
     for (int iloop=0; iloop<30; iloop++) {
@@ -512,8 +514,6 @@ next:
     }
     fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
-
-    cplot_make_inner_margin(axes);
     legend_placement(axes, axes->wh[0], axes->wh[1]);
     return 0;
 }

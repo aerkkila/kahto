@@ -611,7 +611,7 @@ end:
 }
 
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-    char tickbuff[32];
+    char tickbuff[128];
     char *tick = tickbuff;
     struct ttra *ttra = NULL;
 
@@ -651,11 +651,11 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
     tot_area[!iort] = ticks->axis->ro_line[!iort];
     tot_area[!iort+2] = ticks->axis->ro_line[!iort+2];
     for (int itick=0; itick<nticks; itick++) {
-	double pos_data = ticks->get_tick(ticks, itick, &tick, 32);
+	double pos_data = ticks->get_tick(ticks, itick, &tick, 128);
 	double pos_rel = (pos_data - axisdatamin) / axisdatalen;
 	if (!isx)
 	    pos_rel = 1 - pos_rel;
-	line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
+	line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
 	draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axesheight, 0);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
