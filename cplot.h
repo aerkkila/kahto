@@ -429,7 +429,7 @@ static inline struct cplot_axis* cplot_xaxis0(struct cplot_axes *axes) { return 
 static inline struct cplot_axis* cplot_yaxis0(struct cplot_axes *axes) { return axes->axis[cplot_iy0axis]; }
 
 void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride);
-int  cplot_axes_commit(struct cplot_axes *axes);
+int  cplot_axes_layout(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_subplots *subplots, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
 

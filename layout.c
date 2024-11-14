@@ -4,7 +4,7 @@
 #include "cplot.h"
 #include <ttra.h>
 
-void commit_legend(struct cplot_axes *axes, int axeswidth, int axesheight) {
+void legend_placement(struct cplot_axes *axes, int axeswidth, int axesheight) {
     if (!axes->legend.visible)
 	return;
     int height, width;
@@ -144,7 +144,7 @@ void limits_to_conflicts(struct cplot_axis *axis, int *limits) {
     limits[1] = a < 0 ? 0 : a;
 }
 
-struct commit_args {
+struct layout_ort_args {
     int *imargin_xyxy, iort, iouter, iinner, iside;
     struct cplot_axes *axes;
 };
@@ -156,7 +156,7 @@ struct commit_args {
     iinner = a->iinner, \
     iside = a->iside
 
-static void _axis_line_orthogonal(struct cplot_axis *axis, struct commit_args *args) {
+static void _axis_line_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
     float fw;
     if (axis->linestyle.style == cplot_line_none_e) {
 	if (!axis->po[1])
@@ -180,7 +180,7 @@ static void _axis_line_orthogonal(struct cplot_axis *axis, struct commit_args *a
     axis->ro_line[iort] = axis->ro_line[iort+2] = axis->ro_area[iinner];
 }
 
-static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_args *args) {
+static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
     struct cplot_ticks *tk = axis->ticks;
     if (!tk || !tk->visible || !tk->init)
 	return;
@@ -202,7 +202,7 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct commit_a
     imargin_xyxy[iouter] += length;
 }
 
-static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_args *args, struct ttra *ttra) {
+static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args, struct ttra *ttra) {
     struct cplot_ticks *tk = axis->ticks;
     if (!tk || !tk->visible || !tk->have_labels)
 	return;
@@ -233,7 +233,7 @@ static void _axis_tick_labels_orthogonal(struct cplot_axis *axis, struct commit_
     imargin_xyxy[iouter] += reserved;
 }
 
-static void _axis_texts_orthogonal(struct cplot_axis *axis, struct commit_args *args, struct ttra *ttra) {
+static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args, struct ttra *ttra) {
     int imaxtext = 0;
     unpack_args(args);
     int sizes[axis->ntext];
@@ -276,7 +276,7 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
     struct ttra *ttra = axis->axes->ttra;
     ttra_set_fontheight(ttra, 30);
 
-    struct commit_args args = {
+    struct layout_ort_args args = {
 	.imargin_xyxy = imargin_xyxy,
 	.iort = iort,
 	.iouter = iort + 2*(axis->pos >= 0.5),
@@ -386,7 +386,7 @@ static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, 
     }
 }
 
-int cplot_axes_commit(struct cplot_axes *axes) {
+int cplot_axes_layout(struct cplot_axes *axes) {
     int imargin_xyxy[4];
     for (int i=0; i<4; i++)
 	imargin_xyxy[i] = topixels(axes->margin[i], axes);
@@ -528,6 +528,6 @@ next:
 loop_done:
 
     cplot_make_inner_margin(axes);
-    commit_legend(axes, axes->wh[0], axes->wh[1]);
+    legend_placement(axes, axes->wh[0], axes->wh[1]);
     return 0;
 }

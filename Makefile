@@ -8,7 +8,7 @@ CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
 OBJECTS =
-cplot_sources = cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile
+cplot_sources = cplot.h cplot_rendering.c rotate.c functions.c ticker.c layout.c png.c Makefile
 dep_build =
 dep_install =
 dep_get =
@@ -76,7 +76,7 @@ testi.out: testi.c cplot.o $(OBJECTS)
 cplot.o: cplot.c $(cplot_sources) config.mk
 	$(CC) $(CFLAGS_OBJ) -o $@ $<
 
-libcplot.so: cplot.c cplot.h cplot_rendering.c rotate.c functions.c ticker.c commit.c png.c Makefile $(OBJECTS) config.mk
+libcplot.so: cplot.c $(cplot_sources) $(OBJECTS) config.mk
 	$(CC) $(CFLAGS_LIB) -o $@ $< $(OBJECTS) $(LDLIBS)
 
 functions.c: make_functions.pl functions.in.c

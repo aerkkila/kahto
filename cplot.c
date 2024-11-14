@@ -114,7 +114,7 @@ static double __attribute__((unused)) get_time() {
 #include "rotate.c"
 #include "cplot_rendering.c"
 #include "ticker.c"
-#include "commit.c"
+#include "layout.c"
 #ifdef HAVE_ffmpeg
 #include "cplot_video.c"
 #else
@@ -989,8 +989,8 @@ void set_colors(struct cplot_axes *axes) {
 
 void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
     set_colors(axes);
-    if (cplot_axes_commit(axes))
-	return; // too small window to draw
+    if (cplot_axes_layout(axes))
+	return; // too small window to draw to
     cplot_axes_render(axes, canvas, ystride);
 }
 
