@@ -100,12 +100,8 @@ void rotate(
 	    irot += 100 * (-irot/100 + !!(irot%100));
 	else if (irot >= 100)
 	    irot -= irot/100 * 100;
-	if (irot == 25)
-	    return rotate25(to, tw, tw-tox, th-toy, from, fw, fh);
-	if (irot == 75)
-	    return rotate75(to, tw, tw-tox, th-toy, from, fw, fh);
-	/* if (irot == 50)
-	    return rotate50(to, tw, tw-tox, th-toy, from, fw, fh);*/
+	if (irot == 25) return rotate25(to, tw, tw-tox, th-toy, from, fw, fh);
+	if (irot == 75) return rotate75(to, tw, tw-tox, th-toy, from, fw, fh);
     }
 
     float si = sinf(rot100 * 3.14159265358979 / 50);
@@ -118,18 +114,18 @@ void rotate(
     int apulen = new_w * new_h;
     unsigned *apu = malloc(apulen * sizeof(unsigned));
     memset(apu, -1, apulen * sizeof(unsigned));
-    int shift = round(-area[0]) + round(-area[1])*new_w; // tärkeä pyöristää erikseen
-    apu += shift;
-    static int lasku = 0;
-    lasku++;
+    int xshift = round(-area[0]);
+    int yshift = round(-area[1]);
+    /*int shift = round(-area[0]) + round(-area[1])*new_w; // tärkeä pyöristää erikseen
+    apu += shift;*/
     for (int y0=0; y0<fh; y0++) {
 	for (int x0=0; x0<fw; x0++) {
 	    float x1 = (x0+0.5)*co - (y0+0.5)*si;
 	    float y1 = (x0+0.5)*si + (y0+0.5)*co;
-	    laita(apu, apulen, new_w, y1, x1, from[y0*fw + x0]);
+	    laita(apu, apulen, new_w, y1+yshift, x1+xshift, from[y0*fw + x0]);
 	}
     }
-    apu -= shift;
+    //apu -= shift;
 
     int cpw = min(tw, new_w),
 	cph = min(th, new_h);
