@@ -165,11 +165,13 @@ struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y) {
 
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     struct cplot_ticks *ticks = calloc(1, sizeof(struct cplot_ticks));
+    int ipar = axis->direction == 1;
     ticks->axis = axis;
     ticks->color = fg;
     ticks->init = cplot_init_ticker_default;
     ticks->length = 1.0 / 80;
-    ticks->hvalign_text[0] = -0.5;
+    ticks->xyalign_text[ipar] = -0.5;
+    ticks->xyalign_text[!ipar] = -1 * (axis->pos < 0.5);
 
     ticks->linestyle.thickness = 1.0 / 1200;
     ticks->linestyle.color = RGB(0, 0, 0);
@@ -181,8 +183,6 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
     ticks->rowheight = 2.4*ticks->length;
     ticks->visible = 1;
     ticks->have_labels = 1;
-
-    ticks->hvalign_text[1] = cplot_automatic;
 
     ticks->linestyle1.style = cplot_line_normal_e;
     ticks->linestyle1.thickness = 1.0 / 1200;
@@ -659,7 +659,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axesheight, 0);
 	int area_text[4] = {0};
 	if (ttra && tick[0])
-	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->hvalign_text[!isx], ticks->hvalign_text[isx], ticks->rotation100, area_text, 0);
+	    put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation100, area_text, 0);
 	if (ticks->gridstyle.style) {
 	    gridline[!iort] = gridline[!iort+2] = line_px[!iort];
 	    draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axesheight, 0);

@@ -147,7 +147,7 @@ struct cplot_ticks {
     struct cplot_linestyle linestyle, gridstyle, linestyle1, gridstyle1;
 
     int visible, have_labels;
-    float hvalign_text[2];
+    float xyalign_text[2];
     float rowheight, rotation100;
 
     int ro_lines[2], ro_lines1[2], ro_labelarea[4];
