@@ -66,7 +66,7 @@ static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, ui
 }
 
 struct _cplot_dashed_line_args {
-    uint32_t *canvas, color;
+    uint32_t *canvas, color, *colors;
     int ystride, *xy, ithickness, *axis_area, nosteep, patternlength, axesheight;
     float *pattern;
 };
@@ -84,7 +84,9 @@ static uint32_t draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
 	axesheight	= args->axesheight,
 	ystride		= args->ystride;
     uint32_t *canvas	= args->canvas,
-	     color	= args->color;
+	     color	= args->color,
+	     *colors	= args->colors,
+	     colornow;
 
     int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
     int m1=args->xy[2*!backwards+!nosteep], m0=args->xy[2*backwards+!nosteep],
@@ -100,15 +102,22 @@ static uint32_t draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
     unsigned short ipat = carry>>16, try = (carry & 0xffff) + m0;
     ipat++; // carry:ssä on ipat-1, jotta oletusarvona toimii 0
 
+#define move_forward	\
+    n0 += D > 0 ? n_add : 0,	\
+    D  += D > 0 ? D_add1 : D_add0
     if (nosteep) { // (m,n) = (x,y)
 	while (1) {
+	    if (colors) colornow = colors[ipat];
+	    else colornow = color * (ipat % 2 == 0);
 	    int end = min(m1+1, try);
-	    for (; m0<end; m0++) {
-		if (ipat % 2 == 0)
-		    canvas[n0*ystride + m0] = color; // only this line differs
-		n0 += D > 0 ? n_add : 0;
-		D  += D > 0 ? D_add1 : D_add0;
-	    }
+	    if (colornow)
+		for (; m0<end; m0++) {
+		    canvas[n0*ystride + m0] = colornow; // only this line differs
+		    move_forward;
+		}
+	    else
+		for (; m0<end; m0++)
+		    move_forward;
 	    if (m0 > m1)
 		break;
 	    ipat = (ipat + 1) % args->patternlength;
@@ -117,13 +126,17 @@ static uint32_t draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
     }
     else { // (m,n) = (y,x)
 	while (1) {
+	    if (colors) colornow = colors[ipat];
+	    else colornow = color * (ipat % 2 == 0);
 	    int end = min(m1+1, try);
-	    for (; m0<end; m0++) {
-		if (ipat % 2 == 0)
-		    canvas[m0*ystride + n0] = color; // only this line differs
-		n0 += D > 0 ? n_add : 0;
-		D  += D > 0 ? D_add1 : D_add0;
-	    }
+	    if (colornow)
+		for (; m0<end; m0++) {
+		    canvas[m0*ystride + n0] = colornow; // only this line differs
+		    move_forward;
+		}
+	    else
+		for (; m0<end; m0++)
+		    move_forward;
 	    if (m0 > m1)
 		break;
 	    ipat = (ipat + 1) % args->patternlength;
@@ -131,6 +144,7 @@ static uint32_t draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args,
 	}
     }
     return (ipat-1)<<16 | (try-m0);
+#undef move_forward
 }
 
 /* anti-aliased line */
@@ -167,7 +181,7 @@ static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
     int nosteep = args->nosteep,
 	axesheight = args->axesheight;
     uint32_t (*canvas)[args->ystride] = (void*)args->canvas,
-	     color = args->color;
+	     color = args->color, *colors = args->colors, colornow;
 
     int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
     int m1=args->xy[2*!backwards+!nosteep], m0=args->xy[2*backwards+!nosteep];
@@ -184,13 +198,15 @@ static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
 
     if (nosteep) { // (m,n) = (x,y)
 	while (1) {
+	    if (colors) colornow = colors[ipat];
+	    else colornow = color * (ipat % 2 == 0);
 	    int end = min(m1+1, m1dash);
 	    for (; m0<end; m0++) {
 		int n0 = fn0;
 		int level = iroundpos((fn0 - n0) * 255);
-		if (ipat % 2 == 0) {
-		    tocanvas(&canvas[n0][m0], 255-level, color);	// only these lines differ
-		    tocanvas(&canvas[n0+1][m0], level, color);		// only these lines differ
+		if (colornow) {
+		    tocanvas(&canvas[n0][m0], 255-level, colornow);	// only these lines differ
+		    tocanvas(&canvas[n0+1][m0], level, colornow);	// only these lines differ
 		}
 		fn0 += slope;
 	    }
@@ -199,19 +215,21 @@ static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
 	    ipat = (ipat + 1) % args->patternlength;
 	    int add = iroundpos(args->pattern[ipat]*axesheight * coef);
 	    if (add == 0)
-		break; // avoid halting with small axesheight
+		break; // avoid halting with small figure size
 	    m1dash = m0 + add;
 	}
     }
     else { // (m,n) = (y,x)
 	while (1) {
+	    if (colors) colornow = colors[ipat];
+	    else colornow = color * (ipat % 2 == 0);
 	    int end = min(m1+1, m1dash);
 	    for (; m0<end; m0++) {
 		int n0 = fn0;
 		int level = iroundpos((fn0 - n0) * 255);
-		if (ipat % 2 == 0) {
-		    tocanvas(&canvas[m0][n0], 255-level, color);	// only these lines differ
-		    tocanvas(&canvas[m0][n0+1], level, color);		// only these lines differ
+		if (colornow) {
+		    tocanvas(&canvas[m0][n0], 255-level, colornow);	// only these lines differ
+		    tocanvas(&canvas[m0][n0+1], level, colornow);	// only these lines differ
 		}
 		fn0 += slope;
 	    }
@@ -220,7 +238,7 @@ static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, u
 	    ipat = (ipat + 1) % args->patternlength;
 	    int add = iroundpos(args->pattern[ipat]*axesheight * coef);
 	    if (add == 0)
-		break; // avoid halting with small axesheight
+		break; // avoid halting with small figure size
 	    m1dash = m0 + add;
 	}
     }
@@ -367,7 +385,7 @@ static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *a
 	    if (!style->patternlen)
 		style->patternlen = 2;
 	    struct _cplot_dashed_line_args args = {
-		canvas, style->color, ystride, xy, ithickness, area, nosteep,
+		canvas, style->color, style->colors, ystride, xy, ithickness, area, nosteep,
 		style->patternlen, axesheight, style->pattern };
 	    carry = _draw_thick_line_dashed(&args, carry);
 	    break;

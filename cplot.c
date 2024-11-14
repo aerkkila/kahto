@@ -826,6 +826,7 @@ static struct cplot_data* add_data(struct cplot_args *args) {
     struct cplot_data *data;
     args->axes->data[args->axes->ndata++] = data = malloc(sizeof(struct cplot_data));
     memcpy(data, &args->ydata, sizeof(struct cplot_data));
+
     if (!data->yxaxis[0])
 	data->yxaxis[0] = cplot_yaxis0(args->axes);
     if (!data->yxaxis[1])

@@ -76,13 +76,19 @@ struct cplot_data;
 
 enum cplot_linestyle_e {cplot_line_none_e, cplot_line_normal_e, cplot_line_dashed_e};
 
+/* Fixed order means that future updates won't change the order of the fields.
+   Therefore, one can safely fill the struct by referring only to the first field by name.
+   E.g. struct cplot_markerstyle mstyle = {.marker="x", 0.01,};
+   Otherwise, the structs can change in future.
+   */
+
 struct cplot_linestyle {
     enum cplot_linestyle_e style;
     unsigned color;
     float thickness;
-    float *pattern; // 1. fixed order
-    int patternlen; // 2. fixed order
-    unsigned *colors; // for future use
+    float *pattern;   // 1. fixed order
+    int patternlen;   // 2. fixed order
+    unsigned *colors; // 3. fixed order. If given, must be the same length as pattern (default 2)
     int align; // (y = 0, thickness = 3) => y:={-1,0,1} (align = 0), y:={-2,-1,0} (align = -1), y:={0,1,2} (align = 1)
 };
 
