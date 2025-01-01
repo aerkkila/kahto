@@ -6,33 +6,33 @@ OBJS=
 file=config.mk
 
 isinstalled() {
-    libs=
-    headers=
-    for a in $@; do
-	if echo $a |grep -q "\.h$"; then
-	    headers="$headers#include <$a>
-"
-	else
-	    libs="$libs -l$a"
-	fi
-    done
-    gcc -o $tmpfile -x c $libs - 2>/dev/null <<-eof
-	$headers
-	int main() {}
+	libs=
+	headers=
+	for a in $@; do
+		if echo $a |grep -q "\.h$"; then
+			headers="$headers#include <$a>
+			"
+		else
+			libs="$libs -l$a"
+		fi
+	done
+	gcc -o $tmpfile -x c $libs - 2>/dev/null <<-eof
+		$headers
+		int main() {}
 	eof
 }
 
 make_dependency() {
-    default=$1
-    name=$2
-    shift 2
-    isinstalled $@ && arvo=1 || arvo=$default
-    printf "use_$name = $arvo\n" >> $file
+	default=$1
+	name=$2
+	shift 2
+	isinstalled $@ && arvo=1 || arvo=$default
+	printf "use_$name = $arvo\n" >> $file
 }
 
 printf "# Automatically created by $0. Edit if necessary.\n%s\n\n"\
-    "# If a value is not 1, that dependency was not found."\
-    > $file
+	"# If a value is not 1, that dependency was not found."\
+	> $file
 
 printf "# Needed by cplot_write_png\n" >> $file
 make_dependency 0 libpng png
