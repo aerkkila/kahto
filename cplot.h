@@ -16,6 +16,10 @@
 #define cplot_f8 (20 + 8)
 #define cplot_f10 (20 + 16)
 
+/* For example: assert(axes->axis[cplot_ix]->direction == cplot_ix); // x-axis */
+#define cplot_ix 0
+#define cplot_iy 1
+
 /* returns some of the enumerations above according to the data type */
 #define cplot_type(a) ((int)( \
 		(typeof(a))1.5 == 1 ?	/* integer or floating point number */ \
