@@ -297,7 +297,7 @@ struct cplot_args {
 	char yxzowner[3], cmap_owner;
 	double y0, x0, z0, ystep, xstep, zstep;
 	char *label;	// 1. fixed order
-	int labelowner;	// 2. fixed order
+	int labelowner;	// 2. fixed order; Copied, if owner = -1.
 	union cplot_errorbars err;
 
 	struct cplot_markerstyle markerstyle;
@@ -306,11 +306,13 @@ struct cplot_args {
 	unsigned color;
 	unsigned char *cmap;
 	int cmh_enum, icolor;
-
 	/* end struct cplot_data */
-	char copy[3];
-	/* Excecuted in cplot_plot_args before anything else is done. Intended for changing the default arguments. */
+
+	char copy[3]; // Deprecated. Use 'owner = -1' instead.
+	/* Excecuted in cplot_plot_args before anything else is done.
+	   Intended for changing the default arguments. */
 	void (*argsfun)(struct cplot_args*);
+	void *userdata; // if argsfun needs some data
 };
 
 struct cplot_drawarea {

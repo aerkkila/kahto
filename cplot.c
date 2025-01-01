@@ -972,7 +972,7 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 
 	/* copy if necessary */
 	for (int idim=0; idim<3; idim++) {
-		if (!args->copy[idim] || !data->yxzdata[idim])
+		if (!(args->copy[idim] || args->yxzowner[idim] < 0))
 			continue;
 		size_t size = cplot_sizes[data->yxztype[idim]] * data->length;
 		void *old = data->yxzdata[idim];
@@ -991,6 +991,12 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 		}
 		data->owner[idim] = 1;
 	}
+
+	if (data->labelowner < 0) {
+		data->label = strdup(data->label);
+		data->labelowner = 1;
+	}
+
 	return *axes;
 }
 
