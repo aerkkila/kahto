@@ -24,13 +24,18 @@ Installation
 Dependencies
 ------------
 - libpng
-  - for cplot_write_png
+	- for cplot_write_png
+
 - ffmpeg (optional) (libavcodec, libavformat, libavutil)
-  - for cplot_write_mp4 to create a video
-If not installed, these can be installed with 'make'
+	- for cplot_write_mp4 to create a video
+
+If not installed, these can be installed with 'make dep_get', etc.:
+
 - libttra (https://codeberg.org/aerkkila/ttra)
-  - for rendering text
+	- for rendering text
+
 - cmh_colomaps (https://codeberg.org/aerkkila/colormap-headers)
-  - Very small, header-only library
+	- Very small, header-only library
+
 - libwaylandhelper (optional) (https://codeberg.org/aerkkila/waylandhelper)
-  - for cplot_show to show the figure on the screen (Wayland is needed)
+	- for cplot_show to show the figure on the screen (Wayland is needed)
