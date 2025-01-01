@@ -1,4 +1,5 @@
 #include <float.h>
+#include "definitions.h"
 
 static inline int my_isnan_float(float f) {
 	const uint32_t exponent = ((1u<<31)-1) - ((1u<<(31-8))-1);
@@ -33,7 +34,7 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
 			my_isnan_double(data[iin])
 #endif
 		) {
-			out[iout] = -9999;
+			out[iout] = NOT_A_PIXEL;
 			continue;
 		}
 #endif
@@ -58,7 +59,7 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 			my_isnan_double(data[iin])
 #endif
 		) {
-			out[iout] = -9999;
+			out[iout] = NOT_A_PIXEL;
 			continue;
 		}
 #endif

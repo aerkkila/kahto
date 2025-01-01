@@ -6,6 +6,7 @@
 #define CPLOT_NO_VERSION_CHECK
 #endif
 #include "cplot.h"
+#include "definitions.h"
 
 static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
 	int eulav = 255 - value;
@@ -747,7 +748,9 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
 static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
 	int axis_area[] = xywh_to_area(args->axis_xywh);
 	uint32_t carry = 0;
-	for (int i=0; i<args->len-1; i++) {
+	for (int i=0; i<args->len-1; i++, args->xypixels += 2) {
+		if (args->xypixels[1] == NOT_A_PIXEL) continue;
+		if (args->xypixels[3] == NOT_A_PIXEL) continue;
 		int xy[] = {
 			iroundpos((args->x0+i) * args->xpix_per_unit) + args->xpos0 + args->axis_xywh[0],
 			args->xypixels[1] + args->axis_xywh[1],
@@ -755,7 +758,6 @@ static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_
 			args->xypixels[3] + args->axis_xywh[1],
 		};
 		carry = draw_line(args->canvas, args->ystride, xy, axis_area, linestyle, args->axesheight, carry);
-		args->xypixels += 2;
 	}
 }
 
@@ -764,7 +766,11 @@ static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot
 	int axis_area[] = xywh_to_area(args->axis_xywh);
 
 	uint32_t carry = 0;
-	for (int i=0; i<args->len-1; i++) {
+	for (int i=0; i<args->len-1; i++, args->xypixels += 2) {
+		if (args->xypixels[0] == NOT_A_PIXEL) continue;
+		if (args->xypixels[1] == NOT_A_PIXEL) continue;
+		if (args->xypixels[2] == NOT_A_PIXEL) continue;
+		if (args->xypixels[3] == NOT_A_PIXEL) continue;
 		int xy[] = {
 			args->xypixels[0] + args->axis_xywh[0],
 			args->xypixels[1] + args->axis_xywh[1],
@@ -772,7 +778,6 @@ static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot
 			args->xypixels[3] + args->axis_xywh[1],
 		};
 		carry = draw_line(args->canvas, args->ystride, xy, axis_area, linestyle, args->axesheight, carry);
-		args->xypixels += 2;
 	}
 }
 
@@ -929,6 +934,8 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, i
 					draw_data_y(&data_args);
 			}
 		}
+
+		/* error bars */
 		for (int icoord=0; icoord<2; icoord++) {
 			if (!data->err.yx[icoord])
 				continue;
@@ -938,6 +945,10 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, i
 			int area[] = xywh_to_area(xywh0);
 			for (int i=0; i<iend-istart; i++) {
 				int line[] = {xypixels[i*2+ixcoord], errb[i], xypixels[i*2+ixcoord], xypixels[i*2+!ixcoord]};
+				if (line[0] == NOT_A_PIXEL) continue;
+				if (line[1] == NOT_A_PIXEL) continue;
+				if (line[2] == NOT_A_PIXEL) continue;
+				if (line[3] == NOT_A_PIXEL) continue;
 				line[0] += xywh0[0];
 				line[2] += xywh0[0];
 				line[1] += xywh0[1];
