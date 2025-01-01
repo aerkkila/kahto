@@ -301,7 +301,8 @@ struct cplot_args {
 	union cplot_errorbars err;
 
 	struct cplot_markerstyle markerstyle;
-	struct cplot_linestyle linestyle, errstyle;
+	struct cplot_linestyle
+		linestyle, errstyle;
 	unsigned color;
 	unsigned char *cmap;
 	int cmh_enum, icolor;
@@ -451,6 +452,7 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 int  cplot_axes_layout(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_subplots *subplots, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
+struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
 
 /* For animated plot to be used in the cplot_axes.update(). */
 void cplot_legend_draw(struct cplot_axes*, struct cplot_drawarea);

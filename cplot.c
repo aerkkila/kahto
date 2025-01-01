@@ -897,6 +897,13 @@ void cplot_ticklabels(struct cplot_axis *axis, char **names, int howmany) {
 	axis->ticks->rotation100 = 75;
 }
 
+struct cplot_args* cplot_defaultargs(struct cplot_args *args) {
+	*args = (struct cplot_args) {
+		__cplot_defaultargs
+	};
+	return args;
+}
+
 void cplot_destroy_axis(struct cplot_axis *axis) {
 	for (int i=axis->ntext-1; i>=0; i--) {
 		if (axis->text[i]->owner)
