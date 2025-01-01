@@ -960,7 +960,17 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 	void *old = data->yxzdata[idim];
 	if (!(data->yxzdata[idim] = malloc(size)))
 	    fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
-	memcpy(data->yxzdata[idim], old, size);
+	if (data->yxzstride[idim] == 1)
+	    memcpy(data->yxzdata[idim], old, size);
+	else {
+	    /* after copying, stride == 1 */
+	    char *dt = data->yxzdata[idim];
+	    int size1 = cplot_sizes[data->yxztype[idim]],
+		stride = data->yxzstride[idim];
+	    for (int i=data->length-1; i>=0; i--)
+		memcpy(dt+i*size1, (char*)old+i*stride*size1, size1);
+	    data->yxzstride[idim] = 1;
+	}
 	data->owner[idim] = 1;
     }
     return *axes;
