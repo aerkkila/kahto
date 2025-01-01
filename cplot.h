@@ -423,6 +423,16 @@ static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double
     axis->range_isset = cplot_range_isset;
     return axis;
 }
+static inline struct cplot_axis* cplot_set_min(struct cplot_axis *axis, double min) {
+    axis->min = min;
+    axis->range_isset |= cplot_minbit;
+    return axis;
+}
+static inline struct cplot_axis* cplot_set_max(struct cplot_axis *axis, double max) {
+    axis->max = max;
+    axis->range_isset |= cplot_maxbit;
+    return axis;
+}
 
 void cplot_init_ticker_default(struct cplot_ticks *this, double min, double max);
 void cplot_init_ticker_simple(struct cplot_ticks *this, double min, double max);

@@ -372,39 +372,50 @@ static long get_first_for_data(struct cplot_data *data, int yxz) {
 
 void cplot_axis_datarange(struct cplot_axis *axis) {
     int yxz = axis->direction == 0;
-    axis->min = DBL_MAX;
-    axis->max = -DBL_MAX;
+    double min = DBL_MAX;
+    double max = -DBL_MAX;
     for (int idata=0; idata<axis->axes->ndata; idata++) {
 	struct cplot_data *data = axis->axes->data[idata];
 	if (data->caxis == axis)
 	    yxz = 2;
 	else if (data->yxaxis[yxz] != axis)
 	    continue;
+	int minmax = data->have_minmax[yxz] | axis->range_isset;
 
 	if (data->yxztype[yxz] == cplot_notype) {
-	    if (!(data->have_minmax[yxz] & cplot_minbit))
+	    if (!(data->have_minmax[yxz] & cplot_minbit)) {
 		data->minmax[yxz][0] = data->yxz0[yxz] + get_first_for_data(data, yxz) * data->yxzstep[yxz];
-	    if (!(data->have_minmax[yxz] & cplot_maxbit))
+		data->have_minmax[yxz] |= cplot_minbit;
+		}
+	    if (!(data->have_minmax[yxz] & cplot_maxbit)) {
 		data->minmax[yxz][1] = data->yxz0[yxz] + get_last_for_data(data, yxz) * data->yxzstep[yxz];
+		data->have_minmax[yxz] |= cplot_maxbit;
+		}
 	}
 	else
-	    switch (data->have_minmax[yxz]) {
+	    switch (minmax) {
 		case 0:
 		    get_minmax_for_data(data, yxz);
+		    data->have_minmax[yxz] |= cplot_minbit|cplot_maxbit;
 		    break;
 		case cplot_maxbit:
 		    get_min_for_data(data, yxz);
+		    data->have_minmax[yxz] |= cplot_minbit;
 		    break;
 		case cplot_minbit:
 		    get_max_for_data(data, yxz);
+		    data->have_minmax[yxz] |= cplot_maxbit;
 		    break;
 		default: break;
 	    }
 
-	data->have_minmax[yxz] = cplot_minbit | cplot_maxbit;
-	update_min(axis->min, data->minmax[yxz][0]);
-	update_max(axis->max, data->minmax[yxz][1]);
+	update_min(min, data->minmax[yxz][0]);
+	update_max(max, data->minmax[yxz][1]);
     }
+    if (!(axis->range_isset & cplot_minbit))
+	axis->min = min;
+    if (!(axis->range_isset & cplot_maxbit))
+	axis->max = max;
     axis->range_isset |= cplot_minbit | cplot_maxbit;
 }
 

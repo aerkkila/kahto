@@ -282,15 +282,13 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 }
 
 void cplot_make_range(struct cplot_axes *axes) {
-    unsigned minmax = cplot_minbit | cplot_maxbit;
     for (int i=0; i<axes->ndata; i++) {
 	struct cplot_data *data = axes->data[i];
 	for (int iaxis=0; iaxis<2; iaxis++) {
 	    struct cplot_axis *axis = data->yxaxis[iaxis];
 	    if (!axis || !cplot_visible_data(data))
 		continue;
-	    if ((axis->range_isset & minmax) != minmax)
-		cplot_axis_datarange(axis);
+	    cplot_axis_datarange(axis);
 	}
     }
 }
