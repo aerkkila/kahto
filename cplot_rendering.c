@@ -863,7 +863,7 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, i
     int line_thickness = iroundpos(data->linestyle.thickness * axesheight);
     if (line_thickness < 1) line_thickness = 1;
 
-    double xpix_per_unit = yxlen[1] / yxzdiff[1]; // Used if x is not given.
+    double xpix_per_unit = yxlen[1] / yxzdiff[1] * data->yxzstep[1]; // Used if x is not given.
 
     struct draw_data_args data_args = {
 	.canvas = canvas,

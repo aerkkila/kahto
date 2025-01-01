@@ -216,7 +216,7 @@ struct cplot_data {
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char owner[3], cmap_owner;
-    double yxz0[3];
+    double yxz0[3], yxzstep[3];
     char *label;	// 1. fixed order
     int labelowner;	// 2. fixed order
     union cplot_errorbars err;
@@ -295,7 +295,7 @@ struct cplot_args {
     double minmax[3][2];
     char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
     char yxzowner[3], cmap_owner;
-    double y0, x0, z0;
+    double y0, x0, z0, ystep, xstep, zstep;
     char *label;	// 1. fixed order
     int labelowner;	// 2. fixed order
     union cplot_errorbars err;
@@ -329,6 +329,9 @@ struct cplot_drawarea {
     .ystride = 1,				\
     .xstride = 1,				\
     .zstride = 1,				\
+    .ystep = 1,					\
+    .xstep = 1,					\
+    .zstep = 1,					\
     .linestyle.thickness = 1./600,		\
     .errstyle.style = cplot_line_normal_e,	\
     .icolor = cplot_automatic,			\
