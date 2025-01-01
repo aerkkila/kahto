@@ -538,11 +538,13 @@ static void init_circle(unsigned char *to, int tow, int toh) {
 #endif
 
 static void init_circle(unsigned char *to, int tow, int toh) {
-	int tow16 = tow*16,
-		toh16 = toh*16;
-	unsigned char (*to16)[tow16] = malloc(tow16 * toh16);
-	int r = (min(tow16, toh16)-1) / 2;
-	int t1 = r/16,
+	const int size = min(tow, toh);
+	const int size16 = size * 16;
+	const int r = size16 / 2;
+	unsigned char (*to16)[size16] = malloc(size16 * size16);
+	/* https://en.wikipedia.org/wiki/Midpoint_circle_algorithm#Jesko's_Method */
+	/* Unlike in the method, our circle is always even because of the multiplication with an even number */
+	int t1 = r/16, // 16 belongs to the method and is unrelated to size16
 		x = r,
 		y = 0;
 	while (x >= y) {
@@ -552,72 +554,72 @@ static void init_circle(unsigned char *to, int tow, int toh) {
 			y1 = r+y;
 		memset(to16[y0], 0, x0);
 		memset(to16[y0]+x0, 1, x1-x0);
-		memset(to16[y0]+x1, 0, tow16-x1);
+		memset(to16[y0]+x1, 0, size16-x1);
 
 		memset(to16[y1-1], 0, x0);
 		memset(to16[y1-1]+x0, 1, x1-x0);
-		memset(to16[y1-1]+x1, 0, tow16-x1);
+		memset(to16[y1-1]+x1, 0, size16-x1);
 
 		memset(to16[x0], 0, y0);
 		memset(to16[x0]+y0, 1, y1-y0);
-		memset(to16[x0]+y1, 0, tow16-y1);
+		memset(to16[x0]+y1, 0, size16-y1);
 
 		memset(to16[x1-1], 0, y0);
 		memset(to16[x1-1]+y0, 1, y1-y0);
-		memset(to16[x1-1]+y1, 0, tow16-y1);
+		memset(to16[x1-1]+y1, 0, size16-y1);
 
 		t1 += ++y;
 		if (t1 >= x)
 			t1 -= x--;
 	}
-	memset(to16[2*r+1], 0, (toh16-(2*r+1)) * sizeof(to16[0]));
 
 	memset(to, 0, tow*toh);
-	for (int j=0; j<tow16; j++)
-		for (int i=0; i<tow16; i++)
+	for (int j=0; j<size16; j++)
+		for (int i=0; i<size16; i++)
 			to[j/16*tow+i/16] += to16[j][i] && (j%16 || i%16);
 	free(to16);
 }
 
+/* Only lines commented as 'different' differ from the init_circle function above */
 static void init_4star(unsigned char *to, int tow, int toh) {
-	int tow16 = tow*16,
-		toh16 = toh*16;
-	unsigned char (*to16)[tow16] = malloc(tow16 * toh16);
-	int r = (min(tow16, toh16)-1) / 2;
-	int t1 = r/16,
+	const int size = min(tow, toh);
+	const int size16 = size * 16;
+	const int r = size16 / 2;
+	unsigned char (*to16)[size16] = malloc(size16 * size16);
+	/* https://en.wikipedia.org/wiki/Midpoint_circle_algorithm#Jesko's_Method */
+	/* Unlike in the method, our circle is always even because of the multiplication with an even number */
+	int t1 = r/16, // 16 belongs to the method and is unrelated to size16
 		x = r,
 		y = 0;
-	int size = 2*r+1;
 	while (x >= y) {
-		int x0 = x,
-			x1 = size - x,
-			y0 = y,
-			y1 = size - y;
+		int x0 = x,				// different
+			x1 = size16 - x,	// different
+			y0 = y,				// different
+			y1 = size16 - y;	// different
 		memset(to16[y0], 0, x0);
 		memset(to16[y0]+x0, 1, x1-x0);
-		memset(to16[y0]+x1, 0, tow16-x1);
+		memset(to16[y0]+x1, 0, size16-x1);
 
 		memset(to16[y1-1], 0, x0);
 		memset(to16[y1-1]+x0, 1, x1-x0);
-		memset(to16[y1-1]+x1, 0, tow16-x1);
+		memset(to16[y1-1]+x1, 0, size16-x1);
 
 		memset(to16[x0], 0, y0);
 		memset(to16[x0]+y0, 1, y1-y0);
-		memset(to16[x0]+y1, 0, tow16-y1);
+		memset(to16[x0]+y1, 0, size16-y1);
 
 		memset(to16[x1-1], 0, y0);
 		memset(to16[x1-1]+y0, 1, y1-y0);
-		memset(to16[x1-1]+y1, 0, tow16-y1);
+		memset(to16[x1-1]+y1, 0, size16-y1);
 
 		t1 += ++y;
 		if (t1 >= x)
 			t1 -= x--;
 	}
-	memset(to16[2*r+1], 0, (toh16-(2*r+1)) * sizeof(to16[0]));
 
 	memset(to, 0, tow*toh);
-	for (int j=0; j<toh16; j++)
-		for (int i=0; i<tow16; i++)
+	for (int j=0; j<size16; j++)
+		for (int i=0; i<size16; i++)
 			to[j/16*tow+i/16] += to16[j][i] && (j%16 || i%16);
 	free(to16);
 }
