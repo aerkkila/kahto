@@ -344,6 +344,10 @@ struct cplot_drawarea {
 	.icolor = cplot_automatic,				\
 	.errstyle.thickness = 1./600 cplot_update_defaultargs
 
+#define cplot_lineargs						\
+	.linestyle.style = cplot_line_normal_e,	\
+	.markerstyle.marker = NULL
+
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
 	__cplot_defaultargs,		\
 	.ydata=(y),					\
@@ -391,10 +395,9 @@ static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
 }
 
 #define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){	\
-	__cplot_defaultargs,					\
-	.markerstyle.marker = "",				\
-	.linestyle.style = cplot_line_normal_e,	\
-	__VA_ARGS__								\
+	__cplot_defaultargs,	\
+	cplot_lineargs,			\
+	__VA_ARGS__				\
 	})
 
 static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, float x1, struct cplot_args args) {
@@ -459,6 +462,7 @@ int  cplot_axes_layout(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_subplots *subplots, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
+struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
 
 /* For animated plot to be used in the cplot_axes.update(). */
 void cplot_legend_draw(struct cplot_axes*, struct cplot_drawarea);
