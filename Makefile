@@ -56,6 +56,9 @@ else ifeq ($(use_libwaylandhelper), 3)
 	LDLIBS += -lxkbcommon -lwayland-client
 	CFLAGS += -Iwaylandhelper -DHAVE_wlh
 endif
+ifneq ($(use_libwaylandhelper), 0)
+	cplot_sources += cplot_gui.c
+endif
 
 ifeq ($(use_ffmpeg), 1)
 	LDLIBS += -lavcodec -lavutil -lavformat

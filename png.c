@@ -71,6 +71,12 @@ void* cplot_write_png(void *axes_or_subplots, const char *name) {
 				cplot_clear_slot(subplots, i, argb, subplots->wh[0]);
 	}
 
+	char _name[80];
+	if (!name) {
+		sprintf(_name, "cplot_%li.png", (long)time(NULL));
+		name = _name;
+	}
+
 	unsigned char *bgr  = malloc(subplots->wh[0] * subplots->wh[1] * 3);
 	argb_to_bgr(argb, bgr, subplots->wh[0] * subplots->wh[1]);
 	free(argb);

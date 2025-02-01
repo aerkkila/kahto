@@ -119,7 +119,7 @@ static double __attribute__((unused)) get_time() {
 #include "cplot_video.c"
 #else
 void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps) {
-	fprintf(stderr, "cplot library was compiled without support for %s\n", __func__);
+	fprintf(stderr, "cplot library was compiled without support for \e[1m%s\e[0m\n", __func__);
 	return axes_or_subplots;
 }
 #endif
@@ -1145,6 +1145,10 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 	}
 }
 
+#ifdef HAVE_wlh
+#include "cplot_gui.c"
+#endif
+
 void* cplot_show(void *vplot) {
 #ifdef HAVE_wlh
 	struct cplot_axes *axes_or_subplots = vplot;
@@ -1154,6 +1158,8 @@ void* cplot_show(void *vplot) {
 	};
 	wlh.xres = axes_or_subplots->wh[0];
 	wlh.yres = axes_or_subplots->wh[1];
+	wlh.key_callback = keycallback;
+	wlh.userdata = vplot;
 	struct waylandhelper *old_wlh = axes_or_subplots->wlh;
 	axes_or_subplots->wlh = &wlh;
 	wlh_init(&wlh);
@@ -1184,7 +1190,7 @@ void* cplot_show(void *vplot) {
 	wlh_destroy(&wlh);
 	axes_or_subplots->wlh = old_wlh;
 #else
-	fprintf(stderr, "%s: cplot library was compiled without support for this function.\n"
+	fprintf(stderr, "cplot was compiled without support for \e[1m%s\e[0m.\n"
 		"Install waylandhelper and compile again.\n",
 		__func__);
 #endif
