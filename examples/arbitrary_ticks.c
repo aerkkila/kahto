@@ -1,0 +1,66 @@
+#include <cplot.h>
+#include <math.h>
+
+#define len 100
+#define π 3.14159265358979
+
+int main() {
+	float y[len], x[len];
+	const float nwaves = 1.5;
+	for (int i=0; i<len; i++) {
+		x[i] = i / (len-1.0) * nwaves * (2*π);
+		y[i] = sinf(x[i]);
+	}
+
+	struct cplot_axes *axes = cplot_yx(y, x, len, cplot_lineargs);
+
+	struct cplot_ticks *ticks = cplot_xaxis0(axes)->ticks;
+	/* ticks->init points to the function which determines the ticks.
+	   All functions are listed in cplot.h (cplot_init_ticker_*).
+	   In this case we select the function which reads arbitrary data given by user
+	   and interprets the ticks locations as data coordinates; the values on x-array. */
+	ticks->init = cplot_init_ticker_arbitrary_datacoord;
+	/* The data is given to the struct cplot_tickerdata_arbitrary,
+	   which is found from union tickerdata in field arb. */
+	char *labels[] = {"0", "\e$π^-1$", "π", "2π", "2.5π", "3π", "4ln(π)"};
+	double coords[] = {0,      1/π,     π,   2*π,  2.5*π,  3*π, 4*log(π)}; // don't have to be sorted
+	ticks->tickerdata.arb = (struct cplot_tickerdata_arbitrary) {
+		.labels = labels,
+		.ticks = coords,
+		.nticks = sizeof(coords)/sizeof(coords[0]),
+		/* fields min and max need not to be set manually */
+	};
+
+	/***********************************************************/
+
+	/* Another example */
+	float y2[] = {1, 1.5, -0.5, 3};
+	float y2low[] = {0.8, 1.1, -0.6, 2.9}; // lower error bars
+	float y2high[] = {1.1, 1.75, -0.3, 3.1}; // higher error bars
+	struct cplot_axes *axes2 = cplot_y(y2, sizeof(y2)/sizeof(y2[0]), .err.list={y2low, y2high});
+
+	ticks = cplot_xaxis0(axes2)->ticks;
+	char *labels2[] = {
+		"first location",
+		"",
+		"\e[4;91mthird location\e[0m", // styling text with ansi escape code
+		"last"
+	};
+	/* There is a special method for placing the ticks to coordinates 0, 1, 2, ... */
+	ticks->init = cplot_init_ticker_arbitrary_datacoord_enum;
+	ticks->tickerdata.arb.labels = labels2;
+	ticks->tickerdata.arb.nticks = sizeof(labels2)/sizeof(labels2[0]);
+	/* locations (tickerdata.arb.ticks) need not to be set in this case */
+
+	ticks->rotation100 = -8;
+	/* We want the right edge of texts to be on the tick location.
+	   Therefore we move texts to left by the amount of their widths, i.e. -1 width to right */
+	ticks->xyalign_text[0] = -1;
+
+	/* put both subplots to a figure */
+	struct cplot_subplots *sp = cplot_subplots_new(2, 1);
+	sp->wh[0] /= 2;
+	sp->axes[0] = axes;
+	sp->axes[1] = axes2;
+	cplot_destroy(cplot_show(sp));
+}

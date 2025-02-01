@@ -12,3 +12,5 @@ ttra
 waylandhelper
 colormap-headers
 config.mk
+.nclangcomplete.lua
+testejä
