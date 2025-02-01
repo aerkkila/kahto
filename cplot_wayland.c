@@ -115,6 +115,7 @@ void* cplot_show(void *vplot) {
 	wlh.yres = standalone->wh[1];
 	wlh.key_callback = keycallback;
 	wlh.userdata = &cookie;
+	wlh.title = standalone->name;
 
 	wlh_init(&wlh);
 	long updatecount = 0;

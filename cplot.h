@@ -243,6 +243,7 @@ enum cplot_placement {cplot_placement_none, cplot_placement_first, cplot_placeme
 	int wh[2];                          \
 	unsigned background;                \
 	struct waylandhelper *wlh;          \
+	char *name; /* window title (cplot_show) or filename (cplot_save_png) */ \
 	/* For animated plot. */            \
 	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */ \
 	int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);  \
@@ -453,6 +454,8 @@ void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void* cplot_write_png(void *standalone, const char *name); // returns the input standalone
+#define _cplot_save_png(a, b, ...) cplot_write_png(a, b)
+#define cplot_save_png(...) _cplot_save_png(__VA_ARGS__, NULL);
 /* Available only if compiled with video support. Function axes->update has to be defined. */
 void* cplot_write_mp4(void *standalone, const char *name, float fps);
 unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);

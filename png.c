@@ -64,17 +64,20 @@ void* cplot_write_png(void *vstandalone, const char *name) {
 		cplot_axes_draw(vstandalone, argb, subplots->wh[0]);
 	else {
 		cplot_subplots_to_axes(subplots);
+		cplot_fill_u4(argb, subplots->background, subplots->wh[0], subplots->wh[1], subplots->wh[0]);
 		for (int i=0; i<subplots->naxes; i++)
 			if (subplots->axes[i])
 				cplot_axes_draw(subplots->axes[i], argb, subplots->wh[0]);
-			else
-				cplot_clear_slot(subplots, i, argb, subplots->wh[0]);
 	}
 
 	char _name[80];
 	if (!name) {
-		sprintf(_name, "cplot_%li.png", (long)time(NULL));
-		name = _name;
+		if (subplots->name)
+			name = subplots->name;
+		else {
+			sprintf(_name, "cplot_%li.png", (long)time(NULL));
+			name = _name;
+		}
 	}
 
 	unsigned char *bgr  = malloc(subplots->wh[0] * subplots->wh[1] * 3);

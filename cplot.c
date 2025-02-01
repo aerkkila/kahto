@@ -8,7 +8,6 @@
 #include <math.h>
 #define CPLOT_NO_VERSION_CHECK
 #include "cplot.h"
-#include "png.c"
 
 #define min(a,b) ((a) < (b) ? a : (b))
 #define max(a,b) ((a) > (b) ? a : (b))
@@ -39,6 +38,17 @@ int cplot_ncolors[] = {
 	arrlen(cplot_colorscheme_a) - 1,
 	arrlen(cplot_colorscheme_b) - 1,
 };
+
+static void cplot_fill_u4(uint32_t *canvas, uint32_t color, int w, int h, int ystride) {
+	char *ptr = (void*)&color;
+	if (ptr[0] == ptr[1] && ptr[0] == ptr[2] && ptr[0] == ptr[3])
+		for (int i=0; i<h; i++)
+			memset(canvas+i*ystride, ptr[0], w*4);
+	else
+		for (int i=0; i<h; i++)
+			for (int ii=0; ii<w; ii++)
+				canvas[i*ystride+ii] = color;
+}
 
 unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *colorscheme, int ncolors) {
 	unsigned char *cmap = malloc(256*3);
@@ -112,6 +122,7 @@ static double __attribute__((unused)) get_time() {
 #include "cplot_rendering.c"
 #include "ticker.c"
 #include "layout.c"
+#include "png.c"
 #ifdef HAVE_ffmpeg
 #include "cplot_video.c"
 #else
@@ -1137,18 +1148,6 @@ void cplot_subplots_to_axes(struct cplot_subplots *subplots) {
 	}
 }
 
-void cplot_clear_slot(struct cplot_subplots *subplots, int islot, unsigned *canvas, int ystride) {
-	int xywh[4];
-	cplot_xywh_to_pixels(subplots, islot, xywh);
-	const int area[] = xywh_to_area(xywh);
-	unsigned color = subplots->background;
-	for (int j=area[1]; j<area[3]; j++) {
-		int ind0 = j * ystride;
-		for (int i=area[0]; i<area[2]; i++)
-			canvas[ind0+i] = color;
-	}
-}
-
 void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int realw) {
 	char bg[4];
 	uint32_t background = axes->background;
@@ -1208,11 +1207,10 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 	else {
 		struct cplot_subplots *subplots = vplot;
 		cplot_subplots_to_axes(subplots);
+		cplot_fill_u4(canvas, subplots->background, subplots->wh[0], subplots->wh[1], ystride);
 		for (int i=0; i<subplots->naxes; i++)
 			if (subplots->axes[i])
 				cplot_axes_draw(subplots->axes[i], canvas, ystride);
-			else
-				cplot_clear_slot(subplots, i, canvas, ystride);
 	}
 }
 
