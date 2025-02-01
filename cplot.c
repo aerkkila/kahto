@@ -713,7 +713,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
 }
 
 void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-	if (axis->direction < 0)
+	if (!axis || axis->direction < 0)
 		return;
 	int isx = axis->direction == 0;
 	int length = axis->ro_area[!isx+2] - axis->ro_area[!isx];
@@ -910,6 +910,12 @@ struct cplot_args* cplot_default_lineargs(struct cplot_args *args) {
 			cplot_lineargs,
 	};
 	return args;
+}
+
+struct cplot_axis* cplot_remove_ticks(struct cplot_axis *axis) {
+	free(axis->ticks);
+	axis->ticks = NULL;
+	return axis;
 }
 
 void cplot_destroy_axis(struct cplot_axis *axis) {

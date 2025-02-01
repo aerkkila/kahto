@@ -163,7 +163,8 @@ static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uin
 			int n0 = fn0;
 			int level = iroundpos((fn0 - n0) * 255);
 			tocanvas(&canvas[n0][m0], 255-level, color);
-			tocanvas(&canvas[n0+1][m0], level, color);
+			if (level)
+				tocanvas(&canvas[n0+1][m0], level, color);
 			fn0 += slope;
 		}
 	}
@@ -172,7 +173,8 @@ static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uin
 			int n0 = fn0;
 			int level = iroundpos((fn0 - n0) * 255);
 			tocanvas(&canvas[m0][n0], 255-level, color);
-			tocanvas(&canvas[m0][n0+1], level, color);
+			if (level)
+				tocanvas(&canvas[m0][n0+1], level, color);
 			fn0 += slope;
 		}
 	}
@@ -309,6 +311,7 @@ static int check_line(int *line, const int *area) {
 	return 0;
 }
 
+/* FIXME: Parts of a thick line can be drawn outside the inteded area, even causing a segmentation fault. */
 static void _draw_thick_line(uint32_t *canvas, int ystride, int xy[4], uint32_t color, int ithickness, int *axis_area, int nosteep) {
 	if (!check_line(xy, axis_area))
 		draw_line_xiaolin(canvas, ystride, xy, color);

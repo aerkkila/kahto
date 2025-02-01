@@ -125,7 +125,11 @@ static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
 
 void limits_to_conflicts(struct cplot_axis *axis, int *limits) {
 	/* Limits was the pixels in which the room ends (exclusive?).
-	   Now it is converted to conflict pixels units. */
+	   This converts it to conflict in pixels units. */
+	if (!axis->ticks) {
+		limits[0] = limits[1] = 0;
+		return;
+	}
 	int a, ipar = axis->direction==1;
 	a = limits[0] - axis->ticks->ro_labelarea[ipar];
 	limits[0] = a < 0 ? 0 : a;
