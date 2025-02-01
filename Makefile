@@ -57,7 +57,7 @@ else ifeq ($(use_libwaylandhelper), 3)
 	CFLAGS += -Iwaylandhelper -DHAVE_wlh
 endif
 ifneq ($(use_libwaylandhelper), 0)
-	cplot_sources += cplot_gui.c
+	cplot_sources += cplot_wayland.c
 endif
 
 ifeq ($(use_ffmpeg), 1)

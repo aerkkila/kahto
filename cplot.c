@@ -6,9 +6,6 @@
 #include <cmh_colormaps.h>
 #include <sys/time.h>
 #include <math.h>
-#ifdef HAVE_wlh
-#include <waylandhelper.h>
-#endif
 #define CPLOT_NO_VERSION_CHECK
 #include "cplot.h"
 #include "png.c"
@@ -1145,54 +1142,24 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 	}
 }
 
-#ifdef HAVE_wlh
-#include "cplot_gui.c"
-#endif
+static uint32_t __attribute__((malloc))* copy_canvas(uint32_t *canvas, int ystride, void *vplot) {
+	struct cplot_standalone_common *plot = vplot;
+	int width = plot->wh[0],
+	    height = plot->wh[1];
+	uint32_t (*copy)[width] = malloc(height * sizeof(copy[0])),
+			 (*src)[ystride] = (void*)canvas;
+	for (int i=0; i<height; i++)
+		memcpy(copy[i], src[i], sizeof(copy[0]));
+	return (void*)copy;
+}
 
-void* cplot_show(void *vplot) {
 #ifdef HAVE_wlh
-	struct cplot_axes *standalone = vplot;
-	struct waylandhelper wlh = standalone->wlh ? *standalone->wlh : (struct waylandhelper){
-		.xresmin = 20,
-			.yresmin = 20,
-	};
-	wlh.xres = standalone->wh[0];
-	wlh.yres = standalone->wh[1];
-	wlh.key_callback = keycallback;
-	wlh.userdata = vplot;
-	struct waylandhelper *old_wlh = standalone->wlh;
-	standalone->wlh = &wlh;
-	wlh_init(&wlh);
-	long updatecount = 0;
-	double starttime = -1;
-	while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
-		if (wlh.can_redraw) {
-			standalone->wh[0] = wlh.xres;
-			standalone->wh[1] = wlh.yres;
-			int should_commit = 0;
-			if (wlh.redraw) {
-				cplot_draw(standalone, wlh.data, standalone->wh[0]);
-				should_commit++;
-			}
-			if (starttime < 0)
-				starttime = get_time();
-			if (standalone->update) {
-				int ret = standalone->update(standalone, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
-				if (ret < 0)
-					break;
-				should_commit += ret;
-			}
-			if (should_commit)
-				wlh_commit(&wlh);
-		}
-		usleep(10000);
-	}
-	wlh_destroy(&wlh);
-	standalone->wlh = old_wlh;
+#include "cplot_wayland.c"
 #else
+void* cplot_show(void *vplot) {
 	fprintf(stderr, "cplot was compiled without support for \e[1m%s\e[0m.\n"
 		"Install waylandhelper and compile again.\n",
 		__func__);
-#endif
 	return vplot;
 }
+#endif
