@@ -56,12 +56,12 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
 	}
 }
 
-void* cplot_write_png(void *axes_or_subplots, const char *name) {
-	struct cplot_subplots *subplots = axes_or_subplots;
+void* cplot_write_png(void *vstandalone, const char *name) {
+	struct cplot_subplots *subplots = vstandalone;
 	unsigned *argb = malloc(subplots->wh[0] * subplots->wh[1] * sizeof(unsigned));
 
-	if (subplots->whatisthis == cplot_axes_e)
-		cplot_axes_draw(axes_or_subplots, argb, subplots->wh[0]);
+	if (subplots->type == cplot_axes_e)
+		cplot_axes_draw(vstandalone, argb, subplots->wh[0]);
 	else {
 		cplot_subplots_to_axes(subplots);
 		for (int i=0; i<subplots->naxes; i++)
@@ -82,7 +82,7 @@ void* cplot_write_png(void *axes_or_subplots, const char *name) {
 	free(argb);
 	write_png(bgr, name, subplots->wh[0], subplots->wh[1]);
 	free(bgr);
-	return axes_or_subplots;
+	return vstandalone;
 }
 
 #endif // HAVE_PNG

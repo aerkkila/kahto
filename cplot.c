@@ -118,9 +118,9 @@ static double __attribute__((unused)) get_time() {
 #ifdef HAVE_ffmpeg
 #include "cplot_video.c"
 #else
-void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps) {
+void* cplot_write_mp4(void *standalone, const char *name, float fps) {
 	fprintf(stderr, "cplot library was compiled without support for \e[1m%s\e[0m\n", __func__);
-	return axes_or_subplots;
+	return standalone;
 }
 #endif
 
@@ -194,7 +194,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 
 struct cplot_axes* cplot_axes_new() {
 	struct cplot_axes *axes = calloc(1, sizeof(struct cplot_axes));
-	axes->whatisthis = cplot_axes_e;
+	axes->type = cplot_axes_e;
 	axes->background = -1;
 
 	axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
@@ -250,7 +250,7 @@ void cplot_subplots_put_rows_and_cols(struct cplot_subplots *subplots, int nrows
 
 struct cplot_subplots* cplot_subplots_new(int nrows, int ncols) {
 	struct cplot_subplots *subplots = calloc(1, sizeof(struct cplot_subplots));
-	subplots->whatisthis = cplot_subplots_e;
+	subplots->type = cplot_subplots_e;
 	subplots->axes = calloc(ncols*nrows, sizeof(void*));
 	subplots->xywh = calloc(ncols*nrows, sizeof(float[4]));
 	subplots->naxes = ncols * nrows;
@@ -958,10 +958,10 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
 	free(axes);
 }
 
-void cplot_destroy(void *axes_or_subplots) {
-	struct cplot_subplots *subplots = axes_or_subplots;
-	if (subplots->whatisthis == cplot_axes_e)
-		return cplot_destroy_axes(axes_or_subplots);
+void cplot_destroy(void *standalone) {
+	struct cplot_subplots *subplots = standalone;
+	if (subplots->type == cplot_axes_e)
+		return cplot_destroy_axes(standalone);
 	for (int i=0; i<subplots->naxes; i++)
 		if (subplots->axes[i])
 			cplot_destroy_axes(subplots->axes[i]);
@@ -1132,7 +1132,7 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 }
 
 void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
-	if (((struct cplot_axes*)vplot)->whatisthis == cplot_axes_e)
+	if (((struct cplot_standalone_common*)vplot)->type == cplot_axes_e)
 		cplot_axes_draw(vplot, canvas, ystride);
 	else {
 		struct cplot_subplots *subplots = vplot;
@@ -1151,33 +1151,33 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 
 void* cplot_show(void *vplot) {
 #ifdef HAVE_wlh
-	struct cplot_axes *axes_or_subplots = vplot;
-	struct waylandhelper wlh = axes_or_subplots->wlh ? *axes_or_subplots->wlh : (struct waylandhelper){
+	struct cplot_axes *standalone = vplot;
+	struct waylandhelper wlh = standalone->wlh ? *standalone->wlh : (struct waylandhelper){
 		.xresmin = 20,
 			.yresmin = 20,
 	};
-	wlh.xres = axes_or_subplots->wh[0];
-	wlh.yres = axes_or_subplots->wh[1];
+	wlh.xres = standalone->wh[0];
+	wlh.yres = standalone->wh[1];
 	wlh.key_callback = keycallback;
 	wlh.userdata = vplot;
-	struct waylandhelper *old_wlh = axes_or_subplots->wlh;
-	axes_or_subplots->wlh = &wlh;
+	struct waylandhelper *old_wlh = standalone->wlh;
+	standalone->wlh = &wlh;
 	wlh_init(&wlh);
 	long updatecount = 0;
 	double starttime = -1;
 	while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
 		if (wlh.can_redraw) {
-			axes_or_subplots->wh[0] = wlh.xres;
-			axes_or_subplots->wh[1] = wlh.yres;
+			standalone->wh[0] = wlh.xres;
+			standalone->wh[1] = wlh.yres;
 			int should_commit = 0;
 			if (wlh.redraw) {
-				cplot_draw(axes_or_subplots, wlh.data, axes_or_subplots->wh[0]);
+				cplot_draw(standalone, wlh.data, standalone->wh[0]);
 				should_commit++;
 			}
 			if (starttime < 0)
 				starttime = get_time();
-			if (axes_or_subplots->update) {
-				int ret = axes_or_subplots->update(axes_or_subplots, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
+			if (standalone->update) {
+				int ret = standalone->update(standalone, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
 				if (ret < 0)
 					break;
 				should_commit += ret;
@@ -1188,7 +1188,7 @@ void* cplot_show(void *vplot) {
 		usleep(10000);
 	}
 	wlh_destroy(&wlh);
-	axes_or_subplots->wlh = old_wlh;
+	standalone->wlh = old_wlh;
 #else
 	fprintf(stderr, "cplot was compiled without support for \e[1m%s\e[0m.\n"
 		"Install waylandhelper and compile again.\n",

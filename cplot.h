@@ -232,21 +232,29 @@ struct cplot_data {
 	int cmh_enum, icolor;
 };
 
-enum cplot_whatisthis {cplot_axes_e, cplot_subplots_e};
+/* standalone can mean any class listed below */
+enum cplot_standalone_type {cplot_axes_e, cplot_subplots_e};
+
 enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
 enum cplot_placement {cplot_placement_none, cplot_placement_first, cplot_placement_singlemaxdist};
 
+#define inherit_cplot_standalone_common \
+	enum cplot_standalone_type type;    \
+	int wh[2];                          \
+	unsigned background;                \
+	struct waylandhelper *wlh;          \
+	/* For animated plot. */            \
+	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */ \
+	int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);  \
+	void *userdata
+
+/* What is common between all standalone drawables, listed in cplot_standalone_type */
+struct cplot_standalone_common {
+	inherit_cplot_standalone_common;
+};
+
 struct cplot_axes {
-	/* Shared between axes and subplots. Order matters here. */
-	enum cplot_whatisthis whatisthis;
-	int wh[2];
-	unsigned background;
-	struct waylandhelper *wlh;
-	/* For animated plot. */
-	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
-	int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);
-	void *userdata;
-	/* end shared */
+	inherit_cplot_standalone_common;
 	int startcanvas;
 	struct cplot_axis **axis, *last_caxis;
 	int naxis, mem_axis;
@@ -271,16 +279,7 @@ struct cplot_axes {
 };
 
 struct cplot_subplots {
-	/* Shared between axes and subplots. Order matters here. */
-	enum cplot_whatisthis whatisthis;
-	int wh[2];
-	unsigned background;
-	struct waylandhelper *wlh;
-	/* For animated plot. */
-	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
-	int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);
-	void *userdata;
-	/* end shared */
+	inherit_cplot_standalone_common;
 	struct cplot_axes **axes;
 	float (*xywh)[4];
 	int naxes;
@@ -418,15 +417,15 @@ static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, fl
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
-void* cplot_show(void *axes_or_subplots); // returns the input
+void* cplot_show(void *standalone); // returns the input
 struct cplot_axis* cplot_remove_ticks(struct cplot_axis *axis);
-void cplot_destroy(void *axes_or_subplots);
+void cplot_destroy(void *standalone);
 void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
-void* cplot_write_png(void *axes_or_subplots, const char *name); // returns the input axes_or_subplots
+void* cplot_write_png(void *standalone, const char *name); // returns the input standalone
 /* Available only if compiled with video support. Function axes->update has to be defined. */
-void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps);
+void* cplot_write_mp4(void *standalone, const char *name, float fps);
 unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);
 static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double min, double max) {
 	axis->min = min;
@@ -477,5 +476,7 @@ void cplot_subplots_to_axes(struct cplot_subplots *subplots);
 void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 
 void cplot__sprint_supernum(char *out, int sizeout, int num);
+
+#undef inherit_cplot_standalone_common
 
 #endif
