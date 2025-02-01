@@ -161,20 +161,30 @@ static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uin
 	if (nosteep) { // (m,n) = (x,y)
 		for (; m0<=m1; m0++) {
 			int n0 = fn0;
-			int level = iroundpos((fn0 - n0) * 255);
-			tocanvas(&canvas[n0][m0], 255-level, color);
-			if (level)
-				tocanvas(&canvas[n0+1][m0], level, color);
+			float off = fn0 - n0;
+			if (off >= 0.5) {
+				canvas [n0 + 1] [m0] = color;
+				tocanvas(&canvas[n0][m0], iroundpos((1-off) * 255), color);
+			}
+			else {
+				canvas[n0][m0] = color;
+				tocanvas(&canvas[n0+1][m0], iroundpos(off*255), color);
+			}
 			fn0 += slope;
 		}
 	}
 	else { // (m,n) = (y,x)
 		for (; m0<=m1; m0++) {
 			int n0 = fn0;
-			int level = iroundpos((fn0 - n0) * 255);
-			tocanvas(&canvas[m0][n0], 255-level, color);
-			if (level)
-				tocanvas(&canvas[m0][n0+1], level, color);
+			float off = fn0 - n0;
+			if (off >= 0.5) {
+				canvas [m0] [n0 + 1] = color;
+				tocanvas(&canvas[m0][n0], iroundpos((1-off) * 255), color);
+			}
+			else {
+				canvas[m0][n0] = color;
+				tocanvas(&canvas[m0][n0 + 1], iroundpos(off*255), color);
+			}
 			fn0 += slope;
 		}
 	}
