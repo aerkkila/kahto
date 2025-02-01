@@ -5,6 +5,7 @@
 *.o
 *.png
 *.so
+!Makefile
 core
 vgcore*
 functions.c
