@@ -741,6 +741,16 @@ static void draw_data_xyc(struct draw_data_args *restrict ar) {
 		}
 }
 
+static void draw_data_xyc_list(struct draw_data_args *restrict ar, const uint32_t *colors, int ncolors) {
+	long idata0 = ar->x0;
+	for (int idata=0; idata<ar->len; idata++) {
+		ar->x = ar->xypixels[idata*2];
+		ar->y = ar->xypixels[idata*2+1];
+		ar->color = colors[(idata0+idata) % ncolors];
+		draw_datum(ar);
+	}
+}
+
 static void draw_data_yc(struct draw_data_args *restrict ar) {
 	if (ar->reverse_cmap)
 		for (int idata=0; idata<ar->len; idata++) {
@@ -758,6 +768,17 @@ static void draw_data_yc(struct draw_data_args *restrict ar) {
 			ar->color = from_cmap(ar->cmap + ar->zlevels[idata]*3);
 			draw_datum(ar);
 		}
+}
+
+static void draw_data_yc_list(struct draw_data_args *restrict ar, const uint32_t *colors, int ncolors) {
+	long idata0 = ar->x0;
+	for (int idata=0; idata<ar->len; idata++) {
+		double xd = (ar->x0 + idata) * ar->xpix_per_unit;
+		ar->x = ar->xypixels[idata*2+0] = iroundpos(xd) + ar->xpos0;
+		ar->y = ar->xypixels[idata*2+1];
+		ar->color = colors[(idata0+idata) % ncolors];
+		draw_datum(ar);
+	}
 }
 
 static void connect_data_y(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle) {
@@ -939,12 +960,16 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, i
 			if (data->yxzdata[1]) {
 				if (data->yxzdata[2])
 					draw_data_xyc(&data_args);
+				else if (data->colors)
+					draw_data_xyc_list(&data_args, data->colors, data->ncolors);
 				else
 					draw_data_xy(&data_args);
 			}
 			else {
 				if (data->yxzdata[2])
 					draw_data_yc(&data_args);
+				else if (data->colors)
+					draw_data_yc_list(&data_args, data->colors, data->ncolors);
 				else
 					draw_data_y(&data_args);
 			}
@@ -958,6 +983,7 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, i
 			short errb[npoints];
 			get_datapx_inv[data->yxztype[0]](istart, iend, data->err.yx[icoord], errb, yxzmin[0], yxzdiff[0], yxlen[0], data->yxzstride[0], 1, margin[1]);
 			int area[] = xywh_to_area(xywh0);
+			struct cplot_linestyle style = data->errstyle;
 			for (int i=0; i<iend-istart; i++) {
 				int line[] = {xypixels[i*2+ixcoord], errb[i], xypixels[i*2+ixcoord], xypixels[i*2+!ixcoord]};
 				if (line[0] == NOT_A_PIXEL) continue;
@@ -968,7 +994,9 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, i
 				line[2] += xywh0[0];
 				line[1] += xywh0[1];
 				line[3] += xywh0[1];
-				draw_line(canvas, ystride, line, area, &data->errstyle, axesheight, 0);
+				if (data->colors)
+					style.color = data->colors[(i+istart) % data->ncolors];
+				draw_line(canvas, ystride, line, area, &style, axesheight, 0);
 				/*if (!check_line(line, area))
 				  draw_line_y(canvas, ystride, line, data->errstyle.color);*/
 			}

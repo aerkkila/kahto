@@ -1019,6 +1019,9 @@ void cplot_destroy_data(struct cplot_data *data) {
 		free(data->cmap);
 	if (data->labelowner)
 		free(data->label);
+	for (int i=0; i<4; i++)
+		if (data->err_owner[i])
+			free(data->err.yx[i]);
 	free(data);
 }
 
@@ -1086,6 +1089,18 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 			data->yxzstride[idim] = 1;
 		}
 		data->owner[idim] = 1;
+	}
+
+	/* copy err if necessary */
+	for (int ierr=0; ierr<4; ierr++) {
+		if (args->err_owner[ierr] >= 0)
+			continue;
+		size_t size = cplot_sizes[data->yxztype[ierr/2]] * data->length; // same type with the main data
+		void *old = data->err.yx[ierr];
+		if (!(data->err.yx[ierr] = malloc(size)))
+			fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
+		memcpy(data->err.yx[ierr], old, size);
+		data->err_owner[ierr] = 1;
 	}
 
 	if (data->labelowner < 0) {

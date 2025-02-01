@@ -40,7 +40,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 19
+#define __cplot_version_in_program 20
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -224,10 +224,12 @@ struct cplot_data {
 	char *label;	// 1. fixed order
 	int labelowner;	// 2. fixed order
 	union cplot_errorbars err;
+	char err_owner[4];
 	/* style */
 	struct cplot_markerstyle markerstyle;	// fixed order
 	struct cplot_linestyle linestyle, errstyle;	// fixed order
 	unsigned color; // overridden by style.color
+	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap;
 	int cmh_enum, icolor;
 };
@@ -303,11 +305,13 @@ struct cplot_args {
 	char *label;	// 1. fixed order
 	int labelowner;	// 2. fixed order; Copied, if owner = -1.
 	union cplot_errorbars err;
+	char err_owner[4]; // to copy, owner = -1
 
 	struct cplot_markerstyle markerstyle;
 	struct cplot_linestyle
 		linestyle, errstyle;
 	unsigned color;
+	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap;
 	int cmh_enum, icolor;
 	/* end struct cplot_data */
