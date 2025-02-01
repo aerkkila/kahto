@@ -1,0 +1,109 @@
+/* Animates an object hanging from a spring with damped oscillation.
+   Given argument -t <seconds>, this generates a video file of length <seconds>.
+   Otherwise the animation is shown at runtime.
+*/
+
+#include <cplot.h>
+#include <unistd.h> // getopt
+
+struct state {
+	float height, velocity, mass;
+	float neutral_height,
+		  damping,
+		  springconstant, // F = -kx; k = -F/x
+		  gravity; // gravitational acceleration
+	float endtime;
+	double elapsed;
+};
+
+/* This function is only about physics and not useful for understanding
+   how the cplot library works.
+   This is a simple numerical solution, where energy is not conserved
+   due to the approximation of constant acceleration between time steps.
+   Therefore the oscillation amplitude increases, if damping = 0. */
+float get_new_height(struct state *state, double elapsed) {
+	float timediff = elapsed - state->elapsed;
+	float timestep = 0.01;
+	float used_time = 0;
+
+	while (used_time+timestep <= timediff) {
+loop:
+		float disposition = state->height - state->neutral_height;
+		float acceleration =
+			-disposition * state->springconstant / state->mass
+			+ state->gravity
+			- state->damping * state->velocity;
+		state->height += 0.5*acceleration*timestep*timestep + state->velocity*timestep;
+		state->velocity += acceleration*timestep;
+		used_time += timestep;
+	}
+
+	/* Go to the loop one more time with a smaller time step
+	   to get a better match: used_time ≈ timediff */
+	if (used_time + 1e-5 < timediff) {
+		timestep = timediff - used_time;
+		goto loop;
+	}
+
+	state->elapsed = elapsed;
+	return state->height;
+}
+
+int update(struct cplot_axes *axes, uint32_t *canvas, int ystride, long count, double elapsed) {
+	struct state *state = axes->userdata;
+	if (state->endtime && elapsed > state->endtime)
+		return -1;
+
+	/* Update the height of the object */
+	float height = get_new_height(state, elapsed);
+	float *data = axes->data[0]->yxzdata[0];
+	data[0] = height;
+
+	/* Adjust the y-axis range if necessary */
+	struct cplot_axis *yaxis = cplot_yaxis0(axes);
+	if (height < yaxis->min)
+		yaxis->min = height;
+	if (height > yaxis->max)
+		yaxis->max = height;
+
+	cplot_draw(axes, canvas, ystride);
+	return 1;
+}
+
+int main(int argc, char **argv) {
+	struct state state = {
+		.springconstant = 15,
+		.gravity = -9.81, // downwards
+		.mass = 5,
+		.damping = 0.1,
+		.height = -0.5,
+	};
+
+	int opt;
+	while ((opt = getopt(argc, argv, "t:")) >= 0)
+		switch (opt) {
+			case 't': state.endtime = atof(optarg); break;
+		}
+
+	struct cplot_axes *axes =
+		cplot_y(&state.height, 1, // plot the object
+			/* using the error bars to draw a line that represents the spring */
+			.err.list={&state.neutral_height, &state.neutral_height},
+			.markerstyle.size=1./40);
+
+	/* Range has to be set manually, since there is only 1 datum.
+	   Automatic range would be from minimum to maximum, but those are equal in this case. */
+	cplot_set_range(cplot_xaxis0(axes), -1, 1);
+	cplot_set_range(cplot_yaxis0(axes), -5, 0.1);
+
+	cplot_remove_ticks(cplot_xaxis0(axes));
+
+	axes->update = update; // This function is responsible for updating the figure
+	axes->userdata = &state; // This is where we can store our data to be used in the update function
+	axes->wh[0] = 300;
+	if (!state.endtime)
+		cplot_show(axes);
+	else
+		cplot_write_mp4(axes, "animation.mp4", 1.0/30);
+	cplot_destroy(axes);
+}
