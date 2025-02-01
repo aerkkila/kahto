@@ -300,7 +300,10 @@ void cplot_make_range(struct cplot_axes *axes) {
 void cplot_make_inner_margin(struct cplot_axes *axes) {
 	for (int i=0; i<axes->ndata; i++) {
 		struct cplot_data *data = axes->data[i];
-		if (!cplot_visible_marker(data->markerstyle.marker))
+		float size_marker = data->markerstyle.size * !!cplot_visible_marker(data->markerstyle.marker);
+		float size_line = data->linestyle.thickness * (data->linestyle.style != cplot_line_none_e);
+		float size = max(size_marker, size_line);
+		if (size <= 0)
 			continue;
 		for (int iaxis=0; iaxis<2; iaxis++) {
 			struct cplot_axis *axis = data->yxaxis[iaxis];
@@ -311,7 +314,7 @@ void cplot_make_inner_margin(struct cplot_axes *axes) {
 			/* This was derived using pen and paper. Reading this code might be challenging. */
 			float s0 = (data->minmax[iaxis][0] - axis->min) / axisrange;
 			float s1 = (data->minmax[iaxis][1] - axis->min) / axisrange;
-			float size05_axis = data->markerstyle.size * axes->wh[1] / axislen * 0.5;
+			float size05_axis = size * axes->wh[1] / axislen * 0.5;
 			float innerfraction = (1 - 2 * size05_axis) / (s1 - s0);
 			float m0_axis = size05_axis - innerfraction * s0;
 			float m1_axis = 1 - (m0_axis + innerfraction);
