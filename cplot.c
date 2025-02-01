@@ -226,7 +226,7 @@ struct cplot_axes* cplot_axes_new() {
 	return axes;
 }
 
-void cplot_subplots_put_rows_and_cols(struct cplot_subplots *subplots, int nrows, int ncols) {
+struct cplot_subplots* cplot_subplots_put_rows_and_cols(struct cplot_subplots *subplots, int nrows, int ncols) {
 	float height = 1.0 / nrows,
 		  width = 1.0 / ncols;
 	float x[ncols];
@@ -243,19 +243,93 @@ void cplot_subplots_put_rows_and_cols(struct cplot_subplots *subplots, int nrows
 		}
 		y0 = y1;
 	}
+	return subplots;
 }
 
-struct cplot_subplots* cplot_subplots_new(int nrows, int ncols) {
+static void _cplot_make_grid_1d(float (*xywh)[4], int which, int stride, int n, float *arr, float space) {
+	float left = 1.0;
+	int nfree = 0;
+	for (int i=0; i<n; i++) {
+		nfree += !arr[i];
+		left -= arr[i];
+	}
+	float size1 = left / (float)nfree;
+	float pos = 0;
+	for (int i=0; i<n; i++) {
+		xywh[i*stride][which+0] = pos;
+		pos += xywh[i*stride][which+2] = arr[i] ? arr[i] : size1;
+		pos += space;
+	}
+}
+
+struct cplot_gridargs {
+	int nrows, ncols;
+	float *width, *height;
+	float spacex, spacey;
+};
+
+void cplot_make_grid(float (*xywh)[4], struct cplot_gridargs args) {
+	_cplot_make_grid_1d(xywh, 0, 1,          args.ncols, args.width,  args.spacex);
+	_cplot_make_grid_1d(xywh, 1, args.ncols, args.nrows, args.height, args.spacey);
+
+	/* repeat the xgrid to every row */
+	for (int i=1; i<args.nrows; i++)
+		for (int ii=0; ii<args.ncols; ii++) {
+			xywh[i*args.ncols+ii][0] = xywh[ii][0];
+			xywh[i*args.ncols+ii][2] = xywh[ii][2];
+		}
+
+	/* repeat the ygrid to every column */
+	for (int i=0; i<args.nrows; i++)
+		for (int ii=1; ii<args.ncols; ii++) {
+			xywh[i*args.ncols+ii][1] = xywh[args.ncols*i][1];
+			xywh[i*args.ncols+ii][3] = xywh[args.ncols*i][3];
+		}
+}
+
+float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...) {
+	va_list args;
+	va_start(args);
+	float *list = malloc(n * sizeof(float));
+	int i;
+	for (i=0; i<n; i++) {
+		double test = va_arg(args, double);
+		if (test == terminator) // test before converting to float
+			break;
+		list[i] = test;
+	}
+	memset(list+i, 0, (n-i)*sizeof(float));
+	return list;
+}
+
+struct cplot_subplots* cplot_subplots_bare_new(int n) {
 	struct cplot_subplots *subplots = calloc(1, sizeof(struct cplot_subplots));
 	subplots->type = cplot_subplots_e;
-	subplots->axes = calloc(ncols*nrows, sizeof(void*));
-	subplots->xywh = calloc(ncols*nrows, sizeof(float[4]));
-	subplots->naxes = ncols * nrows;
+	subplots->axes = calloc(n, sizeof(void*));
+	subplots->xywh = calloc(n, sizeof(float[4]));
+	subplots->naxes = n;
 	subplots->wh[0] = cplot_default_width;
 	subplots->wh[1] = cplot_default_height;
 	subplots->background = -1;
-	cplot_subplots_put_rows_and_cols(subplots, nrows, ncols);
 	return subplots;
+}
+
+struct cplot_subplots* cplot_subplots_new(int nrows, int ncols) {
+	return cplot_subplots_put_rows_and_cols(cplot_subplots_bare_new(nrows*ncols), nrows, ncols);
+}
+
+struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
+	struct cplot_subplots *sub = cplot_subplots_bare_new(nrows*ncols);
+	struct cplot_gridargs args = {
+		.nrows = nrows,
+		.ncols = ncols,
+		.width = xarr,
+		.height = yarr,
+	};
+	cplot_make_grid(sub->xywh, args);
+	if ((xyowner>>0) & 1) free(xarr);
+	if ((xyowner>>1) & 1) free(yarr);
+	return sub;
 }
 
 static void get_min_for_data(struct cplot_data *data, int yxz) {

@@ -387,6 +387,35 @@ struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y, float pos
 struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y);
 struct cplot_axes* cplot_axes_new();
 struct cplot_subplots* cplot_subplots_new(int nrows, int ncols);
+/* xsizes[ncols] defines the proportional width of each column
+ * the leftover space is divided equally between all columns with 0 value:
+ * i.e. {0, 0.2, 0.3, 0} -> {0.25, 0.2, 0.3, 0.25}
+ * ysizes[nrows] is similar to xsizes
+ * xyowner: (xowner<<0) | (yowner<<1)
+ */
+struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *ysizes, float *xsizes, unsigned xyowner);
+
+/* Calling:
+ *     cplot_subplots_xyarr_new(4, (0.1, 0.1), 3, (0., 0.5, 0.2))
+ * has the same effect as:
+ *     float xarr[4] = {0.1, 0.1};
+ *     float yarr[3] = {0, 0.5, 0.2};
+ *     cplot_subplots_grid_new(3, 4, yarr, xarr, 0)
+ * parentheses are mandatory around xarr and yarr
+ * numbers to xarr and yarr must be passed as floating: not '0' but '0.'
+ */
+#define cplot_expand(...) __VA_ARGS__ // used to remove parentheses: cplot_expand (a,b) -> a,b
+#define cplot_subplots_xyarr_new(xlen, xarr, ylen, yarr) \
+	cplot_subplots_grid_new(ylen, xlen,                  \
+		cplot_f4arr(ylen, -1., cplot_expand yarr, -1.),  \
+		cplot_f4arr(xlen, -1., cplot_expand xarr, -1.), 3)
+
+/* Same as cplot_subplots_xyarr_new but does not allocate memory.
+   However, works only with constant expressions. Needs c23 standard to work.*/
+#define cplot_subplots_sxyarr_new(xlen, xarr, ylen, yarr) \
+	cplot_subplots_grid_new(ylen, xlen,                   \
+		(static float[]){cplot_expand yarr, [ylen]=0},    \
+		(static float[]){cplot_expand xarr, [xlen]=0}, 0)
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args);
 static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
@@ -476,6 +505,7 @@ void cplot_subplots_to_axes(struct cplot_subplots *subplots);
 void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 
 void cplot__sprint_supernum(char *out, int sizeout, int num);
+float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...);
 
 #undef inherit_cplot_standalone_common
 

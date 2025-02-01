@@ -16,7 +16,7 @@ isinstalled() {
 			libs="$libs -l$a"
 		fi
 	done
-	gcc -o $tmpfile -x c $libs - 2>/dev/null <<-eof
+	cc -o $tmpfile -x c $libs - 2>/dev/null <<-eof
 		$headers
 		int main() {}
 	eof
@@ -48,5 +48,21 @@ make_dependency 2 libttra ttra
 isinstalled wayland-client && default=2 || default=0
 make_dependency $default libwaylandhelper waylandhelper
 make_dependency 2 cmh_colormaps cmh_colormaps.h
+
+compiler_flag_works() {
+	echo "" |cc $1 -E -x c - >/dev/null 2>&1
+}
+
+found=
+for std in gnu23 gnu2x; do
+	if compiler_flag_works "--std=$std"; then
+		printf "\nCFLAGS = --std=$std\n" >> $file
+		found=1
+		break
+	fi
+done
+if [ ! "$found" ]; then
+	echo "Warning: gnu23 not available. You may have to edit the source code."
+fi
 
 rm -f $tmpfile
