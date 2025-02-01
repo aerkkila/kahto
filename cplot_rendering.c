@@ -349,32 +349,34 @@ static uint32_t _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, ui
 static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *area, struct cplot_linestyle *style, int axesheight, uint32_t carry) {
 	int xy[4];
 	memcpy(xy, xy_c, sizeof(xy));
-	int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
-	float thickness = style->thickness * axesheight;
+	float nthickness = style->thickness * axesheight; // initially just thickness,
+	int n_ind = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
+	// m is the direction which is always incremented (x on non-steep lines)
+	// n is incremented only sometimes
 
 	/* Vinon viivan leveys vaakasuunnassa on eri.
 	   Yhtälö on johdettu kynällä ja paperilla yhdenmuotoisista kolmioista. */
-	int dy = xy[2+!nosteep] - xy[!nosteep];
-	int dx = xy[2+nosteep] - xy[nosteep];
-	if (dx && dy) {
-		float x_per_y = (float)dx / dy;
-		thickness *= sqrt(1 + (x_per_y * x_per_y));
+	int dm = xy[2+!n_ind] - xy[!n_ind];
+	int dn = xy[2+n_ind] - xy[n_ind];
+	if (dm && dn) {
+		float n_per_m = (float)dn / dm;
+		nthickness *= sqrt(1 + (n_per_m * n_per_m));
 	}
 
-	if (thickness < 1)
-		thickness = 1;
-	int ithickness = iroundpos(thickness);
+	if (nthickness < 1)
+		nthickness = 1;
+	int inthickness = iroundpos(nthickness);
 	switch (style->align) {
 		case 0:
-			xy[nosteep+0] -= ithickness/2;
-			xy[nosteep+2] -= ithickness/2;
+			xy[n_ind+0] -= inthickness/2;
+			xy[n_ind+2] -= inthickness/2;
 			break;
 		default:
 		case 1:
 			break;
 		case -1:
-			xy[nosteep+0] -= ithickness;
-			xy[nosteep+2] -= ithickness;
+			xy[n_ind+0] -= inthickness;
+			xy[n_ind+2] -= inthickness;
 			break;
 	}
 
@@ -389,12 +391,12 @@ static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *a
 			if (!style->patternlen)
 				style->patternlen = 2;
 			struct _cplot_dashed_line_args args = {
-				canvas, style->color, style->colors, ystride, xy, ithickness, area, nosteep,
+				canvas, style->color, style->colors, ystride, xy, inthickness, area, n_ind,
 				style->patternlen, axesheight, style->pattern };
 			carry = _draw_thick_line_dashed(&args, carry);
 			break;
 		case cplot_line_normal_e:
-			_draw_thick_line(canvas, ystride, xy, style->color, ithickness, area, nosteep);
+			_draw_thick_line(canvas, ystride, xy, style->color, inthickness, area, n_ind);
 			break;
 		case cplot_line_none_e:
 			break;
