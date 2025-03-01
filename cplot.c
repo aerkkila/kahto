@@ -1247,6 +1247,7 @@ void cplot_subplots_to_axes(struct cplot_subplots *subplots) {
 		subplots->axes[isub]->wh[0] = xywh_px[2];
 		subplots->axes[isub]->wh[1] = xywh_px[3];
 		subplots->axes[isub]->startcanvas = xywh_px[1] * subplots->wh[0] + xywh_px[0];
+		subplots->axes[isub]->super = (void*)subplots;
 	}
 }
 
@@ -1311,10 +1312,8 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 		cplot_subplots_to_axes(subplots);
 		cplot_fill_u4(canvas, subplots->background, subplots->wh[0], subplots->wh[1], ystride);
 		for (int i=0; i<subplots->naxes; i++)
-			if (subplots->axes[i]) {
-				subplots->axes[i]->super = (void*)subplots;
+			if (subplots->axes[i])
 				cplot_axes_draw(subplots->axes[i], canvas, ystride);
-			}
 	}
 }
 
