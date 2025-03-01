@@ -285,18 +285,6 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 	_axis_line_orthogonal(axis, &args);
 }
 
-void cplot_make_range(struct cplot_axes *axes) {
-	for (int i=0; i<axes->ndata; i++) {
-		struct cplot_data *data = axes->data[i];
-		for (int iaxis=0; iaxis<2; iaxis++) {
-			struct cplot_axis *axis = data->yxaxis[iaxis];
-			if (!axis || !cplot_visible_data(data))
-				continue;
-			cplot_axis_datarange(axis);
-		}
-	}
-}
-
 void cplot_make_inner_margin(struct cplot_axes *axes) {
 	for (int i=0; i<axes->ndata; i++) {
 		struct cplot_data *data = axes->data[i];
@@ -309,12 +297,12 @@ void cplot_make_inner_margin(struct cplot_axes *axes) {
 			struct cplot_axis *axis = data->yxaxis[iaxis];
 			if (!axis)
 				continue;
-			float axisrange = axis->max - axis->min;
+			double axisrange = axis->max - axis->min;
 			int axislen = axes->ro_inner_xywh[2+axis->direction];
 			/* This was derived using pen and paper. Reading this code might be challenging. */
-			float s0 = (data->minmax[iaxis][0] - axis->min) / axisrange;
-			float s1 = (data->minmax[iaxis][1] - axis->min) / axisrange;
-			float size05_axis = size * axes->wh[1] / axislen * 0.5;
+			float s0 = (max(axis->min, data->minmax[iaxis][0]) - axis->min) / axisrange;
+			float s1 = (min(axis->max, data->minmax[iaxis][1]) - axis->min) / axisrange;
+			float size05_axis = topixels(size, axes)*0.5 / axislen;
 			float innerfraction = (1 - 2 * size05_axis) / (s1 - s0);
 			float m0_axis = size05_axis - innerfraction * s0;
 			float m1_axis = 1 - (m0_axis + innerfraction);

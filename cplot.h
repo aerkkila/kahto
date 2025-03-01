@@ -522,6 +522,7 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 int  cplot_axes_layout(struct cplot_axes *axes);
 void cplot_clear_slot(struct cplot_subplots *subplots, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
+void cplot_make_range(struct cplot_axes *);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
 struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
 

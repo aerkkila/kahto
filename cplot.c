@@ -125,7 +125,6 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x);
 int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
-void cplot_axis_datarange(struct cplot_axis*);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -459,7 +458,7 @@ static void get_max_for_data(struct cplot_data *data, int yxz) {
 static void get_minmax_for_data(struct cplot_data *data, int yxz) {
 	int yxz_other = yxz == 2 ? 1 : !yxz;
 	/* errorbars are handled in the other functions */
-	if (yxz < 2 && (data->err.yx[yxz] || data->err.yx[yxz+1])) {
+	if (yxz < 2 && (data->err.yx[yxz*2] || data->err.yx[yxz*2+1])) {
 		get_min_for_data(data, yxz);
 		get_max_for_data(data, yxz);
 		return;
@@ -522,6 +521,18 @@ static long get_first_for_data(struct cplot_data *data, int yxz) {
 			return i;
 		default:
 			return i;
+	}
+}
+
+void cplot_make_range(struct cplot_axes *axes) {
+	for (int i=0; i<axes->ndata; i++) {
+		struct cplot_data *data = axes->data[i];
+		for (int iaxis=0; iaxis<2; iaxis++) {
+			struct cplot_axis *axis = data->yxaxis[iaxis];
+			if (!axis || !cplot_visible_data(data))
+				continue;
+			cplot_axis_datarange(axis);
+		}
 	}
 }
 
