@@ -101,8 +101,24 @@ static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *
 	}
 }
 
+static inline int __attribute__((pure)) topixels(float size, struct cplot_axes *axes) {
+	switch (axes->topixels_reference) {
+		default:
+		case cplot_super_height:
+			if (axes->super) return iroundpos(size * axes->super->wh[1]);
+			/* run through */
+		case cplot_this_height:
+			return iroundpos(size * axes->wh[1]);
+		case cplot_super_width:
+			if (axes->super) return iroundpos(size * axes->super->wh[0]);
+			/* run through */
+		case cplot_this_width:
+			return iroundpos(size * axes->wh[0]);
+	}
+}
+//#define topixels(flength, axes) iroundpos((flength) * (axes)->wh[1])
+
 #define no_room_for_legend(axes) ((axes)->legend.ro_place_err < 0)
-#define topixels(flength, axes) iroundpos((flength) * (axes)->wh[1])
 
 void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x);
@@ -219,6 +235,7 @@ struct cplot_axes* cplot_axes_new() {
 	axes->ttra->fonttype = ttra_sans_e;
 	axes->ttra->chop_lines = 1;
 
+	axes->topixels_reference = cplot_super_height;
 	axes->colorscheme = cplot_colorschemes[0];
 	axes->title.rowheight = 0.05;
 
@@ -1284,8 +1301,10 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 		cplot_subplots_to_axes(subplots);
 		cplot_fill_u4(canvas, subplots->background, subplots->wh[0], subplots->wh[1], ystride);
 		for (int i=0; i<subplots->naxes; i++)
-			if (subplots->axes[i])
+			if (subplots->axes[i]) {
+				subplots->axes[i]->super = (void*)subplots;
 				cplot_axes_draw(subplots->axes[i], canvas, ystride);
+			}
 	}
 }
 

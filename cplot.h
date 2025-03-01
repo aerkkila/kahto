@@ -40,7 +40,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 20
+#define __cplot_version_in_program 21
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -239,6 +239,7 @@ enum cplot_standalone_type {cplot_axes_e, cplot_subplots_e};
 
 enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
 enum cplot_placement {cplot_placement_none, cplot_placement_first, cplot_placement_singlemaxdist};
+enum cplot_topixels_reference {cplot_super_height, cplot_super_width, cplot_this_height, cplot_this_width};
 
 #define inherit_cplot_standalone_common \
 	enum cplot_standalone_type type;    \
@@ -269,6 +270,8 @@ struct cplot_axes {
 	unsigned *colorscheme;
 	int ncolors, icolor;
 	struct cplot_text title;
+	enum cplot_topixels_reference topixels_reference;
+	struct cplot_standalone_common *super;
 
 	struct legend {
 		float rowheight, symbolspace_per_rowheight;
