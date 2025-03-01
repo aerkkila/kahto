@@ -4,11 +4,11 @@
 #include "cplot.h"
 #include <ttra.h>
 
-void legend_placement(struct cplot_axes *axes, int axeswidth, int axesheight) {
+void legend_placement(struct cplot_axes *axes) {
 	if (!axes->legend.visible)
 		return;
 	int height, width;
-	cplot_get_legend_dims_px(axes, &height, &width, axesheight);
+	cplot_get_legend_dims_px(axes, &height, &width);
 	if (!height || !width)
 		return;
 	axes->legend.ro_xywh[2] = width;
@@ -34,7 +34,7 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *t
 	double min = tk->axis->min;
 	double range = tk->axis->max - min;
 	int textloc[2] = {0};
-	ttra_set_fontheight(ttra, tk->rowheight*tk->axis->axes->wh[1]);
+	ttra_set_fontheight(ttra, topixels(tk->rowheight, tk->axis->axes));
 
 	int xywh[4], *inner_margin = tk->axis->axes->ro_inner_margin;
 	memcpy(xywh, tk->axis->axes->ro_inner_xywh, sizeof(xywh));
@@ -518,6 +518,6 @@ next:
 	}
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
-	legend_placement(axes, axes->wh[0], axes->wh[1]);
+	legend_placement(axes);
 	return 0;
 }

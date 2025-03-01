@@ -105,7 +105,7 @@ static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *
 #define topixels(flength, axes) iroundpos((flength) * (axes)->wh[1])
 
 void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols);
-void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight);
+void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x);
 int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
@@ -950,9 +950,9 @@ void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols)
 		}
 }
 
-void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesheight) {
+void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x) {
 	*x = *y = 0;
-	int rowh = ttra_set_fontheight(axes->ttra, iroundpos(axes->legend.rowheight * axesheight));
+	int rowh = ttra_set_fontheight(axes->ttra, topixels(axes->legend.rowheight, axes));
 	for (int i=0; i<axes->ndata; i++)
 		if (axes->data[i]->label) {
 			int w, h;
@@ -964,7 +964,8 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x, int axesh
 		return;
 	axes->legend.ro_text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
 	*x += axes->legend.ro_text_left;
-	int linewidth = iround1(axes->legend.borderstyle.thickness * axesheight);
+	int linewidth = topixels(axes->legend.borderstyle.thickness, axes);
+	linewidth += linewidth == 0 && axes->legend.borderstyle.thickness != 0; // at least 1 pixel
 	*y += linewidth * 2;
 	*x += linewidth * 2;
 	*y += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
@@ -1199,7 +1200,7 @@ void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 	cplot_axes_render(axes, canvas, ystride);
 }
 
-void cplot_xywh_to_pixels(struct cplot_subplots *subplots, int islot, int px[4]) {
+static void subplots_xywh_to_pixels(struct cplot_subplots *subplots, int islot, int px[4]) {
 	px[0] = iroundpos(subplots->xywh[islot][0] * subplots->wh[0]);
 	px[1] = iroundpos(subplots->xywh[islot][1] * subplots->wh[1]);
 	px[2] = iroundpos(subplots->wh[0] * subplots->xywh[islot][2]);
@@ -1211,14 +1212,14 @@ void cplot_xywh_to_pixels(struct cplot_subplots *subplots, int islot, int px[4])
 }
 
 void cplot_subplots_to_axes(struct cplot_subplots *subplots) {
-	for (int i=0; i<subplots->naxes; i++) {
-		if (!subplots->axes[i])
+	for (int isub=0; isub<subplots->naxes; isub++) {
+		if (!subplots->axes[isub])
 			continue;
 		int xywh_px[4];
-		cplot_xywh_to_pixels(subplots, i, xywh_px);
-		subplots->axes[i]->wh[0] = xywh_px[2];
-		subplots->axes[i]->wh[1] = xywh_px[3];
-		subplots->axes[i]->startcanvas = xywh_px[1] * subplots->wh[0] + xywh_px[0];
+		subplots_xywh_to_pixels(subplots, isub, xywh_px);
+		subplots->axes[isub]->wh[0] = xywh_px[2];
+		subplots->axes[isub]->wh[1] = xywh_px[3];
+		subplots->axes[isub]->startcanvas = xywh_px[1] * subplots->wh[0] + xywh_px[0];
 	}
 }
 
