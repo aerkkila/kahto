@@ -277,6 +277,7 @@ struct cplot_axes {
 
 	struct legend {
 		float rowheight, symbolspace_per_rowheight;
+		/* if visible = -1, legend is drawn only if it doesn't cover any data */
 		int ro_xywh[4], ro_text_left, visible, ro_place_err;
 		float posx, posy, hvalign[2];
 		struct cplot_linestyle borderstyle;
