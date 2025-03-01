@@ -4,6 +4,7 @@
 *.out
 *.o
 *.png
+*.mp4
 *.so
 !Makefile
 core
