@@ -1,4 +1,4 @@
-void rotate25(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
+void rotate100(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
 	int tcpw = min(tw, fh),
 		tcph = min(th, fw);
 	for (int j=0; j<tcph; j++)
@@ -6,7 +6,7 @@ void rotate25(unsigned *to, int tostride, int tw, int th, const unsigned *from, 
 			to[j*tostride+i] = from[(tcpw-i-1)*fw + j];
 }
 
-void rotate75(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
+void rotate300(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
 	int tcpw = min(tw, fh),
 		tcph = min(th, fw);
 	for (int j=0; j<tcph; j++)
@@ -16,16 +16,16 @@ void rotate75(unsigned *to, int tostride, int tw, int th, const unsigned *from, 
 
 static inline void tocanvas(unsigned *ptr, int value, unsigned color);
 
-void get_rotated_area(float w, float h, float *restrict area, float rot100) {
-	if ((int)(rot100*1000) % 100000 == 0) {
+void get_rotated_area(float w, float h, float *restrict area, float rot_grad) {
+	if (iround(rot_grad*1000) % 400000 == 0) {
 		area[0] = 0;
 		area[1] = 0;
 		area[2] = w;
 		area[3] = h;
 		return;
 	}
-	float si = sinf(rot100 * 3.14159265358979 / 50);
-	float co = cosf(rot100 * 3.14159265358979 / 50);
+	float si = sinf(rot_grad * 3.14159265358979 / 200.);
+	float co = cosf(rot_grad * 3.14159265358979 / 200.);
 	float xy[3][2] = {{0,h}, {w,0}, {w,h}};
 	memset(area, 0, 4*sizeof(area[0]));
 	for (int i=0; i<3; i++) {
@@ -91,24 +91,24 @@ static void laita(unsigned *to, int length, int tw, float y, float x, unsigned c
 void rotate(
 	unsigned *to, int tox, int toy, int tw, int th,
 	const unsigned *from, int fw, int fh,
-	float rot100)
+	float rot_grad)
 {
 	to += toy*tw + tox;
-	int irot = rot100;
-	if (irot == rot100) {
+	int irot = rot_grad;
+	if (irot == rot_grad) {
 		if (irot < 0)
-			irot += 100 * (-irot/100 + !!(irot%100));
-		else if (irot >= 100)
-			irot -= irot/100 * 100;
-		if (irot == 25) return rotate25(to, tw, tw-tox, th-toy, from, fw, fh);
-		if (irot == 75) return rotate75(to, tw, tw-tox, th-toy, from, fw, fh);
+			irot += 400 * (-irot/400 + !!(irot%400));
+		else if (irot >= 400)
+			irot -= irot/400 * 400;
+		if (irot == 100) return rotate100(to, tw, tw-tox, th-toy, from, fw, fh);
+		if (irot == 300) return rotate300(to, tw, tw-tox, th-toy, from, fw, fh);
 	}
 
-	float si = sinf(rot100 * 3.14159265358979 / 50);
-	float co = cosf(rot100 * 3.14159265358979 / 50);
+	float si = sinf(rot_grad * 3.14159265358979 / 200);
+	float co = cosf(rot_grad * 3.14159265358979 / 200);
 
 	float area[4];
-	get_rotated_area(fw, fh, area, rot100);
+	get_rotated_area(fw, fh, area, rot_grad);
 	int new_w = area[2] - area[0] + 2;
 	int new_h = area[3] - area[1] + 2;
 	int apulen = new_w * new_h;

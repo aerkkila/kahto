@@ -52,7 +52,7 @@ int main() {
 	ticks->tickerdata.arb.nticks = sizeof(labels2)/sizeof(labels2[0]);
 	/* locations (tickerdata.arb.ticks) need not to be set in this case */
 
-	ticks->rotation100 = -8;
+	ticks->rotation_grad = -35;
 	/* We want the right edge of texts to be on the tick location.
 	   Therefore we move texts to left by the amount of their widths, i.e. -1 width to right */
 	ticks->xyalign_text[0] = -1;

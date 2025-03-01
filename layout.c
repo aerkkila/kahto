@@ -55,7 +55,7 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *t
 		if (ipar)
 			relval = 1 - relval;
 		textloc[ipar] = iround(relval*xywh[ipar+2]) + xywh[ipar];
-		put_text(ttra, label, textloc[0], textloc[1], tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation100, area, 1);
+		put_text(ttra, label, textloc[0], textloc[1], tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
 		update_min(edges_axespx[0], area[ipar]);
 		update_max(edges_axespx[1], area[ipar+2]);
 	}
@@ -207,7 +207,7 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 	ttra_set_fontheight(ttra, topixels(tk->rowheight, args->axes));
 	for (int i=0; i<nlabels; i++) {
 		tk->get_tick(tk, i, &label, 128);
-		put_text(ttra, label, 0, 0, tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation100, area, 1);
+		put_text(ttra, label, 0, 0, tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
 		if (-area[iort] > max01[0])
 			max01[0] = -area[iort];
 		if (area[iort+2] > max01[1])
@@ -236,7 +236,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 		struct cplot_axistext *axistext = axis->text[itext];
 		ttra_set_fontheight(ttra, topixels(axistext->rowheight, args->axes));
 		int area[4];
-		put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation100, area, 1);
+		put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
 		sizes[itext] = iside ? area[iort+2] : -area[iort];
 		update_max(imaxtext, sizes[itext]);
 		axistext->ro_area[!iort] = area[!iort];
@@ -389,7 +389,7 @@ int cplot_axes_layout(struct cplot_axes *axes) {
 		ttra_init(axes->ttra);
 	if (axes->title.text) {
 		ttra_set_fontheight(axes->ttra, topixels(axes->title.rowheight, axes));
-		put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation100, axes->title.ro_area, 1);
+		put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation_grad, axes->title.ro_area, 1);
 		imargin_xyxy[1] += axes->title.ro_area[3];
 	}
 

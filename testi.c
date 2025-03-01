@@ -55,12 +55,12 @@ int main() {
 	cplot_yx(ydata2, ajat, .len=pit2, .xaxis=x1axis, .yaxis=y1axis, .linestyle.style=1, .markerstyle.size=1.0/40, .label = "iso pallo");
 
 	x1axis->ticks->init = cplot_init_ticker_datetime;
-	x1axis->ticks->rotation100 = 25;
+	x1axis->ticks->rotation_grad = 100;
 	cplot_axislabel(x1axis, "datetime-tikkeri");
 	cplot_axislabel(y1axis, "oikia");
-	y1axis->text[y1axis->ntext-1]->rotation100 = 0;
+	y1axis->text[y1axis->ntext-1]->rotation_grad = -20;
 	cplot_axislabel(axes3->axis[0], "x-akseli alhaalla");
-	cplot_axislabel(axes3->axis[1], "yksinkertaiset tikit")->rotation100 = 25;
+	cplot_axislabel(axes3->axis[1], "yksinkertaiset tikit")->rotation_grad = 100;
 	axes3->legend.borderstyle.style = 1;
 	axes3->legend.borderstyle.thickness = 1.0/100;
 	axes3->legend.borderstyle.color = 0xff9adf49;

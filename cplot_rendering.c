@@ -433,7 +433,7 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	if (area_out[0] < 0 || area_out[1] < 0)
 		return -1;
 
-	if ((int)rot % 100) {
+	if ((int)rot % 400) {
 		uint32_t *canvas = ttra->canvas;
 		int width0 = ttra->realw;
 		int height0 = ttra->realh;

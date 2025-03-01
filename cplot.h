@@ -158,7 +158,7 @@ struct cplot_ticks {
 
 	int visible, have_labels;
 	float xyalign_text[2];
-	float rowheight, rotation100;
+	float rowheight, rotation_grad;
 
 	int ro_lines[2], ro_lines1[2], ro_labelarea[4];
 };
@@ -188,14 +188,14 @@ struct cplot_axistext {
 	char *text;
 	enum axistext_type type;
 	int owner;
-	float pos, rowheight, rotation100;
+	float pos, rowheight, rotation_grad;
 	float hvalign[2];
 	int ro_area[4];
 };
 
 struct cplot_text {
 	char *text;
-	float pos, rowheight, rotation100;
+	float pos, rowheight, rotation_grad;
 	float hvalign[2];
 	int ro_area[4];
 	char textowner;

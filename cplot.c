@@ -752,7 +752,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axesheight, 0);
 		int area_text[4] = {0};
 		if (ttra && tick[0])
-			put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation100, area_text, 0);
+			put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation_grad, area_text, 0);
 		if (ticks->gridstyle.style) {
 			gridline[!iort] = gridline[!iort+2] = line_px[!iort];
 			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axesheight, 0);
@@ -791,7 +791,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
 	ttra_print(ttra, "\033[0m");
 	ttra_set_fontheight(ttra, iroundpos(axistext->rowheight*axesheight));
 	int *area = axistext->ro_area;
-	put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation100, area, 0);
+	put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
 }
 
 void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
@@ -865,7 +865,7 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 		return;
 	struct ttra *ttra = axes->ttra;
 	ttra_set_fontheight(ttra, topixels(axes->title.rowheight, axes));
-	put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation100, axes->title.ro_area, 0);
+	put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation_grad, axes->title.ro_area, 0);
 }
 
 static void set_icolor(struct cplot_data *data) {
@@ -967,7 +967,7 @@ struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
 			.hvalign = {-0.5, -1.2 * (axis->pos < 0.5)},
 			.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
 			.axis = axis,
-			.rotation100 = 75 * (axis->direction == 1),
+			.rotation_grad = 300 * (axis->direction == 1),
 			.type = cplot_axistext_label,
 	};
 	return cplot_add_axistext(axis, text);
@@ -977,7 +977,7 @@ void cplot_ticklabels(struct cplot_axis *axis, char **names, int howmany) {
 	axis->ticks->init = cplot_init_ticker_arbitrary_datacoord_enum;
 	axis->ticks->tickerdata.arb.labels = names;
 	axis->ticks->tickerdata.arb.nticks = howmany;
-	axis->ticks->rotation100 = 75;
+	axis->ticks->rotation_grad = 300;
 }
 
 struct cplot_args* cplot_defaultargs(struct cplot_args *args) {
