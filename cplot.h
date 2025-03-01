@@ -459,7 +459,7 @@ void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 void* cplot_write_png(void *standalone, const char *name); // returns the input standalone
 #define _cplot_save_png(a, b, ...) cplot_write_png(a, b)
-#define cplot_save_png(...) _cplot_save_png(__VA_ARGS__, NULL);
+#define cplot_save_png(...) _cplot_save_png(__VA_ARGS__, NULL)
 /* Available only if compiled with video support. Function axes->update has to be defined. */
 void* cplot_write_mp4(void *standalone, const char *name, float fps);
 unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);
