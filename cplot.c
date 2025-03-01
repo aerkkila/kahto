@@ -836,7 +836,8 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
 		int WH[] = {axeswidth, axesheight};
 		if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
-		draw_line(canvas, ystride, axis->ro_line, area, &axis->linestyle, axesheight, 0);
+		if (axis->linestyle.style)
+			cplot_fill_box(canvas, ystride, area, axis->linestyle.color);
 	}
 
 	if (axis->ticks)

@@ -321,7 +321,6 @@ static int check_line(int *line, const int *area) {
 	return 0;
 }
 
-/* FIXME: Parts of a thick line can be drawn outside the inteded area, even causing a segmentation fault. */
 static void _draw_thick_line(uint32_t *canvas, int ystride, int xy[4], uint32_t color, int ithickness, int *axis_area, int nosteep) {
 	if (!check_line(xy, axis_area))
 		draw_line_xiaolin(canvas, ystride, xy, color);
@@ -1080,7 +1079,7 @@ void cplot_draw_box(uint32_t *canvas, int ystride, int axesheight, int *area, st
 	}
 }
 
-void cplot_fill_box(uint32_t *canvas, int ystride, int axesheight, const int *restrict area, uint32_t color) {
+void cplot_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color) {
 	for (int j=area[1]; j<area[3]; j++)
 		for (int i=area[0]; i<area[2]; i++)
 			canvas[j*ystride+i] = color;
@@ -1093,7 +1092,7 @@ void cplot_draw_box_xywh(uint32_t *canvas, int ystride, int axesheight, int *xyw
 
 void cplot_fill_box_xywh(uint32_t *canvas, int ystride, int axesheight, int *xywh, uint32_t color) {
 	int area[] = xywh_to_area(xywh);
-	cplot_fill_box(canvas, ystride, axesheight, area, color);
+	cplot_fill_box(canvas, ystride, area, color);
 }
 
 void cplot_legend_draw(struct cplot_axes *axes, struct cplot_drawarea area) {
