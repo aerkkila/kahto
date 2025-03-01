@@ -1276,7 +1276,7 @@ loop:
 	}
 }
 
-/* For animation purposes. Selectively copied from draw_ticks. */
+/* For animation. Selectively copied from draw_ticks. */
 void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 	int naxis = axes->naxis;
 	int *xywh = axes->ro_inner_xywh;

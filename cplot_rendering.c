@@ -22,22 +22,6 @@ static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
 	*ptr = color>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
 }
 
-static void draw_line_x(uint32_t *canvas, int ystride, const int *xy, uint32_t color) {
-	int imin = xy[2] < xy[0];
-	int x0 = xy[imin*2];
-	int x1 = xy[!imin*2];
-	for (int i=x0; i<=x1; i++)
-		canvas[xy[1]*ystride + i] = color;
-}
-
-static void draw_line_y(uint32_t *canvas, int ystride, const int *xy, uint32_t color) {
-	int imin = xy[3] < xy[1];
-	int y0 = xy[imin*2+1];
-	int y1 = xy[!imin*2+1];
-	for (int j=y0; j<=y1; j++)
-		canvas[j*ystride + xy[2]] = color;
-}
-
 /* https://en.wikipedia.org/wiki/Bresenham's_line_algorithm */
 /* This method is nice because it uses only integers. */
 static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, uint32_t color) {
