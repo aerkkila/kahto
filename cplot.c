@@ -1213,9 +1213,18 @@ void set_colors(struct cplot_axes *axes) {
 
 void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 	set_colors(axes);
-	if (cplot_axes_layout(axes))
-		return; // too small window to draw to
+	if (cplot_axes_layout(axes)) {
+		if (axes->fix_too_little_space) {
+			axes->fix_too_little_space(axes);
+			if (cplot_axes_layout(axes))
+				return;
+		}
+		else
+			return;
+	}
 	cplot_axes_render(axes, canvas, ystride);
+	if (axes->revert_fixes)
+		axes->revert_fixes(axes);
 }
 
 static void subplots_xywh_to_pixels(struct cplot_subplots *subplots, int islot, int px[4]) {

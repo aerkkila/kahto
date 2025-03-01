@@ -272,6 +272,8 @@ struct cplot_axes {
 	struct cplot_text title;
 	enum cplot_topixels_reference topixels_reference;
 	struct cplot_standalone_common *super;
+	void (*fix_too_little_space)(struct cplot_axes*);
+	void (*revert_fixes)(struct cplot_axes*);
 
 	struct legend {
 		float rowheight, symbolspace_per_rowheight;

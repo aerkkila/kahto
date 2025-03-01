@@ -442,9 +442,9 @@ int cplot_axes_layout(struct cplot_axes *axes) {
 
 	cplot_make_inner_margin(axes);
 
-	/* while (1) but avoid unexpected halting */
+	/* while (1) but avoid halting in certain situations */
 	int firsttime = 1;
-	for (int iloop=0; iloop<30; iloop++) {
+	for (int _iloop=0; _iloop<30; _iloop++) {
 		/* parallel size */
 		for (int i=0; i<axes->naxis; i++)
 			axis_set_parallel_sizes(axes->axis[i], firsttime);
