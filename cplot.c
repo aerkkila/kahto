@@ -343,6 +343,62 @@ struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *yarr
 	return sub;
 }
 
+struct cplot_subplots* cplot_subplots_text_new(const char *_txt) {
+	const unsigned char *txt = (typeof(txt))_txt;
+	int nrows=0, ncols=0, ipos=0;
+	unsigned short xyxy[256][4]; // some are not used but prevent overflow from bad input
+	memset(xyxy, 0xff, sizeof(xyxy));
+	--txt;
+	while (*++txt) {
+		switch (*txt) {
+			case '\n':
+				if (ipos > ncols)
+					ncols = ipos;
+				if (ipos)
+					nrows++;
+				ipos = 0;
+				continue;
+			case ' ':
+			case '\t':
+				continue;
+			default:
+				if (xyxy[*txt][0] == 0xffff) {
+					xyxy[*txt][0] = xyxy[*txt][2] = ipos;
+					xyxy[*txt][1] = xyxy[*txt][3] = nrows;
+				}
+				else {
+					update_min(xyxy[*txt][0], ipos);
+					update_max(xyxy[*txt][2], ipos);
+					xyxy[*txt][3] = nrows;
+				}
+				++ipos;
+				break;
+		}
+	}
+	if (ipos) nrows++; // did not end in a newline
+
+	int nsub = 0;
+	for (int i=0; i<32; i++) {
+		if (xyxy[i+'0'][0] == 0xffff)
+			continue;
+		nsub = i+1;
+	}
+
+	struct cplot_subplots *sub = cplot_subplots_bare_new(nsub);
+	for (int i=0; i<nsub; i++) {
+		if (xyxy[i+'0'][0] == 0xffff)
+			continue;
+		sub->xywh[i][0] = (float)xyxy[i+'0'][0] / (float)ncols;
+		sub->xywh[i][1] = (float)xyxy[i+'0'][1] / (float)nrows;
+		float size;
+		size = xyxy[i+'0'][2] - xyxy[i+'0'][0] + 1;
+		sub->xywh[i][2] = size / (float)ncols;
+		size = xyxy[i+'0'][3] - xyxy[i+'0'][1] + 1;
+		sub->xywh[i][3] = size / (float)nrows;
+	}
+	return sub;
+}
+
 static void get_min_for_data(struct cplot_data *data, int yxz) {
 	int yxz_other = yxz == 2 ? 1 : !yxz;
 	void *dt = data->yxzdata[yxz];

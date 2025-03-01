@@ -422,6 +422,20 @@ struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *ysiz
 		(static float[]){cplot_expand yarr, [ylen]=0},    \
 		(static float[]){cplot_expand xarr, [xlen]=0}, 0)
 
+/*
+   This creates a subplot grid, where each axes has the same position position with the corresponding number in txt.
+   For example:
+   *  "1100000\n"
+   *  "11--222\n"
+   To add space, use '-' or any letter below 0x30. Spaces and empty lines are ignored.
+   This allows expressing the same with a raw string literal, even when it is indented:
+   R"(
+   1100000
+   11--222
+   )";
+   */
+struct cplot_subplots* cplot_subplots_text_new(const char *txt);
+
 struct cplot_axes* cplot_plot_args(struct cplot_args *args);
 static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
 	return cplot_plot_args(&args);
