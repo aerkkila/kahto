@@ -676,7 +676,7 @@ int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight,
 	height = axes->wh[1];
 	unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
 	for (int i=0; i<axes->ndata; i++)
-		cplot_data_render(axes->data[i], (void*)image, width, width, height, 0);
+		cplot_data_render(axes->data[i], (void*)image, width, axes, 0);
 
 	/* including the pointed spot */
 	short (*spaceright)[w] = malloc(w*h * sizeof(short));
@@ -780,6 +780,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	char tickbuff[128];
 	char *tick = tickbuff;
 	struct ttra *ttra = NULL;
+	struct cplot_axes *axes = ticks->axis->axes;
 
 	if (ticks->have_labels) {
 		ttra = ticks->axis->axes->ttra;
@@ -791,7 +792,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 		ttra->fg_default = ticks->color;
 		ttra->bg_default = -1;
 		ttra_print(ttra, "\033[0m");
-		ttra_set_fontheight(ttra, ticks->rowheight*axesheight);
+		ttra_set_fontheight(ttra, topixels(ticks->rowheight, axes));
 	}
 
 	int iort = ticks->axis->direction == 0;
@@ -822,13 +823,13 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 		if (!isx)
 			pos_rel = 1 - pos_rel;
 		line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
-		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axesheight, 0);
+		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axes, 0);
 		int area_text[4] = {0};
 		if (ttra && tick[0])
 			put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation_grad, area_text, 0);
 		if (ticks->gridstyle.style) {
 			gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axesheight, 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, 0);
 		}
 	}
 
@@ -843,10 +844,10 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
-			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, axesheight, 0);
+			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, axes, 0);
 			if (ticks->gridstyle1.style) {
 				gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, axesheight, 0);
+				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, axes, 0);
 			}
 		}
 	}
@@ -931,8 +932,8 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 	for (int i=0; i<axes->naxis; i++)
 		cplot_axis_draw(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
 	for (int i=0; i<axes->ndata; i++)
-		cplot_data_render(axes->data[i], canvas, ystride, axes->wh[0], axes->wh[1], 0);
-	cplot_legend_draw(axes, (struct cplot_drawarea){canvas, axes->wh[0], axes->wh[1], ystride});
+		cplot_data_render(axes->data[i], canvas, ystride, axes, 0);
+	cplot_legend_draw(axes, canvas, ystride);
 
 	if (!axes->title.text)
 		return;
@@ -1288,7 +1289,7 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			gridline[!isx] = gridline[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes->wh[1], 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, 0);
 		}
 	}
 }

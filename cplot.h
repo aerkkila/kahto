@@ -326,11 +326,6 @@ struct cplot_args {
 	void *userdata; // if argsfun needs some data
 };
 
-struct cplot_drawarea {
-	uint32_t *canvas;
-	int axeswidth, axesheight, ystride;
-};
-
 /* To change the defaultargs, use the following macro before #include <cplot.h>, e.g.
 #define cplot_update_defaultargs ,.linestyle.thickness = 1./400 */
 #ifndef cplot_update_defaultargs
@@ -528,8 +523,8 @@ struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the in
 struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
 
 /* For animated plot to be used in the cplot_axes.update(). */
-void cplot_legend_draw(struct cplot_axes*, struct cplot_drawarea);
-void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, int axeswidth, int axesheight, long start);
+void cplot_legend_draw(struct cplot_axes*, uint32_t *canvas, int ystride);
+void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_axes *axes, long start);
 void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride);
 void cplot_draw(void *vplot, uint32_t *canvas, int ystride);
