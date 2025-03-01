@@ -62,5 +62,5 @@ int main() {
 	sp->wh[0] /= 2;
 	sp->axes[0] = axes;
 	sp->axes[1] = axes2;
-	cplot_destroy(cplot_show(sp));
+	cplot_show(sp);
 }

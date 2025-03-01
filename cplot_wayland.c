@@ -99,7 +99,7 @@ static void keycallback(struct waylandhelper *wlh) {
 	}
 }
 
-void* cplot_show(void *vplot) {
+void* cplot_show_preserve(void *vplot) {
 	struct cplot_axes *standalone = vplot;
 	struct waylandhelper wlh = standalone->wlh ? *standalone->wlh : (struct waylandhelper){
 		.xresmin = 20,
@@ -148,6 +148,10 @@ void* cplot_show(void *vplot) {
 	wlh_destroy(&wlh);
 	standalone->wlh = old_wlh;
 	return vplot;
+}
+
+void* cplot_show(void *vplot) {
+	return cplot_destroy(cplot_show_preserve(vplot)), NULL;
 }
 
 #undef cookie_t

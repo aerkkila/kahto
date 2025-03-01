@@ -451,17 +451,27 @@ static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, fl
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
-void* cplot_show(void *standalone); // returns the input
 struct cplot_axis* cplot_remove_ticks(struct cplot_axis *axis);
 void cplot_destroy(void *standalone);
 void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
-void* cplot_write_png(void *standalone, const char *name); // returns the input standalone
+
+/* Available only if compiled with waylandhelper */
+void* cplot_show_preserve(void *standalone); // returns the input
+void* cplot_show(void *standalone); // destroys the input and returns NULL
+
+void* cplot_write_png_preserve(void *standalone, const char *name); // returns the input standalone
+void* cplot_write_png(void *standalone, const char *name); // destroys the input and returns NULL
 #define _cplot_save_png(a, b, ...) cplot_write_png(a, b)
-#define cplot_save_png(...) _cplot_save_png(__VA_ARGS__, NULL)
+#define cplot_save_png(...) _cplot_save_png(__VA_ARGS__, NULL) // cplot_write_png but name is an optional argument
+#define _cplot_save_png_preserve(a, b, ...) cplot_write_png_preserve(a, b)
+#define cplot_save_png_preserve(...) _cplot_save_png_preserve(__VA_ARGS__, NULL)
+
 /* Available only if compiled with video support. Function axes->update has to be defined. */
-void* cplot_write_mp4(void *standalone, const char *name, float fps);
+void* cplot_write_mp4_preserve(void *standalone, const char *name, float fps); // returns the input
+void* cplot_write_mp4(void *standalone, const char *name, float fps); // destroys the input and returns NULL
+
 unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);
 static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double min, double max) {
 	axis->min = min;

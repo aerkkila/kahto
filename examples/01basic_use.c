@@ -34,13 +34,13 @@ int main() {
 	axes2->legend.rowheight = 1.0 / 25; // defined as the fraction of figure height
 
 	/* We can show any axes individually. */
-	cplot_write_png(axes1, "01a.png");
-	//cplot_show(axes1); // shows the figure and halts the program until the window is closed
+	cplot_write_png_preserve(axes1, "01a.png");
+	//cplot_show_preserve(axes1); // shows the figure and halts the program until the window is closed
 
 	/* Or we can combine them into a single figure. */
 	struct cplot_subplots *subplots = cplot_subplots_new(2, 2);
 	subplots->axes[0] = axes0;
 	subplots->axes[1] = axes1;
 	subplots->axes[3] = axes2;
-	cplot_destroy(cplot_write_png(subplots, "01b.png"));
+	cplot_write_png(subplots, "01b.png");
 }

@@ -147,7 +147,7 @@ static int write_frame(struct cplot_video *video, uint32_t *argb) {
 	return encode(video->fcontext, video->ctx, video->stream, video->frame, video->packet);
 }
 
-void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps) {
+void* cplot_write_mp4_preserve(void *axes_or_subplots, const char *name, float fps) {
 	struct cplot_subplots *subplots = axes_or_subplots;
 	subplots->wh[0] -= subplots->wh[0] % 2; // has to be a multiple of 2
 	subplots->wh[1] -= subplots->wh[1] % 2; // has to be a multiple of 2
@@ -169,4 +169,8 @@ void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps) {
 	cplot_destroy_video(&video);
 
 	return axes_or_subplots;
+}
+
+void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps) {
+	return cplot_destroy(cplot_write_mp4_preserve(axes_or_subplots, name, fps)), NULL;
 }

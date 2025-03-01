@@ -56,7 +56,7 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
 	}
 }
 
-void* cplot_write_png(void *vstandalone, const char *name) {
+void* cplot_write_png_preserve(void *vstandalone, const char *name) {
 	struct cplot_subplots *subplots = vstandalone;
 	unsigned *argb = malloc(subplots->wh[0] * subplots->wh[1] * sizeof(unsigned));
 
@@ -86,6 +86,10 @@ void* cplot_write_png(void *vstandalone, const char *name) {
 	write_png(bgr, name, subplots->wh[0], subplots->wh[1]);
 	free(bgr);
 	return vstandalone;
+}
+
+void *cplot_write_png(void *vstandalone, const char *name) {
+	return cplot_destroy(cplot_write_png_preserve(vstandalone, name)), NULL;
 }
 
 #endif // HAVE_PNG

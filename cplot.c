@@ -1045,6 +1045,8 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
 }
 
 void cplot_destroy(void *standalone) {
+	if (!standalone)
+		return;
 	struct cplot_subplots *subplots = standalone;
 	if (subplots->type == cplot_axes_e)
 		return cplot_destroy_axes(standalone);

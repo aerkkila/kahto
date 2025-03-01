@@ -105,5 +105,4 @@ int main(int argc, char **argv) {
 		cplot_show(axes);
 	else
 		cplot_write_mp4(axes, "animation.mp4", 30.0);
-	cplot_destroy(axes);
 }
