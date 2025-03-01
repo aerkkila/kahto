@@ -874,7 +874,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
 	ttra->fg_default = axistext->axis->linestyle.color;
 	ttra->bg_default = -1;
 	ttra_print(ttra, "\033[0m");
-	ttra_set_fontheight(ttra, iroundpos(axistext->rowheight*axesheight));
+	ttra_set_fontheight(ttra, topixels(axistext->rowheight, axistext->axis->axes));
 	int *area = axistext->ro_area;
 	put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
 }
