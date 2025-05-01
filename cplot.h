@@ -4,28 +4,30 @@
 #include <stdint.h> // uint32_t
 
 #define cplot_notype 0
-#define cplot_i1 (10 + 1)
-#define cplot_i2 (10 + 2)
-#define cplot_i4 (10 + 4)
-#define cplot_i8 (10 + 8)
-#define cplot_u1 1
-#define cplot_u2 2
-#define cplot_u4 4
-#define cplot_u8 8
-#define cplot_f4 (20 + 4)
-#define cplot_f8 (20 + 8)
-#define cplot_f10 (20 + 16)
+#define cplot_i1  (1 + 0)
+#define cplot_i2  (1 + 1)
+#define cplot_i4  (1 + 2)
+#define cplot_i8  (1 + 4)
+
+#define cplot_u1  (6 + 0)
+#define cplot_u2  (6 + 1)
+#define cplot_u4  (6 + 2)
+#define cplot_u8  (6 + 4)
+
+#define cplot_f4  (9 + 2)
+#define cplot_f8  (9 + 4)
+#define cplot_f10 (9 + 8)
 
 /* For example: assert(axes->axis[cplot_ix]->direction == cplot_ix); // x-axis */
 #define cplot_ix 0
 #define cplot_iy 1
 
 /* returns some of the enumerations above according to the data type */
-#define cplot_type(a) ((int)(                                                \
-		sizeof(a) + (             /* enumeration is datasize + identifier */ \
-			(typeof(a))1.5 == 1 ? /* integer or floating point number */     \
-			(typeof(a))(-1) < 0 ? /* signed or unsigned integer */           \
-			10 : 0 : 20)))        /* identifiers for signed, unsigned and floating point respectively */
+#define cplot_type(a) ((int)(                                                  \
+		sizeof(a)/2 + (           /* enumeration is datasize/2 + identifier */ \
+			(typeof(a))1.5 == 1 ? /* integer or floating point number */       \
+			(typeof(a))(-1) < 0 ? /* signed or unsigned integer */             \
+			1 : 6 : 9)))          /* identifiers for signed, unsigned and floating point respectively */
 
 extern const unsigned char cplot_sizes[];
 
@@ -37,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 22
+#define __cplot_version_in_program 23
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
