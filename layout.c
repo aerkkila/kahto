@@ -4,29 +4,6 @@
 #include "cplot.h"
 #include <ttra.h>
 
-void legend_placement(struct cplot_axes *axes) {
-	if (!axes->legend.visible)
-		return;
-	int height, width;
-	cplot_get_legend_dims_px(axes, &height, &width);
-	if (!height || !width)
-		return;
-	axes->legend.ro_xywh[2] = width;
-	axes->legend.ro_xywh[3] = height;
-	axes->legend.ro_xywh[0] =
-		axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
-		axes->legend.ro_xywh[2] * axes->legend.hvalign[0];
-	axes->legend.ro_xywh[1] =
-		axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
-		axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
-	if (!axes->legend.placement)
-		return;
-	int iplace=0, jplace=0;
-	axes->legend.ro_place_err = cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace, axes->legend.placement);
-	axes->legend.ro_xywh[0] = iplace;
-	axes->legend.ro_xywh[1] = jplace;
-}
-
 static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *tk, int ipar, int *edges_axespx) {
 	int nlabels = tk->tickerdata.common.nticks, area[4];
 	char labelbuff[128];
@@ -69,7 +46,7 @@ static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
 	/* text->ro_area[parallel] already contains the limits around the zero point
 	   or further has been moved to correct place */
 	if (firsttime)
-		for (int i=0; i<axis->ntext; i++) {
+		for (int i=0; i<axis->ntexts; i++) {
 			int move = axis->ro_area[ipar] + iround(xywh[ipar+2] * axis->text[i]->pos);
 			axis->text[i]->ro_area[ipar+0] += move;
 			axis->text[i]->ro_area[ipar+2] += move;
@@ -229,8 +206,8 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args, struct ttra *ttra) {
 	int imaxtext = 0;
 	unpack_args(args);
-	int sizes[axis->ntext];
-	for (int itext=0; itext<axis->ntext; itext++) {
+	int sizes[axis->ntexts];
+	for (int itext=0; itext<axis->ntexts; itext++) {
 		if (!axis->text[itext])
 			continue;
 		struct cplot_axistext *axistext = axis->text[itext];
@@ -244,7 +221,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 	}
 	if (iside) {
 		int centerpos = axis->axes->wh[iort] - imargin_xyxy[iouter] - imaxtext;
-		for (int itext=0; itext<axis->ntext; itext++)
+		for (int itext=0; itext<axis->ntexts; itext++)
 			if (axis->text[itext]) {
 				axis->text[itext]->ro_area[iinner] = centerpos;
 				axis->text[itext]->ro_area[iouter] = centerpos + sizes[itext];
@@ -252,7 +229,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 	}
 	else {
 		int centerpos = imargin_xyxy[iouter] + imaxtext;
-		for (int itext=0; itext<axis->ntext; itext++)
+		for (int itext=0; itext<axis->ntexts; itext++)
 			if (axis->text[itext]) {
 				axis->text[itext]->ro_area[iinner] = centerpos;
 				axis->text[itext]->ro_area[iouter] = centerpos - sizes[itext];
@@ -349,7 +326,7 @@ static void set_moveaxis_based_on_texts(struct cplot_axis *axis, const int *limi
 		struct cplot_axis *ax1 = axes->axis[iaxis];
 		if (ax1->direction == axis->direction)
 			continue;
-		for (int i=0; i<ax1->ntext; i++)
+		for (int i=0; i<ax1->ntexts; i++)
 			adjust_moveaxis(area, iort, side, ax1->text[i]->ro_area, limits, moveaxis);
 	}
 }
@@ -507,5 +484,6 @@ next:
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
 	legend_placement(axes);
+	texts_placement(axes);
 	return 0;
 }

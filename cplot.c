@@ -105,6 +105,8 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x);
 int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
 void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
 void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
+void legend_placement(struct cplot_axes *axes);
+void texts_placement(struct cplot_axes *axes);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -947,7 +949,7 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
 	if (axis->ticks)
 		cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
 
-	for (int i=0; i<axis->ntext; i++)
+	for (int i=0; i<axis->ntexts; i++)
 		cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
 }
 
@@ -966,10 +968,18 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 	cplot_legend_draw(axes, canvas, ystride);
 
 	if (axes->title.text) {
+		struct cplot_text *text = &axes->title;
 		struct ttra *ttra = axes->ttra;
-		ttra_set_fontheight(ttra, topixels(axes->title.rowheight, axes));
-		put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation_grad, axes->title.ro_area, 0);
+		ttra_set_fontheight(ttra, topixels(text->rowheight, axes));
+		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
+	for (int i=0; i<axes->ntexts; i++) {
+		struct cplot_text *text = axes->texts+i;
+		struct ttra *ttra = axes->ttra;
+		ttra_set_fontheight(ttra, topixels(text->rowheight, axes));
+		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
+	}
+
 	if (axes->after_drawing)
 		axes->after_drawing(axes, canvas, ystride);
 }
@@ -1029,6 +1039,42 @@ void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x) {
 	*y += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
 }
 
+void legend_placement(struct cplot_axes *axes) {
+	if (!axes->legend.visible)
+		return;
+	int height, width;
+	cplot_get_legend_dims_px(axes, &height, &width);
+	if (!height || !width)
+		return;
+	axes->legend.ro_xywh[2] = width;
+	axes->legend.ro_xywh[3] = height;
+	axes->legend.ro_xywh[0] =
+		axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
+		axes->legend.ro_xywh[2] * axes->legend.hvalign[0];
+	axes->legend.ro_xywh[1] =
+		axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
+		axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
+	if (!axes->legend.placement)
+		return;
+	int iplace=0, jplace=0;
+	axes->legend.ro_place_err = cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace, axes->legend.placement);
+	axes->legend.ro_xywh[0] = iplace;
+	axes->legend.ro_xywh[1] = jplace;
+}
+
+void texts_placement(struct cplot_axes *axes) {
+	for (int i=axes->ntexts-1; i>=0; i--) {
+		int *area = axes->texts[i].ro_area;
+		struct cplot_text *text = axes->texts+i;
+		area[0] = iroundpos(axes->wh[0] * text->xy[0]);
+		area[1] = iroundpos(axes->wh[1] * text->xy[1]);
+		area[2] = axes->wh[0];
+		area[3] = axes->wh[1];
+		if (text->rowheight == 0)
+			text->rowheight = axes->legend.rowheight;
+	}
+}
+
 static struct cplot_data* add_data(struct cplot_args *args) {
 	if (args->axes->mem_data < args->axes->ndata+1)
 		args->axes->data = realloc(args->axes->data, (args->axes->mem_data = args->axes->ndata+3) * sizeof(void*));
@@ -1068,10 +1114,17 @@ static struct cplot_data* add_data(struct cplot_args *args) {
 }
 
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text) {
-	if (axis->ntext >= axis->mem_text)
-		axis->text = realloc(axis->text, (axis->mem_text = axis->ntext + 2) * sizeof(void*));
-	axis->text[axis->ntext++] = text;
+	if (axis->ntexts >= axis->memtext)
+		axis->text = realloc(axis->text, (axis->memtext = axis->ntexts + 2) * sizeof(axis->text[0]));
+	axis->text[axis->ntexts++] = text;
 	return text;
+}
+
+struct cplot_axes* cplot_add_text(struct cplot_axes *axes, struct cplot_text *text) {
+	if (axes->ntexts >= axes->memtext)
+		axes->texts = realloc(axes->texts, (axes->memtext = axes->ntexts + 2) * sizeof(axes->texts[0]));
+	axes->texts[axes->ntexts++] = *text;
+	return axes;
 }
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
@@ -1117,7 +1170,7 @@ struct cplot_axis* cplot_remove_ticks(struct cplot_axis *axis) {
 }
 
 void cplot_destroy_axis(struct cplot_axis *axis) {
-	for (int i=axis->ntext-1; i>=0; i--) {
+	for (int i=axis->ntexts-1; i>=0; i--) {
 		if (axis->text[i]->owner)
 			free(axis->text[i]->text);
 		free(axis->text[i]);
@@ -1153,8 +1206,13 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
 		cplot_destroy_data(axes->data[i]);
 	free(axes->data);
 
-	if (axes->title.textowner)
-		free(axes->title.text);
+	if (axes->title.owner)
+		free((void*)(intptr_t)axes->title.text);
+
+	for (int i=axes->ntexts-1; i>=0; i--)
+		if (axes->texts[i].owner)
+			free((void*)(intptr_t)axes->texts[i].text);
+	free(axes->texts);
 
 	if (axes->colorscheme.owner)
 		free(axes->colorscheme.colors);

@@ -177,7 +177,7 @@ struct cplot_axis {
 	int range_isset, ro_line[4];
 	struct cplot_ticks *ticks;
 	struct cplot_axistext **text;
-	int mem_text, ntext;
+	int ntexts, memtext;
 
 	struct cplot_linestyle linestyle;
 
@@ -200,11 +200,11 @@ struct cplot_axistext {
 };
 
 struct cplot_text {
-	char *text;
-	float pos, rowheight, rotation_grad;
-	float hvalign[2];
+	const char *text; // const will be discarded on destroy, if owner
+	float xy[2], rowheight, // fixed order until this
+		  rotation_grad, hvalign[2];
+	char owner;
 	int ro_area[4];
-	char textowner;
 };
 
 union cplot_errorbars {
@@ -285,6 +285,8 @@ struct cplot_axes {
 	int ndata, mem_data, icolor;
 	struct cplot_colorscheme colorscheme;
 	struct cplot_text title;
+	struct cplot_text *texts; // These do not affect the layout. Use cplot_[add_]text to modify.
+	int ntexts, memtext;
 	enum cplot_topixels_reference topixels_reference;
 	struct cplot_standalone_common *super;
 	void (*fix_too_little_space)(struct cplot_axes*);
@@ -458,6 +460,12 @@ struct cplot_subplots* cplot_subplots_text_new(const char *txt);
 struct cplot_axes* cplot_plot_args(struct cplot_args *args);
 static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
 	return cplot_plot_args(&args);
+}
+
+struct cplot_axes* cplot_add_text(struct cplot_axes *axes, struct cplot_text *text); // cplot_text will be copied
+#define cplot_text(axes, ...) cplot_add_text_inl(axes, (struct cplot_text){__VA_ARGS__})
+static inline struct cplot_axes* cplot_add_text_inl(struct cplot_axes *axes, struct cplot_text text) {
+	return cplot_add_text(axes, &text);
 }
 
 #define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){	\
