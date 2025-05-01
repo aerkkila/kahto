@@ -131,7 +131,7 @@ uninstall_this:
 	rmdir -p --ignore-fail-on-non-empty $(prefix)/include $(prefix)/lib
 
 uninstall: uninstall_this
-	@printf "\e[1mTo uninstall dependencies, run $(MAKE) uninstall_all\n"
+	@printf "\e[1mTo uninstall dependencies, run $(MAKE) uninstall_all\e[0m\n"
 
 uninstall_all: uninstall_this
 	cd ttra && $(MAKE) unistall || :
