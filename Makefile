@@ -1,8 +1,5 @@
 include config.mk
 
-prefix=/usr/local
-
-CC = gcc
 CFLAGS += -Wall -g -DHAVE_PNG
 CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
@@ -125,11 +122,13 @@ clean:
 	@printf "\e[93;1mDownloaded dependencies and config.mk are not removed.\e[0m\n"
 
 install: libcplot.so
+	mkdir -p $(prefix)/include $(prefix)/lib
 	cp cplot.h $(prefix)/include
 	cp libcplot.so $(prefix)/lib
 
 uninstall_this:
 	rm -rf $(prefix)/include/cplot.h $(prefix)/lib/libcplot.so
+	rmdir -p --ignore-fail-on-non-empty $(prefix)/include $(prefix)/lib
 
 uninstall: uninstall_this
 	@printf "\e[1mTo uninstall dependencies, run $(MAKE) uninstall_all\n"
@@ -138,3 +137,4 @@ uninstall_all: uninstall_this
 	cd ttra && $(MAKE) unistall || :
 	cd waylandhelper && $(MAKE) uninstall || :
 	cd colormap-headers && $(MAKE) uninstall || :
+	rmdir -p --ignore-fail-on-non-empty $(prefix)/include $(prefix)/lib

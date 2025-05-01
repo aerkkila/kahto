@@ -1,8 +1,12 @@
 #!/bin/sh
 
-tmpfile=/tmp/cplot_configure_test
+# These can be given as environment variables.
+[ "$CC" = "" ] && CC=cc
+[ "$prefix" = "" ] && prefix=/usr/local
+
 LIBS=
 OBJS=
+tmpfile=/tmp/cplot_configure_test
 file=config.mk
 
 isinstalled() {
@@ -16,7 +20,7 @@ isinstalled() {
 			libs="$libs -l$a"
 		fi
 	done
-	cc -o $tmpfile -x c $libs - 2>/dev/null <<-eof
+	$CC -o $tmpfile -x c $libs - 2>/dev/null <<-eof
 		$headers
 		int main() {}
 	eof
@@ -48,15 +52,18 @@ make_dependency 2 libttra ttra
 isinstalled wayland-client && default=2 || default=0
 make_dependency $default libwaylandhelper waylandhelper
 make_dependency 2 cmh_colormaps cmh_colormaps.h
+printf "\n" >> $file
+printf "prefix = %s\n" "$prefix" >> $file
+printf "CC = %s\n" "$CC" >> $file
 
 compiler_flag_works() {
-	echo "" |cc $1 -E -x c - >/dev/null 2>&1
+	echo "" |$CC $1 -E -x c - >/dev/null 2>&1
 }
 
 found=
 for std in gnu23 gnu2x; do
 	if compiler_flag_works "--std=$std"; then
-		printf "\nCFLAGS = --std=$std\n" >> $file
+		printf "CFLAGS = --std=$std\n" >> $file
 		found=1
 		break
 	fi
