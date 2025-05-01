@@ -49,24 +49,24 @@ loop:
 	return state->height;
 }
 
-int update(struct cplot_axes *axes, uint32_t *canvas, int ystride, long count, double elapsed) {
-	struct state *state = axes->userdata;
+int update(struct cplot_figure *fig, uint32_t *canvas, int ystride, long count, double elapsed) {
+	struct state *state = fig->userdata;
 	if (state->endtime && elapsed > state->endtime)
 		return -1;
 
 	/* Update the height of the object */
 	float height = get_new_height(state, elapsed);
-	float *data = axes->data[0]->yxzdata[0];
+	float *data = fig->data[0]->yxzdata[0];
 	data[0] = height;
 
 	/* Adjust the y-axis range if necessary */
-	struct cplot_axis *yaxis = cplot_yaxis0(axes);
+	struct cplot_axis *yaxis = cplot_yaxis0(fig);
 	if (height < yaxis->min)
 		yaxis->min = height;
 	if (height > yaxis->max)
 		yaxis->max = height;
 
-	cplot_draw(axes, canvas, ystride);
+	cplot_draw(fig, canvas, ystride);
 	return 1;
 }
 
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
 			case 't': state.endtime = atof(optarg); break;
 		}
 
-	struct cplot_axes *axes =
+	struct cplot_figure *fig =
 		cplot_y(&state.height, 1, // plot the object
 			/* using the error bars to draw a line that represents the spring */
 			.err.list={&state.neutral_height, &state.neutral_height},
@@ -93,16 +93,16 @@ int main(int argc, char **argv) {
 
 	/* Range has to be set manually, since there is only 1 datum.
 	   Automatic range would be from minimum to maximum, but those are equal in this case. */
-	cplot_set_range(cplot_xaxis0(axes), -1, 1);
-	cplot_set_range(cplot_yaxis0(axes), -5, 0.1);
+	cplot_set_range(cplot_xaxis0(fig), -1, 1);
+	cplot_set_range(cplot_yaxis0(fig), -5, 0.1);
 
-	cplot_remove_ticks(cplot_xaxis0(axes));
+	cplot_remove_ticks(cplot_xaxis0(fig));
 
-	axes->update = update; // This function is responsible for updating the figure
-	axes->userdata = &state; // This is where we can store our data to be used in the update function
-	axes->wh[0] = 300;
+	fig->update = update; // This function is responsible for updating the figure
+	fig->userdata = &state; // This is where we can store our data to be used in the update function
+	fig->wh[0] = 300;
 	if (!state.endtime)
-		cplot_show(axes);
+		cplot_show(fig);
 	else
-		cplot_write_mp4(axes, "animation.mp4", 30.0);
+		cplot_write_mp4(fig, "animation.mp4", 30.0);
 }

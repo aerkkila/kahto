@@ -2,45 +2,58 @@
 #include <math.h>
 #define len 200
 
-int main() {
-	float a0[len], a1[len];
-	short b0[len], b1[len];
-	double c0[len];
+int main(int argc, char **argv) {
+	float f4a[len], f4b[len];
+	short i2a[len], i2b[len];
+	double f8a[len];
 
 	for (int i=0; i<len; i++) {
-		b0[i] = a0[i] = log(i+1) * 10;
-		b1[i] = a1[i] = pow((i+1), -0.3) * 10;
-		c0[i] = pow(i*0.01, sin(i*0.01)) * 70 - 50;
+		i2a[i] = f4a[i] = log(i+1) * 10;
+		i2b[i] = f4b[i] = pow((i+1), -0.3) * 10;
+		f8a[i] = pow(i*0.01, sin(i*0.01)) * 70 - 50;
 	}
 
-	/* One method to draw multiple graphs into same axes. */
-	struct cplot_axes *axes0 = cplot_y(a0, len);	// data type is automatically recognized
-	cplot_y(b0, len, .axes=axes0);					// data type is automatically recognized
-	cplot_y(c0, len, .axes=axes0, cplot_lineargs);
-	axes0->title.text = "10 log(i+1)";
+	/* Drawing multiple graphs to same figure. */
+	struct cplot_figure *fig0 = cplot_figure_new();
+	cplot_yx(f4a, i2a, len, .figure=fig0, .label="10 log(i+1)");       // data type is automatically recognized
+	cplot_yx(f4b, i2b, len, .figure=fig0, .label="\e$10 (i+1)^-0.3$"); // data type is automatically recognized
+	cplot_axislabel(cplot_yaxis0(fig0), "real");
+	cplot_axislabel(cplot_xaxis0(fig0), "integer");
+	fig0->legend.rowheight = 1.0 / 25; // defined as the fraction of figure height
 
-	/* Another method to draw multiple graphs into same axes. */
-	struct cplot_axes *axes1 = NULL;
-	cplot_y(a1, len, .axesptr=&axes1, .label="real");
-	cplot_y(b1, len, .axesptr=&axes1, .label="integer", .markerstyle.marker="4");
-	axes1->title.text = "\e$10 (i+1)^-0.3$";
+	/* The figure can also be obtained from the plotting function
+	   instead of explicitely calling cplot_figure_new().
+	   In that case, the figure-argument is omitted. */
+	struct cplot_figure *fig1 = cplot_y(f4a, len);
+	cplot_y(i2a, len, .figure=fig1);
+	cplot_y(f8a, len, .figure=fig1, cplot_lineargs);
+	fig1->title.text = "10 log(i+1)";
 
-	/* Third method */
-	struct cplot_axes *axes2 = cplot_axes_new();
-	cplot_yx(a0, b0, len, .axes=axes2, .label="10 log(i+1)");
-	cplot_yx(a1, b1, len, .axes=axes2, .label="\e$10 (i+1)^-0.3$");
-	cplot_axislabel(axes2->axis[cplot_iy], "real");
-	cplot_axislabel(axes2->axis[cplot_ix], "integer");
-	axes2->legend.rowheight = 1.0 / 25; // defined as the fraction of figure height
+	/* Usually the methods above are sufficient but sometimes the following syntax is useful. */
+	struct cplot_figure *fig2 = NULL;
+	cplot_y(f4b, len, .figureptr=&fig2, .label="real");
+	cplot_y(i2b, len, .figureptr=&fig2, .label="integer", .markerstyle.marker="4");
+	fig2->title.text = "\e$10 (i+1)^-0.3$";
 
-	/* We can show any axes individually. */
-	cplot_write_png_preserve(axes1, "01a.png");
-	//cplot_show_preserve(axes1); // shows the figure and halts the program until the window is closed
+	/* We can show any figure individually. */
+	if (argc == 1)
+		cplot_write_png_preserve(fig2, "01a.png");
+	else
+		cplot_show_preserve(fig2); // shows the figure and halts the program until the window is closed
 
-	/* Or we can combine them into a single figure. */
-	struct cplot_subplots *subplots = cplot_subplots_new(2, 2);
-	subplots->axes[0] = axes0;
-	subplots->axes[1] = axes1;
-	subplots->axes[3] = axes2;
-	cplot_write_png(subplots, "01b.png");
+	/* The functions cplot_show and cplot_write_png destroy the figure in the end.
+	   To be able to use it again, we used functions *_preserve which don't destroy the figure. */
+
+	/* We can also use the figures as subplots in a larger figure. */
+	struct cplot_figure *subplots = cplot_subplots_new(2, 2);
+	subplots->children[0] = fig0;
+	subplots->children[1] = fig1;
+	subplots->children[3] = fig2;
+
+	if (argc == 1)
+		cplot_write_png(subplots, "01b.png");
+	else
+		cplot_show(subplots);
+
+	/* The two functions above destroy the figures in the end and thus, all memory is freed now. */
 }

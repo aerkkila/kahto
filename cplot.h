@@ -18,7 +18,7 @@
 #define cplot_f8  (9 + 4)
 #define cplot_f10 (9 + 8)
 
-/* For example: assert(axes->axis[cplot_ix]->direction == cplot_ix); // x-axis */
+/* For example: assert(figure->axis[cplot_ix]->direction == cplot_ix); // x-axis */
 #define cplot_ix 0
 #define cplot_iy 1
 
@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 28
+#define __cplot_version_in_program 29
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -170,7 +170,7 @@ struct cplot_ticks {
 };
 
 struct cplot_axis {
-	struct cplot_axes *axes;
+	struct cplot_figure *figure;
 	int direction, outside; // direction: x=0, y=1
 	float pos;
 	double min, max,
@@ -200,7 +200,7 @@ struct cplot_axistext {
 	int ro_area[4];
 };
 
-enum cplot_coords_reference {cplot_dataarea_e, cplot_axesarea_e};
+enum cplot_coords_reference {cplot_dataarea_e, cplot_figurearea_e};
 
 struct cplot_text {
 	const char *text; // const will be discarded on destroy, if owner
@@ -244,31 +244,9 @@ struct cplot_data {
 	int cmh_enum, icolor;
 };
 
-/* standalone can mean any class listed below */
-enum cplot_standalone_type {cplot_axes_e, cplot_subplots_e};
-
 enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
 enum cplot_placement {cplot_placement_none, cplot_placement_first, cplot_placement_singlemaxdist};
 enum cplot_topixels_reference {cplot_super_height, cplot_super_width, cplot_this_height, cplot_this_width};
-
-#define inherit_cplot_standalone_common \
-	enum cplot_standalone_type type;    \
-	int draw_counter, wh[2];            \
-	unsigned background;                \
-	struct waylandhelper *wlh;          \
-	char *name; /* window title (cplot_show) or filename (cplot_save_png) */                       \
-	/* For animated plot. */            \
-	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */ \
-	int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);  \
-	void *userdata;                     \
-	/* This allowes user to draw arbitrary things to the figure.                                   \
-	   This is called as the last thing in the drawing function. */                                \
-    void (*after_drawing)(struct cplot_axes*, uint32_t *canvas, int ystride)
-
-/* What is common between all standalone drawables, listed in cplot_standalone_type */
-struct cplot_standalone_common {
-	inherit_cplot_standalone_common;
-};
 
 /* fixed order */
 struct cplot_colorscheme {
@@ -277,9 +255,26 @@ struct cplot_colorscheme {
 	char without_ends, owner;
 };
 
-struct cplot_axes {
-	inherit_cplot_standalone_common;
-	int startcanvas;
+struct cplot_figure {
+	int draw_counter, wh[2];
+	unsigned background;
+	struct waylandhelper *wlh;
+	char *name; /* window title (cplot_show) or filename (cplot_save_png) */
+	/* For animated plot. */
+	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
+	int (*update)(struct cplot_figure*, uint32_t *canvas, int ystride, long count, double elapsed);
+	void *userdata;
+	/* This allowes user to draw arbitrary things to the figure.
+	   This is called as the last thing in the drawing function. */
+    void (*after_drawing)(struct cplot_figure*, uint32_t *canvas, int ystride);
+	struct cplot_figure *super;
+	char ro_cannot_draw;
+
+	/* puuttuu: destroy, draw, layout */
+	struct cplot_figure **children;
+	float (*children_xywh)[4];
+	int nchildren, memchildren;
+
 	struct cplot_axis **axis, *last_caxis;
 	int naxis, mem_axis;
 	struct ttra *ttra;
@@ -292,9 +287,8 @@ struct cplot_axes {
 	struct cplot_text *texts; // These do not affect the layout. Use cplot_[add_]text to modify.
 	int ntexts, memtext;
 	enum cplot_topixels_reference topixels_reference;
-	struct cplot_standalone_common *super;
-	void (*fix_too_little_space)(struct cplot_axes*);
-	void (*revert_fixes)(struct cplot_axes*);
+	void (*fix_too_little_space)(struct cplot_figure*);
+	void (*revert_fixes)(struct cplot_figure*);
 
 	struct legend {
 		float rowheight, symbolspace_per_rowheight;
@@ -308,16 +302,9 @@ struct cplot_axes {
 	} legend;
 };
 
-struct cplot_subplots {
-	inherit_cplot_standalone_common;
-	struct cplot_axes **axes;
-	float (*xywh)[4];
-	int naxes;
-};
-
 struct cplot_args {
-	struct cplot_axes *axes;
-	struct cplot_axes **axesptr;
+	struct cplot_figure *figure;
+	struct cplot_figure **figureptr;
 
 	/* struct cplot_data inlined. ydata must stay first */
 	void *ydata, *xdata, *zdata;
@@ -417,17 +404,17 @@ struct cplot_args {
 	})
 
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
-struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y, float position);
-struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y);
-struct cplot_axes* cplot_axes_new();
-struct cplot_subplots* cplot_subplots_new(int nrows, int ncols);
+struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float position);
+struct cplot_axis* cplot_coloraxis_new(struct cplot_figure *figure, int x_or_y);
+struct cplot_figure* cplot_figure_new();
+struct cplot_figure* cplot_subplots_new(int nrows, int ncols);
 /* xsizes[ncols] defines the proportional width of each column
  * the leftover space is divided equally between all columns with 0 value:
  * i.e. {0, 0.2, 0.3, 0} -> {0.25, 0.2, 0.3, 0.25}
  * ysizes[nrows] is similar to xsizes
  * xyowner: (xowner<<0) | (yowner<<1)
  */
-struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *ysizes, float *xsizes, unsigned xyowner);
+struct cplot_figure* cplot_subplots_grid_new(int nrows, int ncols, float *ysizes, float *xsizes, unsigned xyowner);
 
 /* Calling:
  *     cplot_subplots_xyarr_new(4, (0.1, 0.1), 3, (0., 0.5, 0.2))
@@ -452,7 +439,7 @@ struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *ysiz
 		(static float[]){cplot_expand xarr, [xlen]=0}, 0)
 
 /*
-   This creates a subplot grid, where each axes has the same position position with the corresponding number in txt.
+   This creates a subplot grid, where each figure has the same position position with the corresponding number in txt.
    For example:
    *  "1100000\n"
    *  "11--222\n"
@@ -463,17 +450,17 @@ struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *ysiz
    11--222
    )";
    */
-struct cplot_subplots* cplot_subplots_text_new(const char *txt);
+struct cplot_figure* cplot_subplots_text_new(const char *txt);
 
-struct cplot_axes* cplot_plot_args(struct cplot_args *args);
-static inline struct cplot_axes* cplot_plot_inl(struct cplot_args args) {
+struct cplot_figure* cplot_plot_args(struct cplot_args *args);
+static inline struct cplot_figure* cplot_plot_inl(struct cplot_args args) {
 	return cplot_plot_args(&args);
 }
 
-struct cplot_axes* cplot_add_text(struct cplot_axes *axes, struct cplot_text *text); // cplot_text will be copied
-#define cplot_text(axes, ...) cplot_add_text_inl(axes, (struct cplot_text){__VA_ARGS__})
-static inline struct cplot_axes* cplot_add_text_inl(struct cplot_axes *axes, struct cplot_text text) {
-	return cplot_add_text(axes, &text);
+struct cplot_figure* cplot_add_text(struct cplot_figure *figure, struct cplot_text *text); // cplot_text will be copied
+#define cplot_text(figure, ...) cplot_add_text_inl(figure, (struct cplot_text){__VA_ARGS__})
+static inline struct cplot_figure* cplot_add_text_inl(struct cplot_figure *figure, struct cplot_text text) {
+	return cplot_add_text(figure, &text);
 }
 
 #define cplot_line(y0, x0, y1, x1, ...) cplot_line_inl(y0, x0, y1, x1, (struct cplot_args){	\
@@ -482,7 +469,7 @@ static inline struct cplot_axes* cplot_add_text_inl(struct cplot_axes *axes, str
 	__VA_ARGS__				\
 	})
 
-static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, float x1, struct cplot_args args) {
+static inline struct cplot_figure* cplot_line_inl(float y0, float x0, float y1, float x1, struct cplot_args args) {
 	double *buff = malloc(4*sizeof(double));
 	double *ydata = buff, *xdata = buff+2;
 	xdata[0] = x0;
@@ -501,25 +488,25 @@ static inline struct cplot_axes* cplot_line_inl(float y0, float x0, float y1, fl
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label);
 void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
 struct cplot_axis* cplot_remove_ticks(struct cplot_axis *axis);
-void cplot_destroy(void *standalone);
+void cplot_destroy(struct cplot_figure *figure);
 void cplot_destroy_axis(struct cplot_axis *axis);
 void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 
 /* Available only if compiled with waylandhelper */
-void* cplot_show_preserve(void *standalone); // returns the input
-void* cplot_show(void *standalone); // destroys the input and returns NULL
+struct cplot_figure* cplot_show_preserve(struct cplot_figure *figure); // returns the input
+void cplot_show(struct cplot_figure *figure); // destroys the input
 
-void* cplot_write_png_preserve(void *standalone, const char *name); // returns the input standalone
-void* cplot_write_png(void *standalone, const char *name); // destroys the input and returns NULL
+struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *figure, const char *name); // returns the input figure
+void cplot_write_png(struct cplot_figure *figure, const char *name); // destroys the input
 #define _cplot_save_png(a, b, ...) cplot_write_png(a, b)
 #define cplot_save_png(...) _cplot_save_png(__VA_ARGS__, NULL) // cplot_write_png but name is an optional argument
 #define _cplot_save_png_preserve(a, b, ...) cplot_write_png_preserve(a, b)
 #define cplot_save_png_preserve(...) _cplot_save_png_preserve(__VA_ARGS__, NULL)
 
-/* Available only if compiled with video support. Function axes->update has to be defined. */
-void* cplot_write_mp4_preserve(void *standalone, const char *name, float fps); // returns the input
-void* cplot_write_mp4(void *standalone, const char *name, float fps); // destroys the input and returns NULL
+/* Available only if compiled with video support. Function figure->update has to be defined. */
+struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *figure, const char *name, float fps); // returns the input
+void cplot_write_mp4(struct cplot_figure *figure, const char *name, float fps); // destroys the input
 
 /* cmap is in form [rgb]*256 */
 unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned *scheme, int len);
@@ -552,32 +539,30 @@ void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticks *this, double min, 
 #define cplot_ix0axis 0
 #define cplot_iy0axis 1
 
-static inline struct cplot_axis* cplot_xaxis0(struct cplot_axes *axes) { return axes->axis[cplot_ix0axis]; }
-static inline struct cplot_axis* cplot_yaxis0(struct cplot_axes *axes) { return axes->axis[cplot_iy0axis]; }
+static inline struct cplot_axis* cplot_xaxis0(struct cplot_figure *figure) { return figure->axis[cplot_ix0axis]; }
+static inline struct cplot_axis* cplot_yaxis0(struct cplot_figure *figure) { return figure->axis[cplot_iy0axis]; }
 
-void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride);
-int  cplot_axes_layout(struct cplot_axes *axes);
-void cplot_clear_slot(struct cplot_subplots *subplots, int islot, uint32_t *canvas, int ystride);
+void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride);
+int  cplot_figure_layout(struct cplot_figure *figure);
+void cplot_clear_slot(struct cplot_figure *fig, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
-void cplot_make_range(struct cplot_axes *);
+void cplot_make_range(struct cplot_figure *);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
 struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
 
-/* To be used in the user-defined drawing function, e.g. axes->update. */
-int  cplot_topixels(float size, struct cplot_axes *axes) __attribute__((pure));
-void cplot_legend_draw(struct cplot_axes*, uint32_t *canvas, int ystride);
-void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_axes *axes, long start);
-void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int ystride);
-void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride);
-void cplot_draw(void *vplot, uint32_t *canvas, int ystride);
+/* To be used in the user-defined drawing function, e.g. figure->update. */
+int  cplot_topixels(float size, struct cplot_figure *figure) __attribute__((pure));
+void cplot_legend_draw(struct cplot_figure*, uint32_t *canvas, int ystride);
+void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_figure *figure, long start);
+void cplot_clear_data(struct cplot_figure *figure, uint32_t *canvas, int ystride);
+void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride);
+void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride);
 
 /* Käyttäjä ei tarvitse näitä. */
-void cplot_subplots_to_axes(struct cplot_subplots *subplots);
-void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride);
+void cplot_xywh_to_figure(struct cplot_figure*);
+void cplot_figure_draw(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 
 void cplot__sprint_supernum(char *out, int sizeout, int num);
 float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...);
-
-#undef inherit_cplot_standalone_common
 
 #endif

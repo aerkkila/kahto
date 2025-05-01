@@ -55,41 +55,31 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
 	}
 }
 
-void* cplot_write_png_preserve(void *vstandalone, const char *name) {
-	struct cplot_subplots *subplots = vstandalone;
-	unsigned *argb = malloc(subplots->wh[0] * subplots->wh[1] * sizeof(unsigned));
-
-	if (subplots->type == cplot_axes_e)
-		cplot_axes_draw(vstandalone, argb, subplots->wh[0]);
-	else {
-		cplot_subplots_to_axes(subplots);
-		cplot_fill_u4(argb, subplots->background, subplots->wh[0], subplots->wh[1], subplots->wh[0]);
-		for (int i=0; i<subplots->naxes; i++)
-			if (subplots->axes[i])
-				cplot_axes_draw(subplots->axes[i], argb, subplots->wh[0]);
-	}
+struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *fig, const char *name) {
+	unsigned *argb = malloc(fig->wh[0] * fig->wh[1] * sizeof(unsigned));
+	cplot_draw(fig, argb, fig->wh[0]);
 
 	char _name[80];
 	if (!name) {
-		if (subplots->name)
-			name = subplots->name;
+		if (fig->name)
+			name = fig->name;
 		else {
 			sprintf(_name, "cplot_%li.png", (long)time(NULL));
 			name = _name;
 		}
 	}
 
-	unsigned char *bgr  = malloc(subplots->wh[0] * subplots->wh[1] * 3);
-	argb_to_bgr(argb, bgr, subplots->wh[0] * subplots->wh[1]);
+	unsigned char *bgr  = malloc(fig->wh[0] * fig->wh[1] * 3);
+	argb_to_bgr(argb, bgr, fig->wh[0] * fig->wh[1]);
 	free(argb);
 	mkdir_file(name);
-	write_png(bgr, name, subplots->wh[0], subplots->wh[1]);
+	write_png(bgr, name, fig->wh[0], fig->wh[1]);
 	free(bgr);
-	return vstandalone;
+	return fig;
 }
 
 #else // not HAVE_PNG
-void* cplot_write_png_preserve(void *a, const char *b) {
+struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *a, const char *b) {
 	fprintf(stderr, "cplot library was compiled without support for writing a png image.\n"
 		"Configure and compile again with libpng enabled.\n"
 	);
@@ -97,6 +87,6 @@ void* cplot_write_png_preserve(void *a, const char *b) {
 }
 #endif // HAVE_PNG
 
-void *cplot_write_png(void *vstandalone, const char *name) {
-	return cplot_destroy(cplot_write_png_preserve(vstandalone, name)), NULL;
+void cplot_write_png(struct cplot_figure *fig, const char *name) {
+	cplot_destroy(cplot_write_png_preserve(fig, name));
 }

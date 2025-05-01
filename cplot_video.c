@@ -147,31 +147,30 @@ static int write_frame(struct cplot_video *video, uint32_t *argb) {
 	return encode(video->fcontext, video->ctx, video->stream, video->frame, video->packet);
 }
 
-void* cplot_write_mp4_preserve(void *axes_or_subplots, const char *name, float fps) {
-	struct cplot_subplots *subplots = axes_or_subplots;
-	subplots->wh[0] -= subplots->wh[0] % 2; // has to be a multiple of 2
-	subplots->wh[1] -= subplots->wh[1] % 2; // has to be a multiple of 2
-	int w = subplots->wh[0], h = subplots->wh[1];
+struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *fig, const char *name, float fps) {
+	fig->wh[0] -= fig->wh[0] % 2; // has to be a multiple of 2
+	fig->wh[1] -= fig->wh[1] % 2; // has to be a multiple of 2
+	int w = fig->wh[0], h = fig->wh[1];
 	uint32_t *argb = malloc(w * h * sizeof(uint32_t));
-	cplot_draw(axes_or_subplots, argb, w);
+	cplot_draw(fig, argb, w);
 	mkdir_file(name);
 
 	struct cplot_video video;
 	if (cplot_init_video(&video, name, w, h, fps))
-		return axes_or_subplots;
+		return fig;
 
 	long updatecount = -1;
 	double interval = 1 / fps;
-	while ((++updatecount, subplots->update((void*)subplots, argb, w, updatecount, updatecount * interval)) >= 0) {
+	while ((++updatecount, fig->update((void*)fig, argb, w, updatecount, updatecount * interval)) >= 0) {
 		write_frame(&video, argb);
 		video.iframe++;
 	}
 	encode(video.fcontext, video.ctx, video.stream, NULL, video.packet);
 	cplot_destroy_video(&video);
 
-	return axes_or_subplots;
+	return fig;
 }
 
-void* cplot_write_mp4(void *axes_or_subplots, const char *name, float fps) {
-	return cplot_destroy(cplot_write_mp4_preserve(axes_or_subplots, name, fps)), NULL;
+void cplot_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
+	cplot_destroy(cplot_write_mp4_preserve(fig, name, fps));
 }

@@ -4,25 +4,25 @@
 #include "cplot.h"
 #include <ttra.h>
 
-static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *tk, int ipar, int *edges_axespx) {
+static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *tk, int ipar, int *edges_figpx) {
 	int nlabels = tk->tickerdata.common.nticks, area[4];
 	char labelbuff[128];
 	char *label = labelbuff;
 	double min = tk->axis->min;
 	double range = tk->axis->max - min;
 	int textloc[2] = {0};
-	ttra_set_fontheight(ttra, topixels(tk->rowheight, tk->axis->axes));
+	ttra_set_fontheight(ttra, topixels(tk->rowheight, tk->axis->figure));
 
-	int xywh[4], *inner_margin = tk->axis->axes->ro_inner_margin;
-	memcpy(xywh, tk->axis->axes->ro_inner_xywh, sizeof(xywh));
+	int xywh[4], *inner_margin = tk->axis->figure->ro_inner_margin;
+	memcpy(xywh, tk->axis->figure->ro_inner_xywh, sizeof(xywh));
 	xywh[ipar] += inner_margin[ipar];
 	xywh[ipar+2] -= inner_margin[ipar] + inner_margin[ipar+2];
 
 	if (!tk->have_labels) {
 		double dataval = tk->get_tick(tk, 0, &label, 128);
-		edges_axespx[0] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
+		edges_figpx[0] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
 		dataval = tk->get_tick(tk, nlabels-1, &label, 128);
-		edges_axespx[1] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
+		edges_figpx[1] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
 		return;
 	}
 
@@ -33,13 +33,13 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *t
 			relval = 1 - relval;
 		textloc[ipar] = iround(relval*xywh[ipar+2]) + xywh[ipar];
 		put_text(ttra, label, textloc[0], textloc[1], tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
-		update_min(edges_axespx[0], area[ipar]);
-		update_max(edges_axespx[1], area[ipar+2]);
+		update_min(edges_figpx[0], area[ipar]);
+		update_max(edges_figpx[1], area[ipar+2]);
 	}
 }
 
 static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
-	const int *xywh = axis->axes->ro_inner_xywh;
+	const int *xywh = axis->figure->ro_inner_xywh;
 	int ipar = axis->direction == 1;
 	axis->ro_line[ipar] = axis->ro_area[ipar] = xywh[ipar];
 	axis->ro_line[ipar+2] = axis->ro_area[ipar+2] = xywh[ipar] + xywh[ipar+2];
@@ -52,20 +52,20 @@ static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
 			axis->text[i]->ro_area[ipar+2] += move;
 		}
 
-	struct cplot_axes *axes = axis->axes;
+	struct cplot_figure *fig = axis->figure;
 	struct cplot_ticks *tk = axis->ticks;
 	if (!tk || !tk->visible)
 		return;
-	int edges_axespx[] = {xywh[2+ipar], -xywh[2+ipar]};
-	get_ticklabel_parallel_area(axes->ttra, tk, ipar, edges_axespx);
-	tk->ro_labelarea[ipar+0] = edges_axespx[0];
-	tk->ro_labelarea[ipar+2] = edges_axespx[1];
+	int edges_figpx[] = {xywh[2+ipar], -xywh[2+ipar]};
+	get_ticklabel_parallel_area(fig->ttra, tk, ipar, edges_figpx);
+	tk->ro_labelarea[ipar+0] = edges_figpx[0];
+	tk->ro_labelarea[ipar+2] = edges_figpx[1];
 }
 
 static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
 	int iort = axis->direction == 0;
 	int ipar = !iort;
-	struct cplot_axes *axes = axis->axes;
+	struct cplot_figure *fig = axis->figure;
 	int side = axis->pos >= 0.5;
 	if (!axis->ticks || !axis->ticks->visible) {
 		limits[0] = limits[1] = 0;
@@ -74,10 +74,10 @@ static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
 	int *area = axis->ticks->ro_labelarea;
 
 	if (ipar == 1)
-		update_max(limits[0], axes->title.ro_area[3]);
+		update_max(limits[0], fig->title.ro_area[3]);
 
-	for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
-		struct cplot_axis *ax1 = axes->axis[iaxis];
+	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
+		struct cplot_axis *ax1 = fig->axis[iaxis];
 		if (ax1->direction == axis->direction)
 			continue;
 		struct cplot_ticks *tk1 = ax1->ticks;
@@ -116,7 +116,7 @@ void limits_to_conflicts(struct cplot_axis *axis, int *limits) {
 
 struct layout_ort_args {
 	int *imargin_xyxy, iort, iouter, iinner, iside;
-	struct cplot_axes *axes;
+	struct cplot_figure *fig;
 };
 
 #define unpack_args(a)\
@@ -137,9 +137,9 @@ static void _axis_line_orthogonal(struct cplot_axis *axis, struct layout_ort_arg
 		fw = axis->linestyle.thickness; // regular axis
 
 	unpack_args(args);
-	int iw = topixels(fw, args->axes);
+	int iw = topixels(fw, args->fig);
 	if (iside) {
-		axis->ro_area[iouter] = axis->axes->wh[iort] - imargin_xyxy[iouter];
+		axis->ro_area[iouter] = axis->figure->wh[iort] - imargin_xyxy[iouter];
 		axis->ro_area[iinner] = axis->ro_area[iouter] - iw;
 	}
 	else {
@@ -157,10 +157,10 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct layout_o
 	unpack_args(args);
 	if (tk->length1 > tk->length)
 		tk->length1 = tk->length;
-	int length = topixels(tk->length, args->axes);
-	int length1 = topixels(tk->length1, args->axes);
+	int length = topixels(tk->length, args->fig);
+	int length1 = topixels(tk->length1, args->fig);
 	if (iside) {
-		tk->ro_lines[iside] = axis->axes->wh[iort] - imargin_xyxy[iouter];
+		tk->ro_lines[iside] = axis->figure->wh[iort] - imargin_xyxy[iouter];
 		tk->ro_lines1[!iside] = tk->ro_lines[!iside] = tk->ro_lines[iside] - length;
 		tk->ro_lines1[iside] = tk->ro_lines1[!iside] + length1;
 	}
@@ -181,7 +181,7 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 		area[4], max01[2] = {0};
 	char labelbuff[128];
 	char *label = labelbuff;
-	ttra_set_fontheight(ttra, topixels(tk->rowheight, args->axes));
+	ttra_set_fontheight(ttra, topixels(tk->rowheight, args->fig));
 	for (int i=0; i<nlabels; i++) {
 		tk->get_tick(tk, i, &label, 128);
 		put_text(ttra, label, 0, 0, tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
@@ -193,7 +193,7 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 	int reserved = max01[iside];
 	int length = max01[1] + max01[0]; // positive is always away from the baseline
 	if (iside) {
-		tk->ro_labelarea[iouter] = axis->axes->wh[iort] - imargin_xyxy[iouter];
+		tk->ro_labelarea[iouter] = axis->figure->wh[iort] - imargin_xyxy[iouter];
 		tk->ro_labelarea[iinner] = tk->ro_labelarea[iouter] - length;
 	}
 	else {
@@ -211,7 +211,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 		if (!axis->text[itext])
 			continue;
 		struct cplot_axistext *axistext = axis->text[itext];
-		ttra_set_fontheight(ttra, topixels(axistext->rowheight, args->axes));
+		ttra_set_fontheight(ttra, topixels(axistext->rowheight, args->fig));
 		int area[4];
 		put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
 		sizes[itext] = iside ? area[iort+2] : -area[iort];
@@ -220,7 +220,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 		axistext->ro_area[!iort+2] = area[!iort+2];
 	}
 	if (iside) {
-		int centerpos = axis->axes->wh[iort] - imargin_xyxy[iouter] - imaxtext;
+		int centerpos = axis->figure->wh[iort] - imargin_xyxy[iouter] - imaxtext;
 		for (int itext=0; itext<axis->ntexts; itext++)
 			if (axis->text[itext]) {
 				axis->text[itext]->ro_area[iinner] = centerpos;
@@ -243,7 +243,7 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 		return;
 	int isx = axis->direction == 0;
 	int iort = isx;
-	struct ttra *ttra = axis->axes->ttra;
+	struct ttra *ttra = axis->figure->ttra;
 	ttra_set_fontheight(ttra, 30);
 
 	struct layout_ort_args args = {
@@ -252,7 +252,7 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 		.iouter = iort + 2*(axis->pos >= 0.5),
 		.iinner = iort + 2*(axis->pos < 0.5),
 		.iside = axis->pos >= 0.5,
-		.axes = axis->axes,
+		.fig = axis->figure,
 	};
 
 	/* From outside in. These change imargin_xyxy and the object.*/
@@ -262,9 +262,9 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 	_axis_line_orthogonal(axis, &args);
 }
 
-void cplot_make_inner_margin(struct cplot_axes *axes) {
-	for (int i=0; i<axes->ndata; i++) {
-		struct cplot_data *data = axes->data[i];
+void cplot_make_inner_margin(struct cplot_figure *fig) {
+	for (int i=0; i<fig->ndata; i++) {
+		struct cplot_data *data = fig->data[i];
 		float size_marker = data->markerstyle.size * !!cplot_visible_marker(data->markerstyle.marker);
 		float size_line = data->linestyle.thickness * (data->linestyle.style != cplot_line_none_e);
 		float size = max(size_marker, size_line);
@@ -275,21 +275,21 @@ void cplot_make_inner_margin(struct cplot_axes *axes) {
 			if (!axis)
 				continue;
 			double axisrange = axis->max - axis->min;
-			int axislen = axes->ro_inner_xywh[2+axis->direction];
+			int axislen = fig->ro_inner_xywh[2+axis->direction];
 			/* This was derived using pen and paper. Reading this code might be challenging. */
 			float s0 = (max(axis->min, data->minmax[iaxis][0]) - axis->min) / axisrange;
 			float s1 = (min(axis->max, data->minmax[iaxis][1]) - axis->min) / axisrange;
-			float size05_axis = topixels(size, axes)*0.5 / axislen;
+			float size05_axis = topixels(size, fig)*0.5 / axislen;
 			float innerfraction = (1 - 2 * size05_axis) / (s1 - s0);
 			float m0_axis = size05_axis - innerfraction * s0;
 			float m1_axis = 1 - (m0_axis + innerfraction);
 			if (m0_axis > 0) {
 				int m0 = iroundpos(m0_axis * axislen);
-				update_max(axes->ro_inner_margin[axis->direction], m0);
+				update_max(fig->ro_inner_margin[axis->direction], m0);
 			}
 			if (m1_axis > 0) {
 				int m1 = iroundpos(m1_axis * axislen);
-				update_max(axes->ro_inner_margin[axis->direction+2], m1);
+				update_max(fig->ro_inner_margin[axis->direction+2], m1);
 			}
 		}
 	}
@@ -310,7 +310,7 @@ static void adjust_moveaxis(int *area, int iort, int side, int *testarea, const 
 }
 
 static void set_moveaxis_based_on_texts(struct cplot_axis *axis, const int *limits, int *moveaxis) {
-	struct cplot_axes *axes = axis->axes;
+	struct cplot_figure *fig = axis->figure;
 	struct cplot_ticks *tk;
 	if (!axis || !(tk = axis->ticks) || !tk || !tk->visible || !tk->have_labels)
 		return;
@@ -319,11 +319,11 @@ static void set_moveaxis_based_on_texts(struct cplot_axis *axis, const int *limi
 		ipar = axis->direction == 1,
 		side = axis->pos >= 0.5;
 
-	if (ipar == 1 && axes->title.text && axes->title.text[0])
-		adjust_moveaxis(area, iort, side, axes->title.ro_area, limits, moveaxis);
+	if (ipar == 1 && fig->title.text && fig->title.text[0])
+		adjust_moveaxis(area, iort, side, fig->title.ro_area, limits, moveaxis);
 
-	for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
-		struct cplot_axis *ax1 = axes->axis[iaxis];
+	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
+		struct cplot_axis *ax1 = fig->axis[iaxis];
 		if (ax1->direction == axis->direction)
 			continue;
 		for (int i=0; i<ax1->ntexts; i++)
@@ -331,7 +331,7 @@ static void set_moveaxis_based_on_texts(struct cplot_axis *axis, const int *limi
 	}
 }
 
-static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, int limits[4][2], int *moveaxis) {
+static void fit_to_figure(struct cplot_axis **axis_xyxy, int limits[4][2], int *moveaxis) {
 	for (int iaxis=0; iaxis<4; iaxis++) {
 		if (!axis_xyxy[iaxis])
 			continue;
@@ -345,74 +345,77 @@ static void fit_to_axes(struct cplot_axes *axes, struct cplot_axis **axis_xyxy, 
 	}
 }
 
-int cplot_axes_layout(struct cplot_axes *axes) {
+/* Close your eyes. I am going to do something scary. */
+#define return return fig->ro_cannot_draw =
+
+int cplot_figure_layout(struct cplot_figure *fig) {
 	int imargin_xyxy[4];
 	for (int i=0; i<4; i++)
-		imargin_xyxy[i] = topixels(axes->margin[i], axes);
-	memset(axes->ro_inner_margin, 0, sizeof(axes->ro_inner_margin));
-	if (!axes->ttra->text_initialized)
-		ttra_init(axes->ttra);
-	if (axes->title.text) {
-		ttra_set_fontheight(axes->ttra, topixels(axes->title.rowheight, axes));
-		put_text(axes->ttra, axes->title.text, axes->wh[0]*0.5, 0, -0.5, 0.1, axes->title.rotation_grad, axes->title.ro_area, 1);
-		imargin_xyxy[1] += axes->title.ro_area[3];
+		imargin_xyxy[i] = topixels(fig->margin[i], fig);
+	memset(fig->ro_inner_margin, 0, sizeof(fig->ro_inner_margin));
+	if (!fig->ttra->text_initialized)
+		ttra_init(fig->ttra);
+	if (fig->title.text) {
+		ttra_set_fontheight(fig->ttra, topixels(fig->title.rowheight, fig));
+		put_text(fig->ttra, fig->title.text, fig->wh[0]*0.5, 0, -0.5, 0.1, fig->title.rotation_grad, fig->title.ro_area, 1);
+		imargin_xyxy[1] += fig->title.ro_area[3];
 	}
 
-	ttra_set_fontheight(axes->ttra, 30);
-	cplot_make_range(axes);
+	ttra_set_fontheight(fig->ttra, 30);
+	cplot_make_range(fig);
 
 	/* tick initialization */
-	for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
-		struct cplot_axis *axis = axes->axis[iaxis];
+	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
+		struct cplot_axis *axis = fig->axis[iaxis];
 		if (axis->ticks && axis->ticks->init)
 			axis->ticks->init(axis->ticks, axis->min, axis->max);
 	}
 
 	/* orthogonal axis size */
 	for (int outside=1; outside>=0; outside--)
-		for (int iaxis=0; iaxis<axes->naxis; iaxis++) {
-			struct cplot_axis *axis = axes->axis[iaxis];
+		for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
+			struct cplot_axis *axis = fig->axis[iaxis];
 			if (axis->pos == (int)axis->pos && axis->outside == outside)
 				cplot_axis_get_orthogonal(axis, imargin_xyxy);
 		}
 
-	if (axes->wh[0] <= imargin_xyxy[0]+imargin_xyxy[2] ||
-		axes->wh[1] <= imargin_xyxy[1]+imargin_xyxy[3])
+	if (fig->wh[0] <= imargin_xyxy[0]+imargin_xyxy[2] ||
+		fig->wh[1] <= imargin_xyxy[1]+imargin_xyxy[3])
 		return 1;
 
 	if (imargin_xyxy[0] < 0 || imargin_xyxy[1] < 0)
 		return 1;
 
-	axes->ro_inner_xywh[0] = imargin_xyxy[0];
-	axes->ro_inner_xywh[1] = imargin_xyxy[1];
-	axes->ro_inner_xywh[2] = axes->wh[0] - imargin_xyxy[2] - axes->ro_inner_xywh[0];
-	axes->ro_inner_xywh[3] = axes->wh[1] - imargin_xyxy[3] - axes->ro_inner_xywh[1];
-	const int *axis_xywh = axes->ro_inner_xywh;
-	if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0 || axis_xywh[0] >= axes->wh[0] || axis_xywh[1] >= axes->wh[1])
+	fig->ro_inner_xywh[0] = imargin_xyxy[0];
+	fig->ro_inner_xywh[1] = imargin_xyxy[1];
+	fig->ro_inner_xywh[2] = fig->wh[0] - imargin_xyxy[2] - fig->ro_inner_xywh[0];
+	fig->ro_inner_xywh[3] = fig->wh[1] - imargin_xyxy[3] - fig->ro_inner_xywh[1];
+	const int *axis_xywh = fig->ro_inner_xywh;
+	if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0 || axis_xywh[0] >= fig->wh[0] || axis_xywh[1] >= fig->wh[1])
 		return 1;
 
 	struct cplot_axis *axis_xyxy[4] = {0};
-	for (int i=0; i<axes->naxis; i++) {
-		int ipos = axes->axis[i]->pos != 0;
-		if (!axes->axis[i]->outside && ipos == axes->axis[i]->pos)
-			axis_xyxy[!!axes->axis[i]->direction + ipos*2] = axes->axis[i];
+	for (int i=0; i<fig->naxis; i++) {
+		int ipos = fig->axis[i]->pos != 0;
+		if (!fig->axis[i]->outside && ipos == fig->axis[i]->pos)
+			axis_xyxy[!!fig->axis[i]->direction + ipos*2] = fig->axis[i];
 	}
 
 	int imargin0[] = {
-		topixels(axes->margin[0], axes),
-		topixels(axes->margin[1], axes),
-		topixels(axes->margin[2], axes),
-		topixels(axes->margin[3], axes),
+		topixels(fig->margin[0], fig),
+		topixels(fig->margin[1], fig),
+		topixels(fig->margin[2], fig),
+		topixels(fig->margin[3], fig),
 	};
 
-	cplot_make_inner_margin(axes);
+	cplot_make_inner_margin(fig);
 
 	/* while (1) but avoid halting in certain situations */
 	int firsttime = 1;
 	for (int _iloop=0; _iloop<30; _iloop++) {
 		/* parallel size */
-		for (int i=0; i<axes->naxis; i++)
-			axis_set_parallel_sizes(axes->axis[i], firsttime);
+		for (int i=0; i<fig->naxis; i++)
+			axis_set_parallel_sizes(fig->axis[i], firsttime);
 		firsttime = 0;
 
 		/*      ⁰⁰              ⁰¹
@@ -430,14 +433,14 @@ int cplot_axes_layout(struct cplot_axes *axes) {
 		 */
 
 		int limits[4][2] = {
-			{imargin0[0], axes->wh[0]-imargin0[2]},
-			{imargin0[1], axes->wh[1]-imargin0[3]},
-			{imargin0[0], axes->wh[0]-imargin0[2]},
-			{imargin0[1], axes->wh[1]-imargin0[3]},
+			{imargin0[0], fig->wh[0]-imargin0[2]},
+			{imargin0[1], fig->wh[1]-imargin0[3]},
+			{imargin0[0], fig->wh[0]-imargin0[2]},
+			{imargin0[1], fig->wh[1]-imargin0[3]},
 		},
 			moveaxis[4] = {0};
 		/* Make sure everything fits into the figure. */
-		fit_to_axes(axes, axis_xyxy, limits, moveaxis);
+		fit_to_figure(axis_xyxy, limits, moveaxis);
 
 		for (int i=0; i<4; i++)
 			if (axis_xyxy[i])
@@ -472,18 +475,20 @@ int cplot_axes_layout(struct cplot_axes *axes) {
 		for (int i=0; i<4; i++)
 			if (moveaxis[i]) {
 				for (; i<4; i++)
-					axes->ro_inner_margin[i] += moveaxis[i];
+					fig->ro_inner_margin[i] += moveaxis[i];
 				goto next;
 			}
 		goto loop_done;
 next:
-		if (axes->ro_inner_margin[0] + axes->ro_inner_margin[2] >= axis_xywh[2] ||
-			axes->ro_inner_margin[1] + axes->ro_inner_margin[3] >= axis_xywh[3])
+		if (fig->ro_inner_margin[0] + fig->ro_inner_margin[2] >= axis_xywh[2] ||
+			fig->ro_inner_margin[1] + fig->ro_inner_margin[3] >= axis_xywh[3])
 			return 1;
 	}
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
-	legend_placement(axes);
-	texts_placement(axes);
+	legend_placement(fig);
+	texts_placement(fig);
 	return 0;
 }
+
+#undef return

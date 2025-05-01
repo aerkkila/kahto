@@ -12,9 +12,9 @@ int main() {
 		y[i] = sinf(x[i]);
 	}
 
-	struct cplot_axes *axes = cplot_yx(y, x, len, cplot_lineargs);
+	struct cplot_figure *fig = cplot_yx(y, x, len, cplot_lineargs);
 
-	struct cplot_ticks *ticks = cplot_xaxis0(axes)->ticks;
+	struct cplot_ticks *ticks = cplot_xaxis0(fig)->ticks;
 	/* ticks->init points to the function which determines the ticks.
 	   All functions are listed in cplot.h (cplot_init_ticker_*).
 	   In this case we select the function which reads arbitrary data given by user
@@ -37,9 +37,9 @@ int main() {
 	float y2[] = {1, 1.5, -0.5, 3};
 	float y2low[] = {0.8, 1.1, -0.6, 2.9}; // lower error bars
 	float y2high[] = {1.1, 1.75, -0.3, 3.1}; // higher error bars
-	struct cplot_axes *axes2 = cplot_y(y2, sizeof(y2)/sizeof(y2[0]), .err.list={y2low, y2high});
+	struct cplot_figure *fig2 = cplot_y(y2, sizeof(y2)/sizeof(y2[0]), .err.list={y2low, y2high});
 
-	ticks = cplot_xaxis0(axes2)->ticks;
+	ticks = cplot_xaxis0(fig2)->ticks;
 	char *labels2[] = {
 		"first location",
 		"",
@@ -58,9 +58,9 @@ int main() {
 	ticks->xyalign_text[0] = -1;
 
 	/* put both subplots to a figure */
-	struct cplot_subplots *sp = cplot_subplots_new(2, 1);
-	sp->wh[0] /= 2;
-	sp->axes[0] = axes;
-	sp->axes[1] = axes2;
-	cplot_show(sp);
+	struct cplot_figure *super = cplot_subplots_new(2, 1);
+	super->wh[0] /= 2;
+	super->children[0] = fig;
+	super->children[1] = fig2;
+	cplot_show(super);
 }

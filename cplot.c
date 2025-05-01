@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <math.h>
+#include <stdarg.h>
 #define CPLOT_NO_VERSION_CHECK
 #include "cplot.h"
 
@@ -84,31 +85,36 @@ static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *
 	}
 }
 
-static inline int __attribute__((pure)) topixels(float size, struct cplot_axes *axes) {
-	switch (axes->topixels_reference) {
+/* huomio: muutettakoon rekursiiviseksi */
+static inline int __attribute__((pure)) topixels(float size, struct cplot_figure *figure) {
+	switch (figure->topixels_reference) {
 		default:
 		case cplot_super_height:
-			if (axes->super) return iroundpos(size * axes->super->wh[1]);
+			if (figure->super)
+				return iroundpos(size * figure->super->wh[1]);
 			/* run through */
 		case cplot_this_height:
-			return iroundpos(size * axes->wh[1]);
+			return iroundpos(size * figure->wh[1]);
 		case cplot_super_width:
-			if (axes->super) return iroundpos(size * axes->super->wh[0]);
+			if (figure->super)
+				return iroundpos(size * figure->super->wh[0]);
 			/* run through */
 		case cplot_this_width:
-			return iroundpos(size * axes->wh[0]);
+			return iroundpos(size * figure->wh[0]);
 	}
 }
 
-#define no_room_for_legend(axes) ((axes)->legend.ro_place_err < 0)
+static inline int intsum_02(const int *a) { return a[0] + a[2]; }
 
-void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols);
-void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x);
-int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
-void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride);
-void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride);
-void legend_placement(struct cplot_axes *axes);
-void texts_placement(struct cplot_axes *axes);
+#define no_room_for_legend(figure) ((figure)->legend.ro_place_err < 0)
+
+void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *cols);
+void cplot_get_legend_dims_px(struct cplot_figure *figure, int *y, int *x);
+int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
+void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride);
+void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride);
+void legend_placement(struct cplot_figure *figure);
+void texts_placement(struct cplot_figure *figure);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -147,14 +153,13 @@ static int __attribute__((unused)) mkdir_file(const char *restrict name) {
 #ifdef HAVE_ffmpeg
 #include "cplot_video.c"
 #else
-void* cplot_write_mp4(void *standalone, const char *name, float fps) {
+void cplot_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
 	fprintf(stderr, "cplot library was compiled without support for \e[1m%s\e[0m\n", __func__);
-	return standalone;
 }
 #endif
 
-int __attribute__((pure)) cplot_topixels(float size, struct cplot_axes *axes) {
-	return topixels(size, axes);
+int __attribute__((pure)) cplot_topixels(float size, struct cplot_figure *figure) {
+	return topixels(size, figure);
 }
 
 unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned *colorscheme, int ncolors) {
@@ -191,18 +196,27 @@ unsigned* cplot_cmap_to_colorscheme(unsigned *dest, const unsigned char *cmap, i
 	return dest;
 }
 
-struct cplot_axis* cplot_axis_void_new(struct cplot_axes *axes) {
+struct cplot_axis* cplot_axis_void_new(struct cplot_figure *figure) {
 	struct cplot_axis *axis = calloc(1, sizeof(struct cplot_axis));
-	axis->axes = axes;
-	if (axes->mem_axis < axes->naxis+1)
-		axes->axis = realloc(axes->axis, (axes->mem_axis+=2) * sizeof(void*));
-	axes->axis[axes->naxis++] = axis;
-	memset(axes->axis + axes->naxis, 0, (axes->mem_axis - axes->naxis) * sizeof(void*));
+	axis->figure = figure;
+	if (figure->mem_axis < figure->naxis+1)
+		figure->axis = realloc(figure->axis, (figure->mem_axis+=2) * sizeof(void*));
+	figure->axis[figure->naxis++] = axis;
+	memset(figure->axis + figure->naxis, 0, (figure->mem_axis - figure->naxis) * sizeof(void*));
 	return axis;
 }
 
-struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y, float pos) {
-	struct cplot_axis *axis = cplot_axis_void_new(axes);
+long cplot_get_startcanvas(struct cplot_figure *fig, struct cplot_figure *dest, int ystride) {
+	long start = 0;
+	while (fig != dest) {
+		start += fig->ro_corner[1] * ystride + fig->ro_corner[0];
+		fig = fig->super;
+	}
+	return start;
+}
+
+struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float pos) {
+	struct cplot_axis *axis = cplot_axis_void_new(figure);
 	axis->linestyle.color = fg;
 	axis->linestyle.thickness = 1.0 / 400;
 	axis->linestyle.style = 1;
@@ -215,10 +229,10 @@ struct cplot_axis* cplot_axis_new(struct cplot_axes *axes, int x_or_y, float pos
 	return axis;
 }
 
-struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y) {
-	struct cplot_axis *caxis = cplot_axis_void_new(axes);
-	axes->last_caxis = caxis;
-	caxis->axes = axes;
+struct cplot_axis* cplot_coloraxis_new(struct cplot_figure *figure, int x_or_y) {
+	struct cplot_axis *caxis = cplot_axis_void_new(figure);
+	figure->last_caxis = caxis;
+	caxis->figure = figure;
 	caxis->max = 1;
 	caxis->cmap = cmh_colormaps[default_colormap].map;
 	caxis->direction = x_or_y != 'x';
@@ -260,45 +274,51 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 	return ticks;
 }
 
-struct cplot_axes* cplot_axes_new() {
-	struct cplot_axes *axes = calloc(1, sizeof(struct cplot_axes));
-	axes->type = cplot_axes_e;
-	axes->background = -1;
+struct cplot_figure* cplot_figure_bare_new() {
+	struct cplot_figure *figure = calloc(1, sizeof(struct cplot_figure));
+	figure->background = -1;
 
-	axes->axis = calloc((axes->mem_axis = 4) + 1, sizeof(void*));
-	axes->axis[0] = cplot_axis_new(axes, 'x', 1);
-	axes->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
+	figure->wh[0] = cplot_default_width;
+	figure->wh[1] = cplot_default_height;
 
-	axes->axis[1] = cplot_axis_new(axes, 'y', 0);
-	axes->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
+	figure->ttra = calloc(1, sizeof(struct ttra));
+	figure->ttra->fonttype = ttra_sans_e;
+	figure->ttra->chop_lines = 1;
 
-	axes->wh[0] = cplot_default_width;
-	axes->wh[1] = cplot_default_height;
+	figure->topixels_reference = cplot_super_height;
+	figure->colorscheme.colors = cplot_colorschemes[0];
+	figure->title.rowheight = 0.05;
 
-	axes->ttra = calloc(1, sizeof(struct ttra));
-	axes->ttra->fonttype = ttra_sans_e;
-	axes->ttra->chop_lines = 1;
+	figure->legend.rowheight = 1.0 / 40;
+	figure->legend.symbolspace_per_rowheight = 1.25;
+	figure->legend.posx = 0;
+	figure->legend.posy = 1;
+	figure->legend.hvalign[1] = -1;
+	figure->legend.placement = cplot_placement_singlemaxdist;
+	figure->legend.visible = 1;
+	figure->legend.borderstyle.thickness = 1.0/500;
+	figure->legend.borderstyle.style = cplot_line_normal_e;
+	figure->legend.borderstyle.color = 0xff<<24;
+	figure->legend.fill = cplot_fill_bg_e;
 
-	axes->topixels_reference = cplot_super_height;
-	axes->colorscheme.colors = cplot_colorschemes[0];
-	axes->title.rowheight = 0.05;
-
-	axes->legend.rowheight = 1.0 / 40;
-	axes->legend.symbolspace_per_rowheight = 1.25;
-	axes->legend.posx = 0;
-	axes->legend.posy = 1;
-	axes->legend.hvalign[1] = -1;
-	axes->legend.placement = cplot_placement_singlemaxdist;
-	axes->legend.visible = 1;
-	axes->legend.borderstyle.thickness = 1.0/500;
-	axes->legend.borderstyle.style = cplot_line_normal_e;
-	axes->legend.borderstyle.color = 0xff<<24;
-	axes->legend.fill = cplot_fill_bg_e;
-
-	return axes;
+	figure->name = "cplotfigure";
+	return figure;
 }
 
-struct cplot_subplots* cplot_subplots_put_rows_and_cols(struct cplot_subplots *subplots, int nrows, int ncols) {
+struct cplot_figure* cplot_figure_new() {
+	struct cplot_figure *figure = cplot_figure_bare_new();
+
+	figure->axis = calloc((figure->mem_axis = 4) + 1, sizeof(void*));
+	figure->axis[0] = cplot_axis_new(figure, 'x', 1);
+	figure->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
+
+	figure->axis[1] = cplot_axis_new(figure, 'y', 0);
+	figure->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
+
+	return figure;
+}
+
+struct cplot_figure* cplot_subplots_put_rows_and_cols(struct cplot_figure *fig, int nrows, int ncols) {
 	float height = 1.0 / nrows,
 		  width = 1.0 / ncols;
 	float x[ncols];
@@ -308,14 +328,14 @@ struct cplot_subplots* cplot_subplots_put_rows_and_cols(struct cplot_subplots *s
 	for (int j=0; j<nrows; j++) {
 		float y1 = (j+1) * height;
 		for (int i=0; i<ncols; i++) {
-			subplots->xywh[j*ncols+i][0] = x[i];
-			subplots->xywh[j*ncols+i][1] = y0;
-			subplots->xywh[j*ncols+i][2] = width;
-			subplots->xywh[j*ncols+i][3] = height;
+			fig->children_xywh[j*ncols+i][0] = x[i];
+			fig->children_xywh[j*ncols+i][1] = y0;
+			fig->children_xywh[j*ncols+i][2] = width;
+			fig->children_xywh[j*ncols+i][3] = height;
 		}
 		y0 = y1;
 	}
-	return subplots;
+	return fig;
 }
 
 static void _cplot_make_grid_1d(float (*xywh)[4], int which, int stride, int n, float *arr, float space) {
@@ -374,37 +394,33 @@ float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...) {
 	return list;
 }
 
-struct cplot_subplots* cplot_subplots_bare_new(int n) {
-	struct cplot_subplots *subplots = calloc(1, sizeof(struct cplot_subplots));
-	subplots->type = cplot_subplots_e;
-	subplots->axes = calloc(n, sizeof(void*));
-	subplots->xywh = calloc(n, sizeof(float[4]));
-	subplots->naxes = n;
-	subplots->wh[0] = cplot_default_width;
-	subplots->wh[1] = cplot_default_height;
-	subplots->background = -1;
-	return subplots;
+struct cplot_figure* cplot_subplots_bare_new(int n) {
+	struct cplot_figure *fig = cplot_figure_bare_new();
+	fig->children = calloc(n, sizeof(void*));
+	fig->children_xywh = calloc(n, sizeof(float[4]));
+	fig->nchildren = fig->memchildren = n;
+	return fig;
 }
 
-struct cplot_subplots* cplot_subplots_new(int nrows, int ncols) {
+struct cplot_figure* cplot_subplots_new(int nrows, int ncols) {
 	return cplot_subplots_put_rows_and_cols(cplot_subplots_bare_new(nrows*ncols), nrows, ncols);
 }
 
-struct cplot_subplots* cplot_subplots_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
-	struct cplot_subplots *sub = cplot_subplots_bare_new(nrows*ncols);
+struct cplot_figure* cplot_subplots_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
+	struct cplot_figure *fig = cplot_subplots_bare_new(nrows*ncols);
 	struct cplot_gridargs args = {
 		.nrows = nrows,
 		.ncols = ncols,
 		.width = xarr,
 		.height = yarr,
 	};
-	cplot_make_grid(sub->xywh, args);
+	cplot_make_grid(fig->children_xywh, args);
 	if ((xyowner>>0) & 1) free(xarr);
 	if ((xyowner>>1) & 1) free(yarr);
-	return sub;
+	return fig;
 }
 
-struct cplot_subplots* cplot_subplots_text_new(const char *_txt) {
+struct cplot_figure* cplot_subplots_text_new(const char *_txt) {
 	const unsigned char *txt = (typeof(txt))_txt;
 	int nrows=0, ncols=0, ipos=0;
 	unsigned short xyxy[256][4]; // some are not used but prevent overflow from bad input
@@ -438,26 +454,38 @@ struct cplot_subplots* cplot_subplots_text_new(const char *_txt) {
 	}
 	if (ipos) nrows++; // did not end in a newline
 
-	int nsub = 0;
+	int nfig = 0;
 	for (int i=0; i<32; i++) {
 		if (xyxy[i+'0'][0] == 0xffff)
 			continue;
-		nsub = i+1;
+		nfig = i+1;
 	}
 
-	struct cplot_subplots *sub = cplot_subplots_bare_new(nsub);
-	for (int i=0; i<nsub; i++) {
+	struct cplot_figure *fig = cplot_subplots_bare_new(nfig);
+	for (int i=0; i<nfig; i++) {
 		if (xyxy[i+'0'][0] == 0xffff)
 			continue;
-		sub->xywh[i][0] = (float)xyxy[i+'0'][0] / (float)ncols;
-		sub->xywh[i][1] = (float)xyxy[i+'0'][1] / (float)nrows;
+		fig->children_xywh[i][0] = (float)xyxy[i+'0'][0] / (float)ncols;
+		fig->children_xywh[i][1] = (float)xyxy[i+'0'][1] / (float)nrows;
 		float size;
 		size = xyxy[i+'0'][2] - xyxy[i+'0'][0] + 1;
-		sub->xywh[i][2] = size / (float)ncols;
+		fig->children_xywh[i][2] = size / (float)ncols;
 		size = xyxy[i+'0'][3] - xyxy[i+'0'][1] + 1;
-		sub->xywh[i][3] = size / (float)nrows;
+		fig->children_xywh[i][3] = size / (float)nrows;
 	}
-	return sub;
+	return fig;
+}
+
+int cplot_next_ifigure_from_coords(struct cplot_figure *fig0, int x, int y) {
+	for (int ifig=fig0->nchildren-1; ifig>=0; ifig--) {
+		struct cplot_figure *fig = fig0->children[ifig];
+		if (!fig)
+			continue;
+		if (x >= fig->ro_corner[0] && x < fig->ro_corner[0] + fig->wh[0] &&
+			y >= fig->ro_corner[1] && y < fig->ro_corner[1] + fig->wh[1])
+			return ifig;
+	}
+	return -1;
 }
 
 static void get_min_for_data(struct cplot_data *data, int yxz) {
@@ -597,9 +625,9 @@ void cplot_check_dataminmax(struct cplot_data *data, int yxz) {
 	}
 }
 
-void cplot_make_range(struct cplot_axes *axes) {
-	for (int idata=axes->ndata-1; idata>=0; idata--) {
-		struct cplot_data *restrict data = axes->data[idata];
+void cplot_make_range(struct cplot_figure *figure) {
+	for (int idata=figure->ndata-1; idata>=0; idata--) {
+		struct cplot_data *restrict data = figure->data[idata];
 		if (!cplot_visible_data(data))
 			continue;
 
@@ -627,8 +655,8 @@ void cplot_make_range(struct cplot_axes *axes) {
 		}
 	}
 
-	for (int i=0; i<axes->naxis; i++)
-		axes->axis[i]->range_isset = cplot_minbit | cplot_maxbit;
+	for (int i=0; i<figure->naxis; i++)
+		figure->axis[i]->range_isset = cplot_minbit | cplot_maxbit;
 }
 
 /* Tätä voisi nopeuttaa käymällä löydettyä kohtaa läpi eteenpäin kunnes löytyy vapaa paikka
@@ -716,11 +744,11 @@ jump_found:
 /* Return negative if does not fit to image.
    Return positive if no empty slot is available.
    Return zero on success. */
-int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement method) {
-	int x0 = axes->ro_inner_xywh[0],
-	y0 = axes->ro_inner_xywh[1],
-	w = axes->ro_inner_xywh[2],
-	h = axes->ro_inner_xywh[3];
+int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement method) {
+	int x0 = figure->ro_inner_xywh[0],
+	y0 = figure->ro_inner_xywh[1],
+	w = figure->ro_inner_xywh[2],
+	h = figure->ro_inner_xywh[3];
 	int x1 = x0 + w,
 		y1 = y0 + h;
 	if (w < rwidth || h < rheight)
@@ -729,11 +757,11 @@ int cplot_find_empty_rectangle(struct cplot_axes *axes, int rwidth, int rheight,
 		return 0;
 	int retval = 0;
 
-	int width = axes->wh[0],
-	height = axes->wh[1];
+	int width = figure->wh[0],
+	height = figure->wh[1];
 	unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
-	for (int i=0; i<axes->ndata; i++)
-		cplot_data_render(axes->data[i], (void*)image, width, axes, 0);
+	for (int i=0; i<figure->ndata; i++)
+		cplot_data_render(figure->data[i], (void*)image, width, figure, 0);
 
 	/* including the pointed spot */
 	short (*spaceright)[w] = malloc(w*h * sizeof(short));
@@ -833,23 +861,23 @@ end:
 	return retval;
 }
 
-void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	char tickbuff[128];
 	char *tick = tickbuff;
 	struct ttra *ttra = NULL;
-	struct cplot_axes *axes = ticks->axis->axes;
+	struct cplot_figure *figure = ticks->axis->figure;
 
 	if (ticks->have_labels) {
-		ttra = ticks->axis->axes->ttra;
+		ttra = ticks->axis->figure->ttra;
 		ttra->canvas = canvas;
 		ttra->realw = ystride;
-		ttra->realh = axesheight;
+		ttra->realh = figureheight;
 		ttra->w = ticks->ro_labelarea[2] - ticks->ro_labelarea[0];
 		ttra->h = ticks->ro_labelarea[3] - ticks->ro_labelarea[1];
 		ttra->fg_default = ticks->color;
 		ttra->bg_default = -1;
 		ttra_print(ttra, "\033[0m");
-		ttra_set_fontheight(ttra, topixels(ticks->rowheight, axes));
+		ttra_set_fontheight(ttra, topixels(ticks->rowheight, figure));
 	}
 
 	int iort = ticks->axis->direction == 0;
@@ -858,7 +886,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 	line_px[iort+0] = ticks->ro_lines[0];
 	line_px[iort+2] = ticks->ro_lines[1];
 	int nticks = ticks->tickerdata.common.nticks;
-	int gridline[4], xywh[4], *margin=ticks->axis->axes->ro_inner_margin, *xywh_out=ticks->axis->axes->ro_inner_xywh;
+	int gridline[4], xywh[4], *margin=ticks->axis->figure->ro_inner_margin, *xywh_out=ticks->axis->figure->ro_inner_xywh;
 	memcpy(xywh, xywh_out, sizeof(xywh));
 	xywh[0] += margin[0];
 	xywh[1] += margin[1];
@@ -871,7 +899,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 
 	const double axisdatamin = ticks->axis->min;
 	const double axisdatalen = ticks->axis->max - axisdatamin;
-	int tot_area[] = {0, 0, ticks->axis->axes->wh[0], ticks->axis->axes->wh[1]};
+	int tot_area[] = {0, 0, ticks->axis->figure->wh[0], ticks->axis->figure->wh[1]};
 	tot_area[!iort] = ticks->axis->ro_line[!iort];
 	tot_area[!iort+2] = ticks->axis->ro_line[!iort+2];
 	for (int itick=0; itick<nticks; itick++) {
@@ -880,13 +908,13 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 		if (!isx)
 			pos_rel = 1 - pos_rel;
 		line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
-		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axes, NULL, 0);
+		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, NULL, 0);
 		int area_text[4] = {0};
 		if (ttra && tick[0])
 			put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation_grad, area_text, 0);
 		if (ticks->gridstyle.style) {
 			gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, NULL, 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, figure, NULL, 0);
 		}
 	}
 
@@ -901,31 +929,31 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
-			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, axes, NULL, 0);
+			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, figure, NULL, 0);
 			if (ticks->gridstyle1.style) {
 				gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, axes, NULL, 0);
+				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, figure, NULL, 0);
 			}
 		}
 	}
 }
 
-void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
-	struct ttra *ttra = axistext->axis->axes->ttra;
+void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
+	struct ttra *ttra = axistext->axis->figure->ttra;
 	ttra->canvas = canvas;
 	ttra->realw = ystride;
-	ttra->realh = axesheight;
+	ttra->realh = figureheight;
 	ttra->w = axistext->ro_area[2] - axistext->ro_area[0];
 	ttra->h = axistext->ro_area[3] - axistext->ro_area[1];
 	ttra->fg_default = axistext->axis->linestyle.color;
 	ttra->bg_default = -1;
 	ttra_print(ttra, "\033[0m");
-	ttra_set_fontheight(ttra, topixels(axistext->rowheight, axistext->axis->axes));
+	ttra_set_fontheight(ttra, topixels(axistext->rowheight, axistext->axis->figure));
 	int *area = axistext->ro_area;
 	put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
 }
 
-void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, int axesheight, int ystride) {
+void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	if (!axis || axis->direction < 0)
 		return;
 	int isx = axis->direction == 0;
@@ -979,10 +1007,10 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
 		typeof(axis->ro_area[0]) area[4];
 		memcpy(area, axis->ro_area, sizeof(area));
 		if (area[isx] < 0) area[isx] = 0;
-		if (area[isx+2] > axis->axes->wh[isx])
-			area[isx+2] = axis->axes->wh[isx];
+		if (area[isx+2] > axis->figure->wh[isx])
+			area[isx+2] = axis->figure->wh[isx];
 
-		int WH[] = {axeswidth, axesheight};
+		int WH[] = {figurewidth, figureheight};
 		if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
 		if (axis->linestyle.style)
@@ -990,152 +1018,147 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
 	}
 
 	if (axis->ticks)
-		cplot_ticks_draw(axis->ticks, canvas, axeswidth, axesheight, ystride);
+		cplot_ticks_draw(axis->ticks, canvas, figurewidth, figureheight, ystride);
 
 	for (int i=0; i<axis->ntexts; i++)
-		cplot_axistext_draw(axis->text[i], canvas, axeswidth, axesheight, ystride);
+		cplot_axistext_draw(axis->text[i], canvas, figurewidth, figureheight, ystride);
 }
 
-void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
-	canvas += axes->startcanvas;
-	unsigned bg = axes->background;
-	for (int j=0; j<axes->wh[1]; j++) {
-		unsigned ind0 = j * ystride;
-		for (int i=0; i<axes->wh[0]; i++)
-			canvas[ind0+i] = bg;
-	}
-	for (int i=0; i<axes->naxis; i++)
-		cplot_axis_draw(axes->axis[i], canvas, axes->wh[0], axes->wh[1], ystride);
-	for (int i=0; i<axes->ndata; i++)
-		cplot_data_render(axes->data[i], canvas, ystride, axes, 0);
-	cplot_legend_draw(axes, canvas, ystride);
+void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
+	cplot_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
 
-	if (axes->title.text) {
-		struct cplot_text *text = &axes->title;
-		struct ttra *ttra = axes->ttra;
-		ttra_set_fontheight(ttra, topixels(text->rowheight, axes));
+	for (int i=0; i<figure->naxis; i++)
+		cplot_axis_draw(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
+	for (int i=0; i<figure->ndata; i++)
+		cplot_data_render(figure->data[i], canvas, ystride, figure, 0);
+	cplot_legend_draw(figure, canvas, ystride);
+
+	if (figure->title.text) {
+		struct cplot_text *text = &figure->title;
+		struct ttra *ttra = figure->ttra;
+		ttra_set_fontheight(ttra, topixels(text->rowheight, figure));
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
-	for (int i=0; i<axes->ntexts; i++) {
-		struct cplot_text *text = axes->texts+i;
-		struct ttra *ttra = axes->ttra;
-		ttra_set_fontheight(ttra, topixels(text->rowheight, axes));
+	for (int i=0; i<figure->ntexts; i++) {
+		struct cplot_text *text = figure->texts+i;
+		struct ttra *ttra = figure->ttra;
+		ttra_set_fontheight(ttra, topixels(text->rowheight, figure));
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
 
-	if (axes->after_drawing)
-		axes->after_drawing(axes, canvas, ystride);
+	if (figure->after_drawing)
+		figure->after_drawing(figure, canvas, ystride);
 }
 
 static void set_icolor(struct cplot_data *data) {
 	if (data->icolor != cplot_automatic)
 		return;
-	struct cplot_axes *axes = data->yxaxis[0]->axes;
-	data->icolor = axes->icolor;
+	struct cplot_figure *figure = data->yxaxis[0]->figure;
+	data->icolor = figure->icolor;
 	if (data->color)
 		return;
 	if (!data->markerstyle.color && data->markerstyle.marker && data->markerstyle.marker[0] && !data->yxzdata[2])
-		axes->icolor++;
+		figure->icolor++;
 	else if (!data->linestyle.color && data->linestyle.style)
-		axes->icolor++;
+		figure->icolor++;
 	else if (!data->errstyle.color && data->errstyle.style && (data->err.list.y0 || data->err.list.x0))
-		axes->icolor++;
+		figure->icolor++;
 }
 
-void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols) {
+void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *cols) {
 	*lines = *cols = 0;
-	for (int i=0; i<axes->ndata; i++)
-		if (axes->data[i]->label) {
+	for (int i=0; i<figure->ndata; i++)
+		if (figure->data[i]->label) {
 			int w, h;
-			ttra_get_textdims_chars(axes->data[i]->label, &w, &h);
+			ttra_get_textdims_chars(figure->data[i]->label, &w, &h);
 			*lines += h;
 			*cols = max(*cols, w);
 		}
 }
 
-void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x) {
-	struct legend *lg = &axes->legend;
-	*x = *y = 0;
-	int rowh = ttra_set_fontheight(axes->ttra, topixels(lg->rowheight, axes));
-	if (lg->ro_datay_len <= axes->ndata) {
+void cplot_get_legend_dims_px(struct cplot_figure *figure, int *Height, int *Width) {
+	struct legend *lg = &figure->legend;
+	*Width = *Height = 0;
+	int rowh = ttra_set_fontheight(figure->ttra, topixels(lg->rowheight, figure));
+	if (lg->ro_datay_len <= figure->ndata) {
 		free(lg->ro_datay);
-		lg->ro_datay = malloc((lg->ro_datay_len = axes->ndata+1) * sizeof(lg->ro_datay[0]));
+		lg->ro_datay = malloc((lg->ro_datay_len = figure->ndata+1) * sizeof(lg->ro_datay[0]));
 	}
-	lg->ro_datay[0] = *y;
-	for (int i=0; i<axes->ndata; i++) {
-		lg->ro_datay[i+1] = *y;
-		if (axes->data[i]->label) {
+	lg->ro_datay[0] = 0;
+	for (int i=0; i<figure->ndata; i++) {
+		lg->ro_datay[i+1] = lg->ro_datay[i];
+		if (figure->data[i]->label) {
 			int w, h;
-			ttra_get_textdims_pixels(axes->ttra, axes->data[i]->label, &w, &h);
-			lg->ro_datay[i+1] = *y += h;
-			*x = max(*x, w);
+			ttra_get_textdims_pixels(figure->ttra, figure->data[i]->label, &w, &h);
+			lg->ro_datay[i+1] = *Height += h;
+			*Width = max(*Width, w);
 		}
 	}
-	if (!*y)
+	if (!*Height)
 		return;
-	axes->legend.ro_text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
-	*x += axes->legend.ro_text_left;
-	int linewidth = topixels(axes->legend.borderstyle.thickness, axes);
-	linewidth += linewidth == 0 && axes->legend.borderstyle.thickness != 0; // at least 1 pixel
-	*y += linewidth * 2;
-	*x += linewidth * 2;
-	*y += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
+	figure->legend.ro_text_left = iroundpos(figure->legend.symbolspace_per_rowheight * rowh);
+	*Width += figure->legend.ro_text_left;
+	int linewidth = topixels(figure->legend.borderstyle.thickness, figure);
+	linewidth += linewidth == 0 && figure->legend.borderstyle.thickness != 0; // at least 1 pixel
+	*Height += linewidth * 2;
+	*Width += linewidth * 2;
+	*Height += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
 }
 
-void legend_placement(struct cplot_axes *axes) {
-	if (!axes->legend.visible)
+void legend_placement(struct cplot_figure *figure) {
+	if (!figure->legend.visible)
 		return;
 	int height, width;
-	cplot_get_legend_dims_px(axes, &height, &width);
+	cplot_get_legend_dims_px(figure, &height, &width);
 	if (!height || !width)
 		return;
-	axes->legend.ro_xywh[2] = width;
-	axes->legend.ro_xywh[3] = height;
-	axes->legend.ro_xywh[0] =
-		axes->ro_inner_xywh[0] + axes->legend.posx * axes->ro_inner_xywh[2] +
-		axes->legend.ro_xywh[2] * axes->legend.hvalign[0];
-	axes->legend.ro_xywh[1] =
-		axes->ro_inner_xywh[1] + axes->legend.posy * axes->ro_inner_xywh[3] +
-		axes->legend.ro_xywh[3] * axes->legend.hvalign[1];
-	if (!axes->legend.placement)
+	figure->legend.ro_xywh[2] = width;
+	figure->legend.ro_xywh[3] = height;
+	figure->legend.ro_xywh[0] =
+		figure->ro_inner_xywh[0] + figure->legend.posx * figure->ro_inner_xywh[2] +
+		figure->legend.ro_xywh[2] * figure->legend.hvalign[0];
+	figure->legend.ro_xywh[1] =
+		figure->ro_inner_xywh[1] + figure->legend.posy * figure->ro_inner_xywh[3] +
+		figure->legend.ro_xywh[3] * figure->legend.hvalign[1];
+	if (!figure->legend.placement)
 		return;
 	int iplace=0, jplace=0;
-	axes->legend.ro_place_err = cplot_find_empty_rectangle(axes, width, height, &iplace, &jplace, axes->legend.placement);
-	axes->legend.ro_xywh[0] = iplace;
-	axes->legend.ro_xywh[1] = jplace;
+	figure->legend.ro_place_err = cplot_find_empty_rectangle(figure, width, height, &iplace, &jplace, figure->legend.placement);
+	figure->legend.ro_xywh[0] = iplace;
+	figure->legend.ro_xywh[1] = jplace;
 }
 
-void texts_placement(struct cplot_axes *axes) {
-	for (int i=axes->ntexts-1; i>=0; i--) {
-		int *area = axes->texts[i].ro_area;
-		struct cplot_text *text = axes->texts+i;
-		area[0] = iroundpos(axes->wh[0] * text->xy[0]);
-		area[1] = iroundpos(axes->wh[1] * text->xy[1]);
+void texts_placement(struct cplot_figure *figure) {
+	for (int i=figure->ntexts-1; i>=0; i--) {
+		int *area = figure->texts[i].ro_area;
+		struct cplot_text *text = figure->texts+i;
+		area[0] = iroundpos(figure->wh[0] * text->xy[0]);
+		area[1] = iroundpos(figure->wh[1] * text->xy[1]);
 		if (text->rowheight == 0)
-			text->rowheight = axes->legend.rowheight;
+			text->rowheight = figure->legend.rowheight;
 		if (text->reference == cplot_dataarea_e) {
-			area[0] += axes->ro_inner_xywh[0];
-			area[1] += axes->ro_inner_xywh[1];
+			area[0] += figure->ro_inner_xywh[0];
+			area[1] += figure->ro_inner_xywh[1];
 		}
 	}
 }
 
 static struct cplot_data* add_data(struct cplot_args *args) {
-	if (args->axes->mem_data < args->axes->ndata+1)
-		args->axes->data = realloc(args->axes->data, (args->axes->mem_data = args->axes->ndata+3) * sizeof(void*));
+	if (args->figure->mem_data < args->figure->ndata+1)
+		args->figure->data = realloc(args->figure->data, (args->figure->mem_data = args->figure->ndata+3) * sizeof(void*));
 	struct cplot_data *data;
-	args->axes->data[args->axes->ndata++] = data = malloc(sizeof(struct cplot_data));
+	args->figure->data[args->figure->ndata++] = data = malloc(sizeof(struct cplot_data));
 	memcpy(data, &args->ydata, sizeof(struct cplot_data));
 
 	if (!data->yxaxis[0])
-		data->yxaxis[0] = cplot_yaxis0(args->axes);
+		data->yxaxis[0] = cplot_yaxis0(args->figure);
 	if (!data->yxaxis[1])
-		data->yxaxis[1] = cplot_xaxis0(args->axes);
+		data->yxaxis[1] = cplot_xaxis0(args->figure);
 	if (data->yxzdata[2] && !data->caxis) {
-		if (args->axes->last_caxis)
-			data->caxis = args->axes->last_caxis;
+		if (args->figure->last_caxis)
+			data->caxis = args->figure->last_caxis;
 		else
-			data->caxis = cplot_coloraxis_new(args->axes, 'y');
+			data->caxis = cplot_coloraxis_new(args->figure, 'y');
 		data->caxis->range_isset = 0;
 	}
 	if (data->caxis) {
@@ -1167,11 +1190,11 @@ struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_
 	return text;
 }
 
-struct cplot_axes* cplot_add_text(struct cplot_axes *axes, struct cplot_text *text) {
-	if (axes->ntexts >= axes->memtext)
-		axes->texts = realloc(axes->texts, (axes->memtext = axes->ntexts + 2) * sizeof(axes->texts[0]));
-	axes->texts[axes->ntexts++] = *text;
-	return axes;
+struct cplot_figure* cplot_add_text(struct cplot_figure *figure, struct cplot_text *text) {
+	if (figure->ntexts >= figure->memtext)
+		figure->texts = realloc(figure->texts, (figure->memtext = figure->ntexts + 2) * sizeof(figure->texts[0]));
+	figure->texts[figure->ntexts++] = *text;
+	return figure;
 }
 
 struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
@@ -1241,48 +1264,46 @@ void cplot_destroy_data(struct cplot_data *data) {
 	free(data);
 }
 
-void cplot_destroy_axes(struct cplot_axes *axes) {
-	for (int i=0; i<axes->naxis; i++)
-		cplot_destroy_axis(axes->axis[i]);
-	free(axes->axis);
-	ttra_destroy(axes->ttra);
-	free(axes->ttra);
-	free(axes->legend.ro_datay);
+void cplot_destroy_single(struct cplot_figure *fig) {
+	/* Children must be destroyed already or referenced by other pointers. */
+	free(fig->children);
+	free(fig->children_xywh);
 
-	for (int i=0; i<axes->ndata; i++)
-		cplot_destroy_data(axes->data[i]);
-	free(axes->data);
+	for (int i=0; i<fig->naxis; i++)
+		cplot_destroy_axis(fig->axis[i]);
+	free(fig->axis);
+	ttra_destroy(fig->ttra);
+	free(fig->ttra);
+	free(fig->legend.ro_datay);
 
-	if (axes->title.owner)
-		free((void*)(intptr_t)axes->title.text);
+	for (int i=0; i<fig->ndata; i++)
+		cplot_destroy_data(fig->data[i]);
+	free(fig->data);
 
-	for (int i=axes->ntexts-1; i>=0; i--)
-		if (axes->texts[i].owner)
-			free((void*)(intptr_t)axes->texts[i].text);
-	free(axes->texts);
+	if (fig->title.owner)
+		free((void*)(intptr_t)fig->title.text);
 
-	if (axes->colorscheme.owner)
-		free(axes->colorscheme.colors);
+	for (int i=fig->ntexts-1; i>=0; i--)
+		if (fig->texts[i].owner)
+			free((void*)(intptr_t)fig->texts[i].text);
+	free(fig->texts);
 
-	memset(axes, 0, sizeof(*axes));
-	free(axes);
+	if (fig->colorscheme.owner)
+		free(fig->colorscheme.colors);
+
+	memset(fig, 0, sizeof(*fig));
+	free(fig);
 }
 
-void cplot_destroy(void *standalone) {
-	if (!standalone)
+void cplot_destroy(struct cplot_figure *fig) {
+	if (!fig)
 		return;
-	struct cplot_subplots *subplots = standalone;
-	if (subplots->type == cplot_axes_e)
-		return cplot_destroy_axes(standalone);
-	for (int i=0; i<subplots->naxes; i++)
-		if (subplots->axes[i])
-			cplot_destroy_axes(subplots->axes[i]);
-	free(subplots->axes);
-	free(subplots->xywh);
-	free(subplots);
+	for (int i=0; i<fig->nchildren; i++)
+		cplot_destroy(fig->children[i]);
+	cplot_destroy_single(fig);
 }
 
-struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
+struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 	if (args->plot_interlazed_y || args->labels) {
 		const char **labels = args->labels;
 		args->plot_interlazed_y = 0;
@@ -1290,10 +1311,10 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 		if (labels)
 			args->label = labels[0];
 
-		struct cplot_axes *axes = cplot_plot_args(args);
+		struct cplot_figure *figure = cplot_plot_args(args);
 		/* Save time by using the same minmax for all interlaced data.
 		   This is fine because data->minmax is only a tool for getting axis->minmax. */
-		struct cplot_data *data = axes->data[axes->ndata-1];
+		struct cplot_data *data = figure->data[figure->ndata-1];
 		struct cplot_data copy = *data;
 		copy.length *= copy.yxzstride[0];
 		copy.yxzstride[0] = 1;
@@ -1307,28 +1328,28 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 			memcpy(args->minmax[yxz], copy.minmax[yxz], sizeof(copy.minmax[yxz]));
 		}
 
-		args->axes = axes;
-		args->axesptr = NULL;
+		args->figure = figure;
+		args->figureptr = NULL;
 		for (int i=1; i<args->ystride; i++) {
 			if (labels)
 				args->label = labels[i];
 			args->ydata += cplot_sizes[args->ytype];
 			cplot_plot_args(args);
 		}
-		return axes;
+		return figure;
 	}
 
 	if (args->argsfun)
 		args->argsfun(args);
-	struct cplot_axes *axes1 = NULL;
-	struct cplot_axes **axes = args->axesptr ? args->axesptr : &axes1;
-	if (!*axes)
-		*axes =
-			args->axes ? args->axes :
-			args->yaxis ? args->yaxis->axes :
-			args->xaxis ? args->xaxis->axes :
-			cplot_axes_new();
-	args->axes = *axes;
+	struct cplot_figure *figure1 = NULL;
+	struct cplot_figure **figure = args->figureptr ? args->figureptr : &figure1;
+	if (!*figure)
+		*figure =
+			args->figure ? args->figure :
+			args->yaxis ? args->yaxis->figure :
+			args->xaxis ? args->xaxis->figure :
+			cplot_figure_new();
+	args->figure = *figure;
 	struct cplot_data *data = add_data(args);
 
 	/* copy if necessary */
@@ -1370,7 +1391,7 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 		data->labelowner = 1;
 	}
 
-	return *axes;
+	return *figure;
 }
 
 void cplot_forward_datacolor(struct cplot_data *data) {
@@ -1382,10 +1403,10 @@ void cplot_forward_datacolor(struct cplot_data *data) {
 		data->errstyle.color = data->color;
 }
 
-void set_colors(struct cplot_axes *axes) {
-	struct cplot_colorscheme *cs = &axes->colorscheme;
+void set_colors(struct cplot_figure *figure) {
+	struct cplot_colorscheme *cs = &figure->colorscheme;
 	if (!cs->colors || cs->cmh_enum) {
-		cs->ncolors = axes->ndata;
+		cs->ncolors = figure->ndata;
 		if (cs->colors && cs->owner)
 			free(cs->colors);
 		cs->colors = malloc((cs->ncolors+1) * sizeof(unsigned));
@@ -1398,64 +1419,63 @@ void set_colors(struct cplot_axes *axes) {
 		cs->ncolors = 0;
 		while (cs->colors[cs->ncolors++]); // count the number of colors
 	}
-	for (int i=0; i<axes->ndata; i++) {
-		if (!axes->data[i]->color)
-			axes->data[i]->color = cs->colors[axes->data[i]->icolor % cs->ncolors];
-		cplot_forward_datacolor(axes->data[i]);
+	for (int i=0; i<figure->ndata; i++) {
+		if (!figure->data[i]->color)
+			figure->data[i]->color = cs->colors[figure->data[i]->icolor % cs->ncolors];
+		cplot_forward_datacolor(figure->data[i]);
 	}
 }
 
-void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
-	++axes->draw_counter;
-	set_colors(axes);
-	if (cplot_axes_layout(axes)) {
-		if (axes->fix_too_little_space) {
-			axes->fix_too_little_space(axes);
-			if (cplot_axes_layout(axes))
+void cplot_figure_draw(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
+	++figure->draw_counter;
+	set_colors(figure);
+	if (cplot_figure_layout(figure)) {
+		if (figure->fix_too_little_space) {
+			figure->fix_too_little_space(figure);
+			if (cplot_figure_layout(figure))
 				return;
 		}
 		else
 			return;
 	}
-	cplot_axes_render(axes, canvas, ystride);
-	if (axes->revert_fixes)
-		axes->revert_fixes(axes);
+	cplot_figure_render(figure, canvas, ystride);
+	if (figure->revert_fixes)
+		figure->revert_fixes(figure);
 }
 
-static void subplots_xywh_to_pixels(struct cplot_subplots *subplots, int islot, int px[4]) {
-	px[0] = iroundpos(subplots->xywh[islot][0] * subplots->wh[0]);
-	px[1] = iroundpos(subplots->xywh[islot][1] * subplots->wh[1]);
-	px[2] = iroundpos(subplots->wh[0] * subplots->xywh[islot][2]);
-	px[3] = iroundpos(subplots->wh[1] * subplots->xywh[islot][3]);
+static void subplots_xywh_to_pixels(struct cplot_figure *subplots, int islot, int px[4]) {
+	px[0] = iroundpos(subplots->children_xywh[islot][0] * subplots->wh[0]);
+	px[1] = iroundpos(subplots->children_xywh[islot][1] * subplots->wh[1]);
+	px[2] = iroundpos(subplots->wh[0] * subplots->children_xywh[islot][2]);
+	px[3] = iroundpos(subplots->wh[1] * subplots->children_xywh[islot][3]);
 	if (px[0] + px[2] > subplots->wh[0])
 		px[2] = subplots->wh[0] - px[0];
 	if (px[1] + px[3] > subplots->wh[1])
 		px[3] = subplots->wh[1] - px[1];
 }
 
-void cplot_subplots_to_axes(struct cplot_subplots *subplots) {
-	for (int isub=0; isub<subplots->naxes; isub++) {
-		if (!subplots->axes[isub])
+void cplot_xywh_to_children(struct cplot_figure *subplots) {
+	for (int isub=0; isub<subplots->nchildren; isub++) {
+		if (!subplots->children[isub])
 			continue;
 		int xywh_px[4];
 		subplots_xywh_to_pixels(subplots, isub, xywh_px);
-		subplots->axes[isub]->wh[0] = xywh_px[2];
-		subplots->axes[isub]->wh[1] = xywh_px[3];
-		subplots->axes[isub]->startcanvas = xywh_px[1] * subplots->wh[0] + xywh_px[0];
-		subplots->axes[isub]->super = (void*)subplots;
-		subplots->axes[isub]->ro_corner[0] = xywh_px[0];
-		subplots->axes[isub]->ro_corner[1] = xywh_px[1];
+		subplots->children[isub]->wh[0] = xywh_px[2];
+		subplots->children[isub]->wh[1] = xywh_px[3];
+		subplots->children[isub]->super = (void*)subplots;
+		subplots->children[isub]->ro_corner[0] = xywh_px[0];
+		subplots->children[isub]->ro_corner[1] = xywh_px[1];
 	}
 }
 
-void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int realw) {
+void cplot_clear_data(struct cplot_figure *figure, uint32_t *canvas, int realw) {
 	char bg[4];
-	uint32_t background = axes->background;
+	uint32_t background = figure->background;
 	memcpy(bg, &background, 4);
-	int ystart = axes->ro_inner_xywh[1];
-	int yend = ystart + axes->ro_inner_xywh[3];
-	int xstart = axes->ro_inner_xywh[0];
-	int xend = xstart + axes->ro_inner_xywh[2];
+	int ystart = figure->ro_inner_xywh[1];
+	int yend = ystart + figure->ro_inner_xywh[3];
+	int xstart = figure->ro_inner_xywh[0];
+	int xend = xstart + figure->ro_inner_xywh[2];
 	for (int i=1; i<4; i++)
 		if (bg[i] != bg[0])
 			goto loop;
@@ -1474,12 +1494,12 @@ loop:
 }
 
 /* For animation. Selectively copied from draw_ticks. */
-void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
-	int naxis = axes->naxis;
-	int *xywh = axes->ro_inner_xywh;
+void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
+	int naxis = figure->naxis;
+	int *xywh = figure->ro_inner_xywh;
 	int inner_area[] = xywh_to_area(xywh);
 	for (int iaxis=0; iaxis<naxis; iaxis++) {
-		struct cplot_axis *axis = axes->axis[iaxis];
+		struct cplot_axis *axis = figure->axis[iaxis];
 		struct cplot_ticks *ticks = axis->ticks;
 		if (!ticks || !ticks->gridstyle.style)
 			continue;
@@ -1496,55 +1516,47 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			gridline[!isx] = gridline[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, NULL, 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, figure, NULL, 0);
 		}
 	}
 }
 
-void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
-	if (((struct cplot_standalone_common*)vplot)->type == cplot_axes_e)
-		cplot_axes_draw(vplot, canvas, ystride);
-	else {
-		struct cplot_subplots *subplots = vplot;
-		cplot_subplots_to_axes(subplots);
-		cplot_fill_u4(canvas, subplots->background, subplots->wh[0], subplots->wh[1], ystride);
-		++subplots->draw_counter;
-		for (int i=0; i<subplots->naxes; i++)
-			if (subplots->axes[i])
-				cplot_axes_draw(subplots->axes[i], canvas, ystride);
-		if (subplots->after_drawing)
-			subplots->after_drawing(vplot, canvas, ystride);
-	}
+void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
+	cplot_xywh_to_children(fig);
+	cplot_figure_draw(fig, canvas, ystride); // before children to not cover them with background color
+	if (fig->after_drawing)
+		fig->after_drawing(fig, canvas, ystride);
+	struct cplot_figure *f;
+	for (int i=0; i<fig->nchildren; i++)
+		if ((f = fig->children[i]))
+			cplot_draw(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
 }
 
-static uint32_t* copy_canvas(void *vdest, uint32_t *canvas, int ystride, void *vplot) {
-	struct cplot_standalone_common *plot = vplot;
-	int width = plot->wh[0],
-	    height = plot->wh[1];
-	uint32_t (*dest)[width] = vdest,
-			 (*src)[ystride] = (void*)canvas;
+static uint32_t* copy_canvas(uint32_t *dest1d, int dest_ystride, uint32_t *src1d, int src_ystride, int *wh) {
+	int width = wh[0], height = wh[1];
+	uint32_t (*dest)[dest_ystride] = (void*)dest1d,
+			 (*src)[src_ystride] = (void*)src1d;
 	for (int i=0; i<height; i++)
-		memcpy(dest[i], src[i], sizeof(dest[0]));
-	return vdest;
+		memcpy(dest[i], src[i], sizeof(uint32_t)*width);
+	return dest1d;
 }
 
-static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *canvas, int ystride, void *vplot) {
-	struct cplot_standalone_common *plot = vplot;
-	uint32_t *copy = malloc(plot->wh[0] * plot->wh[1] * sizeof(uint32_t));
-	return copy_canvas(copy, canvas, ystride, vplot);
+static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *src1d, int src_ystride, int *wh) {
+	uint32_t *copy = malloc(wh[0] * wh[1] * sizeof(uint32_t));
+	return copy_canvas(copy, wh[0], src1d, src_ystride, wh);
 }
 
-void* cplot_show(void *vplot) {
-	return cplot_destroy(cplot_show_preserve(vplot)), NULL;
+void cplot_show(struct cplot_figure *fig) {
+	cplot_destroy(cplot_show_preserve(fig));
 }
 
 #ifdef HAVE_wlh
 #include "cplot_wayland.c"
 #else
-void* cplot_show_preserve(void *vplot) {
+struct cplot_figure* cplot_show(struct cplot_figure *fig) {
 	fprintf(stderr, "cplot was compiled without support for creating a window\n"
 		"Configure and compile again with libwaylandhelper enabled.\n",
 	);
-	return vplot;
+	return fig;
 }
 #endif
