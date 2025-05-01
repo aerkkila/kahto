@@ -154,6 +154,7 @@ void* cplot_write_mp4_preserve(void *axes_or_subplots, const char *name, float f
 	int w = subplots->wh[0], h = subplots->wh[1];
 	uint32_t *argb = malloc(w * h * sizeof(uint32_t));
 	cplot_draw(axes_or_subplots, argb, w);
+	mkdir_file(name);
 
 	struct cplot_video video;
 	if (cplot_init_video(&video, name, w, h, fps))

@@ -82,6 +82,7 @@ void* cplot_write_png_preserve(void *vstandalone, const char *name) {
 	unsigned char *bgr  = malloc(subplots->wh[0] * subplots->wh[1] * 3);
 	argb_to_bgr(argb, bgr, subplots->wh[0] * subplots->wh[1]);
 	free(argb);
+	mkdir_file(name);
 	write_png(bgr, name, subplots->wh[0], subplots->wh[1]);
 	free(bgr);
 	return vstandalone;
