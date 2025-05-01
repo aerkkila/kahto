@@ -535,7 +535,8 @@ static long get_first_for_data(struct cplot_data *data, int yxz) {
 	}
 }
 
-void cplot_check_dataminmax(struct cplot_data *data, int yxz, int range_isset) {
+void cplot_check_dataminmax(struct cplot_data *data, int yxz) {
+	unsigned range_isset = data->have_minmax[yxz];
 	if (data->yxztype[yxz] == cplot_notype) {
 		if (!(range_isset & cplot_minbit))
 			data->minmax[yxz][0] = data->yxz0[yxz] + get_first_for_data(data, yxz) * data->yxzstep[yxz];
@@ -563,12 +564,6 @@ void cplot_check_dataminmax(struct cplot_data *data, int yxz, int range_isset) {
 }
 
 void cplot_make_range(struct cplot_axes *axes) {
-	unsigned isset = cplot_minbit|cplot_maxbit;
-	for (int i=0; i<axes->naxis; i++)
-		isset &= axes->axis[i]->range_isset;
-	if (isset == (cplot_minbit|cplot_maxbit))
-		return;
-
 	for (int idata=axes->ndata-1; idata>=0; idata--) {
 		struct cplot_data *restrict data = axes->data[idata];
 		if (!cplot_visible_data(data))
@@ -578,7 +573,7 @@ void cplot_make_range(struct cplot_axes *axes) {
 			struct cplot_axis *axis = yxz < 2 ? data->yxaxis[yxz] : data->caxis;
 			if (!axis)
 				continue;
-			cplot_check_dataminmax(data, yxz, axis->range_isset | data->have_minmax[yxz]);
+			cplot_check_dataminmax(data, yxz);
 			if (!(axis->range_isset & cplot_minbit)) {
 				if (axis->range_isset & cplot_minbit<<4) // we use this temporarily to mark initialized minmax
 					update_min(axis->min, data->minmax[yxz][0]);
@@ -1192,7 +1187,7 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 			struct cplot_axis *axis = yxz == 2 ? data->caxis : data->yxaxis[yxz];
 			if (!axis)
 				continue;
-			cplot_check_dataminmax(data, yxz, data->have_minmax[yxz] | axis->range_isset);
+			cplot_check_dataminmax(data, yxz);
 			data->have_minmax[yxz] = args->have_minmax[yxz] = copy.have_minmax[yxz];
 			memcpy(data->minmax[yxz], copy.minmax[yxz], sizeof(copy.minmax[yxz]));
 			memcpy(args->minmax[yxz], copy.minmax[yxz], sizeof(copy.minmax[yxz]));
