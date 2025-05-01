@@ -255,6 +255,13 @@ struct cplot_standalone_common {
 	inherit_cplot_standalone_common;
 };
 
+/* fixed order */
+struct cplot_colorscheme {
+	unsigned *colors;
+	int ncolors, cmh_enum;
+	char without_ends, owner;
+};
+
 struct cplot_axes {
 	inherit_cplot_standalone_common;
 	int startcanvas;
@@ -264,9 +271,8 @@ struct cplot_axes {
 	int ro_inner_xywh[4], ro_inner_margin[4];
 	float margin[4];
 	struct cplot_data **data;
-	int ndata, mem_data;
-	unsigned *colorscheme;
-	int ncolors, icolor;
+	int ndata, mem_data, icolor;
+	struct cplot_colorscheme colorscheme;
 	struct cplot_text title;
 	enum cplot_topixels_reference topixels_reference;
 	struct cplot_standalone_common *super;
@@ -484,7 +490,10 @@ void* cplot_write_png(void *standalone, const char *name); // destroys the input
 void* cplot_write_mp4_preserve(void *standalone, const char *name, float fps); // returns the input
 void* cplot_write_mp4(void *standalone, const char *name, float fps); // destroys the input and returns NULL
 
-unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *scheme, int len);
+/* cmap is in form [rgb]*256 */
+unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned *scheme, int len);
+unsigned __attribute__((malloc))* cplot_cmap_to_colorscheme(unsigned *dest, const unsigned char *cmap, int n, int without_ends);
+
 static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double min, double max) {
 	axis->min = min;
 	axis->max = max;

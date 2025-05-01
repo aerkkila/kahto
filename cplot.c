@@ -50,25 +50,6 @@ static void cplot_fill_u4(uint32_t *canvas, uint32_t color, int w, int h, int ys
 				canvas[i*ystride+ii] = color;
 }
 
-unsigned char __attribute__((malloc))* cplot_colorscheme_cmap(unsigned *colorscheme, int ncolors) {
-	unsigned char *cmap = malloc(256*3);
-	int n = 256 / ncolors;
-	for (int i=0; i<ncolors; i++)
-		for (int ii=0; ii<n; ii++) {
-			unsigned char *rgb = cmap + i*n*3 + ii*3;
-			rgb[0] = colorscheme[i] >> 16 & 0xff;
-			rgb[1] = colorscheme[i] >> 8 & 0xff;
-			rgb[2] = colorscheme[i] >> 0 & 0xff;
-		}
-	for (int i=ncolors*n; i<256; i++) {
-		unsigned char *rgb = cmap + i*3;
-		rgb[0] = colorscheme[ncolors-1] >> 16 & 0xff;
-		rgb[1] = colorscheme[ncolors-1] >> 8 & 0xff;
-		rgb[2] = colorscheme[ncolors-1] >> 0 & 0xff;
-	}
-	return cmap;
-}
-
 int cplot_default_width = 1200, cplot_default_height = 1000;
 
 static inline int __attribute__((const)) iround(float f) {
@@ -146,6 +127,36 @@ void* cplot_write_mp4(void *standalone, const char *name, float fps) {
 	return standalone;
 }
 #endif
+
+unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned *colorscheme, int ncolors) {
+	unsigned char *cmap = malloc(256*3);
+	int n = 256 / ncolors;
+	for (int i=0; i<ncolors; i++)
+		for (int ii=0; ii<n; ii++) {
+			unsigned char *rgb = cmap + i*n*3 + ii*3;
+			rgb[0] = colorscheme[i] >> 16 & 0xff;
+			rgb[1] = colorscheme[i] >> 8 & 0xff;
+			rgb[2] = colorscheme[i] >> 0 & 0xff;
+		}
+	for (int i=ncolors*n; i<256; i++) {
+		unsigned char *rgb = cmap + i*3;
+		rgb[0] = colorscheme[ncolors-1] >> 16 & 0xff;
+		rgb[1] = colorscheme[ncolors-1] >> 8 & 0xff;
+		rgb[2] = colorscheme[ncolors-1] >> 0 & 0xff;
+	}
+	return cmap;
+}
+
+unsigned* cplot_cmap_to_colorscheme(unsigned *dest, const unsigned char *cmap, int len, int without_ends) {
+	float step = 255.f / (float)(len - !without_ends);
+	float indf = !!without_ends * 0.5f*step;
+	for (int i=0; i<len; i++) {
+		int ind = iroundpos(indf) * 3;
+		dest[i] = RGB(cmap[ind], cmap[ind+1], cmap[ind+2]);
+		indf += step;
+	}
+	return dest;
+}
 
 struct cplot_axis* cplot_axis_void_new(struct cplot_axes *axes) {
 	struct cplot_axis *axis = calloc(1, sizeof(struct cplot_axis));
@@ -235,7 +246,7 @@ struct cplot_axes* cplot_axes_new() {
 	axes->ttra->chop_lines = 1;
 
 	axes->topixels_reference = cplot_super_height;
-	axes->colorscheme = cplot_colorschemes[0];
+	axes->colorscheme.colors = cplot_colorschemes[0];
 	axes->title.rowheight = 0.05;
 
 	axes->legend.rowheight = 1.0 / 40;
@@ -1126,6 +1137,9 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
 	if (axes->title.textowner)
 		free(axes->title.text);
 
+	if (axes->colorscheme.owner)
+		free(axes->colorscheme.colors);
+
 	memset(axes, 0, sizeof(*axes));
 	free(axes);
 }
@@ -1210,14 +1224,24 @@ void cplot_forward_datacolor(struct cplot_data *data) {
 }
 
 void set_colors(struct cplot_axes *axes) {
-	if (axes->ncolors <= 0) {
-		int n = 0;
-		while (axes->colorscheme[n++]);
-		axes->ncolors = n;
+	struct cplot_colorscheme *cs = &axes->colorscheme;
+	if (!cs->colors || cs->cmh_enum) {
+		cs->ncolors = axes->ndata;
+		if (cs->colors && cs->owner)
+			free(cs->colors);
+		cs->colors = malloc((cs->ncolors+1) * sizeof(unsigned));
+		cs->owner = 1;
+		cs->colors[cs->ncolors] = 0;
+		cplot_cmap_to_colorscheme(cs->colors, cmh_colormaps[Abs(cs->cmh_enum)].map, cs->ncolors, cs->without_ends);
+		cs->cmh_enum = 0;
+	}
+	if (cs->ncolors <= 0) {
+		cs->ncolors = 0;
+		while (cs->colors[cs->ncolors++]); // count the number of colors
 	}
 	for (int i=0; i<axes->ndata; i++) {
 		if (!axes->data[i]->color)
-			axes->data[i]->color = axes->colorscheme[axes->data[i]->icolor % axes->ncolors];
+			axes->data[i]->color = cs->colors[axes->data[i]->icolor % cs->ncolors];
 		cplot_forward_datacolor(axes->data[i]);
 	}
 }
