@@ -150,8 +150,4 @@ void* cplot_show_preserve(void *vplot) {
 	return vplot;
 }
 
-void* cplot_show(void *vplot) {
-	return cplot_destroy(cplot_show_preserve(vplot)), NULL;
-}
-
 #undef cookie_t

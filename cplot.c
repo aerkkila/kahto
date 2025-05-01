@@ -1339,11 +1339,15 @@ static uint32_t __attribute__((malloc))* copy_canvas(uint32_t *canvas, int ystri
 	return (void*)copy;
 }
 
+void* cplot_show(void *vplot) {
+	return cplot_destroy(cplot_show_preserve(vplot)), NULL;
+}
+
 #ifdef HAVE_wlh
 #include "cplot_wayland.c"
 #else
-void* cplot_show(void *vplot) {
-	fprintf(stderr, "cplot was compiled without support for \e[1m%s\e[0m.\n"
+void* cplot_show_preserve(void *vplot) {
+	fprintf(stderr, "cplot was compiled without support for creating a window\n"
 		"Install waylandhelper and compile again.\n",
 		__func__);
 	return vplot;
