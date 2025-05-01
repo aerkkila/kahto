@@ -48,8 +48,8 @@ static void typing_input(cookie_t *cookie, const char *utf8input, int len) {
 				break;
 			case 033:  // abort with Escape
 				cookie->mode = typing_none;
-			case '\r': // return or kp_enter makes a carriage return, not a newline
-			case '\n': // Ctrl+j makes a newline
+			case '\r':
+			case '\n':
 				cookie->input[cookie->len_input] = 0;
 				end_typingmode(cookie);
 				return;
