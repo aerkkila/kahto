@@ -97,7 +97,6 @@ static inline int __attribute__((pure)) topixels(float size, struct cplot_axes *
 			return iroundpos(size * axes->wh[0]);
 	}
 }
-//#define topixels(flength, axes) iroundpos((flength) * (axes)->wh[1])
 
 #define no_room_for_legend(axes) ((axes)->legend.ro_place_err < 0)
 
@@ -127,6 +126,10 @@ void* cplot_write_mp4(void *standalone, const char *name, float fps) {
 	return standalone;
 }
 #endif
+
+int __attribute__((pure)) cplot_topixels(float size, struct cplot_axes *axes) {
+	return topixels(size, axes);
+}
 
 unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned *colorscheme, int ncolors) {
 	unsigned char *cmap = malloc(256*3);
@@ -962,11 +965,13 @@ void cplot_axes_render(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 		cplot_data_render(axes->data[i], canvas, ystride, axes, 0);
 	cplot_legend_draw(axes, canvas, ystride);
 
-	if (!axes->title.text)
-		return;
-	struct ttra *ttra = axes->ttra;
-	ttra_set_fontheight(ttra, topixels(axes->title.rowheight, axes));
-	put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation_grad, axes->title.ro_area, 0);
+	if (axes->title.text) {
+		struct ttra *ttra = axes->ttra;
+		ttra_set_fontheight(ttra, topixels(axes->title.rowheight, axes));
+		put_text(ttra, axes->title.text, axes->title.ro_area[0], axes->title.ro_area[1], 0, 0, axes->title.rotation_grad, axes->title.ro_area, 0);
+	}
+	if (axes->after_drawing)
+		axes->after_drawing(axes, canvas, ystride);
 }
 
 static void set_icolor(struct cplot_data *data) {
@@ -1402,6 +1407,8 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 		for (int i=0; i<subplots->naxes; i++)
 			if (subplots->axes[i])
 				cplot_axes_draw(subplots->axes[i], canvas, ystride);
+		if (subplots->after_drawing)
+			subplots->after_drawing(vplot, canvas, ystride);
 	}
 }
 

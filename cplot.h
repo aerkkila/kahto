@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 25
+#define __cplot_version_in_program 26
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -252,11 +252,14 @@ enum cplot_topixels_reference {cplot_super_height, cplot_super_width, cplot_this
 	int draw_counter, wh[2];            \
 	unsigned background;                \
 	struct waylandhelper *wlh;          \
-	char *name; /* window title (cplot_show) or filename (cplot_save_png) */ \
+	char *name; /* window title (cplot_show) or filename (cplot_save_png) */                       \
 	/* For animated plot. */            \
 	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */ \
 	int (*update)(struct cplot_axes*, uint32_t *canvas, int ystride, long count, double elapsed);  \
-	void *userdata
+	void *userdata;                     \
+	/* This allowes user to draw arbitrary things to the figure.                                   \
+	   This is called as the last thing in the drawing function. */                                \
+    void (*after_drawing)(struct cplot_axes*, uint32_t *canvas, int ystride)
 
 /* What is common between all standalone drawables, listed in cplot_standalone_type */
 struct cplot_standalone_common {
@@ -544,7 +547,8 @@ void cplot_make_range(struct cplot_axes *);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
 struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
 
-/* For animated plot to be used in the cplot_axes.update(). */
+/* To be used in the user-defined drawing function, e.g. axes->update. */
+int  cplot_topixels(float size, struct cplot_axes *axes) __attribute__((pure));
 void cplot_legend_draw(struct cplot_axes*, uint32_t *canvas, int ystride);
 void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_axes *axes, long start);
 void cplot_clear_data(struct cplot_axes *axes, uint32_t *canvas, int ystride);
