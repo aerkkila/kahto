@@ -60,8 +60,6 @@ static inline int __attribute__((const)) iround(float f) {
 	return a + (f-a >= 0.5) - (a-f > 0.5);
 }
 
-static unsigned fg = 0xff<<24;
-
 static inline int __attribute__((const)) iroundpos(float f) {
 	int a = f;
 	return a + (f-a >= 0.5);
@@ -77,28 +75,20 @@ static inline int __attribute__((const)) iceil(float f) {
 	return a + (a != f);
 }
 
-static inline cplot_f4si __attribute__((pure)) axis_get_line(struct cplot_axis *axis) {
-	switch (axis->direction) {
-		case 0: return (cplot_f4si){0, axis->pos, 1, axis->pos};
-		case 1: return (cplot_f4si){axis->pos, 0, axis->pos, 1};
-		default: __builtin_unreachable();
-	}
+static inline struct cplot_figure* __attribute__((pure)) get_toplevel_figure(struct cplot_figure *figure) {
+	while (figure->super) figure = figure->super;
+	return figure;
 }
 
-/* huomio: muutettakoon rekursiiviseksi */
 static inline int __attribute__((pure)) topixels(float size, struct cplot_figure *figure) {
 	switch (figure->topixels_reference) {
 		default:
-		case cplot_super_height:
-			if (figure->super)
-				return iroundpos(size * figure->super->wh[1]);
-			/* run through */
+		case cplot_total_height:
+			return iroundpos(size * get_toplevel_figure(figure)->wh[1]);
 		case cplot_this_height:
 			return iroundpos(size * figure->wh[1]);
-		case cplot_super_width:
-			if (figure->super)
-				return iroundpos(size * figure->super->wh[0]);
-			/* run through */
+		case cplot_total_width:
+			return iroundpos(size * get_toplevel_figure(figure)->wh[0]);
 		case cplot_this_width:
 			return iroundpos(size * figure->wh[0]);
 	}
@@ -149,20 +139,12 @@ static int __attribute__((unused)) mkdir_file(const char *restrict name) {
 #include "cplot_rendering.c"
 #include "ticker.c"
 #include "layout.c"
-#include "png.c"
-#ifdef HAVE_ffmpeg
-#include "cplot_video.c"
-#else
-void cplot_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
-	fprintf(stderr, "cplot library was compiled without support for \e[1m%s\e[0m\n", __func__);
-}
-#endif
 
 int __attribute__((pure)) cplot_topixels(float size, struct cplot_figure *figure) {
 	return topixels(size, figure);
 }
 
-unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned *colorscheme, int ncolors) {
+unsigned char __attribute__((malloc))* cplot_make_cmap_from_colorscheme(const unsigned *colorscheme, int ncolors) {
 	unsigned char *cmap = malloc(256*3);
 	int n = 256 / ncolors;
 	for (int i=0; i<ncolors; i++)
@@ -181,7 +163,7 @@ unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned 
 	return cmap;
 }
 
-unsigned* cplot_cmap_to_colorscheme(unsigned *dest, const unsigned char *cmap, int len, int without_ends) {
+unsigned* cplot_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *cmap, int len, int without_ends) {
 	int divisor = len - !without_ends;
 	float step=1, indf=127.5;
 	if (divisor > 0) {
@@ -217,7 +199,7 @@ long cplot_get_startcanvas(struct cplot_figure *fig, struct cplot_figure *dest, 
 
 struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float pos) {
 	struct cplot_axis *axis = cplot_axis_void_new(figure);
-	axis->linestyle.color = fg;
+	axis->linestyle.color = 0xff<<24;
 	axis->linestyle.thickness = 1.0 / 400;
 	axis->linestyle.style = 1;
 	axis->linestyle.align = pos == 0 ? -1 : pos == 1 ? 1 : 0;
@@ -249,7 +231,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 	struct cplot_ticks *ticks = calloc(1, sizeof(struct cplot_ticks));
 	int ipar = axis->direction == 1;
 	ticks->axis = axis;
-	ticks->color = fg;
+	ticks->color = 0xff<<24;
 	ticks->init = cplot_init_ticker_default;
 	ticks->length = 1.0 / 80;
 	ticks->xyalign_text[ipar] = -0.5;
@@ -274,7 +256,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 	return ticks;
 }
 
-struct cplot_figure* cplot_figure_bare_new() {
+struct cplot_figure* cplot_figure_void_new() {
 	struct cplot_figure *figure = calloc(1, sizeof(struct cplot_figure));
 	figure->background = -1;
 
@@ -306,19 +288,16 @@ struct cplot_figure* cplot_figure_bare_new() {
 }
 
 struct cplot_figure* cplot_figure_new() {
-	struct cplot_figure *figure = cplot_figure_bare_new();
-
+	struct cplot_figure *figure = cplot_figure_void_new();
 	figure->axis = calloc((figure->mem_axis = 4) + 1, sizeof(void*));
 	figure->axis[0] = cplot_axis_new(figure, 'x', 1);
 	figure->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
-
 	figure->axis[1] = cplot_axis_new(figure, 'y', 0);
 	figure->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
-
 	return figure;
 }
 
-struct cplot_figure* cplot_subplots_put_rows_and_cols(struct cplot_figure *fig, int nrows, int ncols) {
+struct cplot_figure* cplot_subfigures_put_rows_and_cols(struct cplot_figure *fig, int nrows, int ncols) {
 	float height = 1.0 / nrows,
 		  width = 1.0 / ncols;
 	float x[ncols];
@@ -328,10 +307,10 @@ struct cplot_figure* cplot_subplots_put_rows_and_cols(struct cplot_figure *fig, 
 	for (int j=0; j<nrows; j++) {
 		float y1 = (j+1) * height;
 		for (int i=0; i<ncols; i++) {
-			fig->children_xywh[j*ncols+i][0] = x[i];
-			fig->children_xywh[j*ncols+i][1] = y0;
-			fig->children_xywh[j*ncols+i][2] = width;
-			fig->children_xywh[j*ncols+i][3] = height;
+			fig->subfigures_xywh[j*ncols+i][0] = x[i];
+			fig->subfigures_xywh[j*ncols+i][1] = y0;
+			fig->subfigures_xywh[j*ncols+i][2] = width;
+			fig->subfigures_xywh[j*ncols+i][3] = height;
 		}
 		y0 = y1;
 	}
@@ -394,33 +373,39 @@ float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...) {
 	return list;
 }
 
-struct cplot_figure* cplot_subplots_bare_new(int n) {
-	struct cplot_figure *fig = cplot_figure_bare_new();
-	fig->children = calloc(n, sizeof(void*));
-	fig->children_xywh = calloc(n, sizeof(float[4]));
-	fig->nchildren = fig->memchildren = n;
+struct cplot_figure* cplot_add_subfigures(struct cplot_figure *fig, int n) {
+	int nnew = fig->nsubfigures + n;
+	if (fig->memsubfigures < nnew) {
+		int nold = fig->memsubfigures;
+		fig->subfigures      = realloc(fig->subfigures,      nnew * sizeof(fig->subfigures     [0]));
+		fig->subfigures_xywh = realloc(fig->subfigures_xywh, nnew * sizeof(fig->subfigures_xywh[0]));
+		memset(fig->subfigures      + nold, 0, (nnew-nold) * sizeof(fig->subfigures     [0]));
+		memset(fig->subfigures_xywh + nold, 0, (nnew-nold) * sizeof(fig->subfigures_xywh[0]));
+		fig->memsubfigures = nnew;
+	}
+	fig->nsubfigures = nnew;
 	return fig;
 }
 
-struct cplot_figure* cplot_subplots_new(int nrows, int ncols) {
-	return cplot_subplots_put_rows_and_cols(cplot_subplots_bare_new(nrows*ncols), nrows, ncols);
+struct cplot_figure* cplot_subfigures_new(int nrows, int ncols) {
+	return cplot_subfigures_put_rows_and_cols(cplot_add_subfigures(cplot_figure_void_new(), nrows*ncols), nrows, ncols);
 }
 
-struct cplot_figure* cplot_subplots_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
-	struct cplot_figure *fig = cplot_subplots_bare_new(nrows*ncols);
+struct cplot_figure* cplot_subfigures_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
+	struct cplot_figure *fig = cplot_add_subfigures(cplot_figure_void_new(), nrows*ncols);
 	struct cplot_gridargs args = {
 		.nrows = nrows,
 		.ncols = ncols,
 		.width = xarr,
 		.height = yarr,
 	};
-	cplot_make_grid(fig->children_xywh, args);
+	cplot_make_grid(fig->subfigures_xywh, args);
 	if ((xyowner>>0) & 1) free(xarr);
 	if ((xyowner>>1) & 1) free(yarr);
 	return fig;
 }
 
-struct cplot_figure* cplot_subplots_text_new(const char *_txt) {
+struct cplot_figure* cplot_subfigures_text_new(const char *_txt) {
 	const unsigned char *txt = (typeof(txt))_txt;
 	int nrows=0, ncols=0, ipos=0;
 	unsigned short xyxy[256][4]; // some are not used but prevent overflow from bad input
@@ -461,24 +446,24 @@ struct cplot_figure* cplot_subplots_text_new(const char *_txt) {
 		nfig = i+1;
 	}
 
-	struct cplot_figure *fig = cplot_subplots_bare_new(nfig);
+	struct cplot_figure *fig = cplot_add_subfigures(cplot_figure_void_new(), nfig);
 	for (int i=0; i<nfig; i++) {
 		if (xyxy[i+'0'][0] == 0xffff)
 			continue;
-		fig->children_xywh[i][0] = (float)xyxy[i+'0'][0] / (float)ncols;
-		fig->children_xywh[i][1] = (float)xyxy[i+'0'][1] / (float)nrows;
+		fig->subfigures_xywh[i][0] = (float)xyxy[i+'0'][0] / (float)ncols;
+		fig->subfigures_xywh[i][1] = (float)xyxy[i+'0'][1] / (float)nrows;
 		float size;
 		size = xyxy[i+'0'][2] - xyxy[i+'0'][0] + 1;
-		fig->children_xywh[i][2] = size / (float)ncols;
+		fig->subfigures_xywh[i][2] = size / (float)ncols;
 		size = xyxy[i+'0'][3] - xyxy[i+'0'][1] + 1;
-		fig->children_xywh[i][3] = size / (float)nrows;
+		fig->subfigures_xywh[i][3] = size / (float)nrows;
 	}
 	return fig;
 }
 
 int cplot_next_ifigure_from_coords(struct cplot_figure *fig0, int x, int y) {
-	for (int ifig=fig0->nchildren-1; ifig>=0; ifig--) {
-		struct cplot_figure *fig = fig0->children[ifig];
+	for (int ifig=fig0->nsubfigures-1; ifig>=0; ifig--) {
+		struct cplot_figure *fig = fig0->subfigures[ifig];
 		if (!fig)
 			continue;
 		if (x >= fig->ro_corner[0] && x < fig->ro_corner[0] + fig->wh[0] &&
@@ -1173,7 +1158,7 @@ static struct cplot_data* add_data(struct cplot_args *args) {
 			data->caxis->reverse_cmap = 1;
 	}
 	if (!data->yxzdata[1])
-		data->yxaxis[1]->ticks->integers_only = 1;
+		data->yxaxis[1]->ticks->integers_only = 1; // Väärin. Akselilla voi olla muutakin dataa.
 	data->yxaxis[0]->range_isset = 0;
 	data->yxaxis[1]->range_isset = 0;
 	set_icolor(data);
@@ -1262,9 +1247,9 @@ void cplot_destroy_data(struct cplot_data *data) {
 }
 
 void cplot_destroy_single(struct cplot_figure *fig) {
-	/* Children must be destroyed already or referenced by other pointers. */
-	free(fig->children);
-	free(fig->children_xywh);
+	/* Subfigures must be destroyed already or referenced by other pointers. */
+	free(fig->subfigures);
+	free(fig->subfigures_xywh);
 
 	for (int i=0; i<fig->naxis; i++)
 		cplot_destroy_axis(fig->axis[i]);
@@ -1295,8 +1280,8 @@ void cplot_destroy_single(struct cplot_figure *fig) {
 void cplot_destroy(struct cplot_figure *fig) {
 	if (!fig)
 		return;
-	for (int i=0; i<fig->nchildren; i++)
-		cplot_destroy(fig->children[i]);
+	for (int i=0; i<fig->nsubfigures; i++)
+		cplot_destroy(fig->subfigures[i]);
 	cplot_destroy_single(fig);
 }
 
@@ -1409,7 +1394,7 @@ void set_colors(struct cplot_figure *figure) {
 		cs->colors = malloc((cs->ncolors+1) * sizeof(unsigned));
 		cs->owner = 1;
 		cs->colors[cs->ncolors] = 0;
-		cplot_cmap_to_colorscheme(cs->colors, cmh_colormaps[Abs(cs->cmh_enum)].map, cs->ncolors, cs->without_ends);
+		cplot_make_colorscheme_from_cmap(cs->colors, cmh_colormaps[Abs(cs->cmh_enum)].map, cs->ncolors, cs->without_ends);
 		cs->cmh_enum = 0;
 	}
 	if (cs->ncolors <= 0) {
@@ -1440,28 +1425,28 @@ void cplot_figure_draw(struct cplot_figure *figure, uint32_t *canvas, int ystrid
 		figure->revert_fixes(figure);
 }
 
-static void children_xywh_to_pixels(struct cplot_figure *fig, int islot, int px[4]) {
-	px[0] = iroundpos(fig->children_xywh[islot][0] * fig->ro_inner_xywh[2]) + fig->ro_inner_xywh[0];
-	px[1] = iroundpos(fig->children_xywh[islot][1] * fig->ro_inner_xywh[3]) + fig->ro_inner_xywh[1];
-	px[2] = iroundpos(fig->ro_inner_xywh[2] * fig->children_xywh[islot][2]);
-	px[3] = iroundpos(fig->ro_inner_xywh[3] * fig->children_xywh[islot][3]);
+static void subfigures_xywh_to_pixels(struct cplot_figure *fig, int islot, int px[4]) {
+	px[0] = iroundpos(fig->subfigures_xywh[islot][0] * fig->ro_inner_xywh[2]) + fig->ro_inner_xywh[0];
+	px[1] = iroundpos(fig->subfigures_xywh[islot][1] * fig->ro_inner_xywh[3]) + fig->ro_inner_xywh[1];
+	px[2] = iroundpos(fig->ro_inner_xywh[2] * fig->subfigures_xywh[islot][2]);
+	px[3] = iroundpos(fig->ro_inner_xywh[3] * fig->subfigures_xywh[islot][3]);
 	if (px[0] + px[2] > fig->wh[0])
 		px[2] = fig->wh[0] - px[0];
 	if (px[1] + px[3] > fig->wh[1])
 		px[3] = fig->wh[1] - px[1];
 }
 
-void cplot_xywh_to_children(struct cplot_figure *fig) {
-	for (int ichild=0; ichild<fig->nchildren; ichild++) {
-		if (!fig->children[ichild])
+void cplot_xywh_to_subfigures(struct cplot_figure *fig) {
+	for (int ichild=0; ichild<fig->nsubfigures; ichild++) {
+		if (!fig->subfigures[ichild])
 			continue;
 		int xywh_px[4];
-		children_xywh_to_pixels(fig, ichild, xywh_px);
-		fig->children[ichild]->wh[0] = xywh_px[2];
-		fig->children[ichild]->wh[1] = xywh_px[3];
-		fig->children[ichild]->ro_corner[0] = xywh_px[0];
-		fig->children[ichild]->ro_corner[1] = xywh_px[1];
-		fig->children[ichild]->super = fig;
+		subfigures_xywh_to_pixels(fig, ichild, xywh_px);
+		fig->subfigures[ichild]->wh[0] = xywh_px[2];
+		fig->subfigures[ichild]->wh[1] = xywh_px[3];
+		fig->subfigures[ichild]->ro_corner[0] = xywh_px[0];
+		fig->subfigures[ichild]->ro_corner[1] = xywh_px[1];
+		fig->subfigures[ichild]->super = fig;
 	}
 }
 
@@ -1519,13 +1504,13 @@ void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride)
 }
 
 void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
-	cplot_figure_draw(fig, canvas, ystride); // before children to not cover them with background color
-	cplot_xywh_to_children(fig);
+	cplot_figure_draw(fig, canvas, ystride); // before subfigures to not cover them with background color
+	cplot_xywh_to_subfigures(fig);
 	if (fig->after_drawing)
 		fig->after_drawing(fig, canvas, ystride);
 	struct cplot_figure *f;
-	for (int i=0; i<fig->nchildren; i++)
-		if ((f = fig->children[i]))
+	for (int i=0; i<fig->nsubfigures; i++)
+		if ((f = fig->subfigures[i]))
 			cplot_draw(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
 }
 
@@ -1543,17 +1528,42 @@ static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *src1d
 	return copy_canvas(copy, wh[0], src1d, src_ystride, wh);
 }
 
-void cplot_show_(struct cplot_figure *fig, char *name) {
-	cplot_destroy(cplot_show_preserve_(fig, name));
+#ifdef HAVE_PNG
+#include "png.c"
+#else
+struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *a, const char *b) {
+	fprintf(stderr, "cplot library was compiled without support for writing a png image.\n"
+		"Configure and compile again with libpng enabled.\n"
+	);
+	return a;
+}
+#endif
+void cplot_write_png(struct cplot_figure *fig, const char *name) {
+	cplot_destroy(cplot_write_png_preserve(fig, name));
+}
+
+#ifdef HAVE_ffmpeg
+#include "cplot_video.c"
+#else
+struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *fig, const char *name, float fps) {
+	fprintf(stderr, "cplot library was compiled without support for \e[1m%s\e[0m\n", __func__);
+	return fig;
+}
+#endif
+void cplot_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
+	cplot_destroy(cplot_write_mp4_preserve(fig, name, fps));
 }
 
 #ifdef HAVE_wlh
 #include "cplot_wayland.c"
 #else
-struct cplot_figure* cplot_show_(struct cplot_figure *fig, char *name) {
+struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) {
 	fprintf(stderr, "cplot was compiled without support for creating a window\n"
 		"Configure and compile again with libwaylandhelper enabled.\n",
 	);
 	return fig;
 }
 #endif
+void cplot_show_(struct cplot_figure *fig, char *name) {
+	cplot_destroy(cplot_show_preserve_(fig, name));
+}

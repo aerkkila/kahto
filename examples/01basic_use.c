@@ -44,16 +44,16 @@ int main(int argc, char **argv) {
 	/* The functions cplot_show and cplot_write_png destroy the figure in the end.
 	   To be able to use it again, we used functions *_preserve which don't destroy the figure. */
 
-	/* We can also use the figures as subplots in a larger figure. */
-	struct cplot_figure *subplots = cplot_subplots_new(2, 2);
-	subplots->children[0] = fig0;
-	subplots->children[1] = fig1;
-	subplots->children[3] = fig2;
+	/* We can also use the figures as subfigures in a larger figure. */
+	struct cplot_figure *fig = cplot_subfigures_new(2, 2);
+	fig->subfigures[0] = fig0;
+	fig->subfigures[1] = fig1;
+	fig->subfigures[3] = fig2;
 
 	if (argc == 1)
-		cplot_write_png(subplots, "01b.png");
+		cplot_write_png(fig, "01b.png");
 	else
-		cplot_show(subplots);
+		cplot_show(fig);
 
 	/* The two functions above destroy the figures in the end and thus, all memory is freed now. */
 }

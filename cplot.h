@@ -246,7 +246,7 @@ struct cplot_data {
 
 enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
 enum cplot_placement {cplot_placement_none, cplot_placement_first, cplot_placement_singlemaxdist};
-enum cplot_topixels_reference {cplot_super_height, cplot_super_width, cplot_this_height, cplot_this_width};
+enum cplot_topixels_reference {cplot_total_height, cplot_total_width, cplot_this_height, cplot_this_width};
 
 /* fixed order */
 struct cplot_colorscheme {
@@ -270,10 +270,9 @@ struct cplot_figure {
 	struct cplot_figure *super;
 	char ro_cannot_draw;
 
-	/* puuttuu: destroy, draw, layout */
-	struct cplot_figure **children;
-	float (*children_xywh)[4];
-	int nchildren, memchildren;
+	struct cplot_figure **subfigures;
+	float (*subfigures_xywh)[4];
+	int nsubfigures, memsubfigures;
 
 	struct cplot_axis **axis, *last_caxis;
 	int naxis, mem_axis;
@@ -407,36 +406,37 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
 struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float position);
 struct cplot_axis* cplot_coloraxis_new(struct cplot_figure *figure, int x_or_y);
 struct cplot_figure* cplot_figure_new();
-struct cplot_figure* cplot_figure_bare_new(); // does not create x and y axes
-struct cplot_figure* cplot_subplots_new(int nrows, int ncols);
+struct cplot_figure* cplot_figure_void_new(); // does not create x and y axes
+struct cplot_figure* cplot_subfigures_new(int nrows, int ncols);
 /* xsizes[ncols] defines the proportional width of each column
  * the leftover space is divided equally between all columns with 0 value:
  * i.e. {0, 0.2, 0.3, 0} -> {0.25, 0.2, 0.3, 0.25}
  * ysizes[nrows] is similar to xsizes
  * xyowner: (xowner<<0) | (yowner<<1)
  */
-struct cplot_figure* cplot_subplots_grid_new(int nrows, int ncols, float *ysizes, float *xsizes, unsigned xyowner);
+struct cplot_figure* cplot_subfigures_grid_new(int nrows, int ncols, float *ysizes, float *xsizes, unsigned xyowner);
 
 /* Calling:
- *     cplot_subplots_xyarr_new(4, (0.1, 0.1), 3, (0., 0.5, 0.2))
+ *     cplot_subfigures_xyarr_new(4, (0.1, 0.1), 3, (0., 0.5, 0.2))
  * has the same effect as:
  *     float xarr[4] = {0.1, 0.1};
  *     float yarr[3] = {0, 0.5, 0.2};
- *     cplot_subplots_grid_new(3, 4, yarr, xarr, 0)
+ *     cplot_subfigures_grid_new(3, 4, yarr, xarr, 0)
  * parentheses are mandatory around xarr and yarr
- * numbers to xarr and yarr must be passed as floating: not '0' but '0.'
+ * numbers to xarr and yarr must be explicitely expressed as floating point: not '0' but '0.'
  */
 #define cplot_expand(...) __VA_ARGS__ // used to remove parentheses: cplot_expand (a,b) -> a,b
-#define cplot_subplots_xyarr_new(xlen, xarr, ylen, yarr) \
-	cplot_subplots_grid_new(ylen, xlen,                  \
-		cplot_f4arr(ylen, -1., cplot_expand yarr, -1.),  \
+#define cplot_subfigures_xyarr_new(xlen, xarr, ylen, yarr) \
+	cplot_subfigures_grid_new(ylen, xlen,                  \
+		cplot_f4arr(ylen, -1., cplot_expand yarr, -1.),    \
 		cplot_f4arr(xlen, -1., cplot_expand xarr, -1.), 3)
 
-/* Same as cplot_subplots_xyarr_new but does not allocate memory.
-   However, works only with constant expressions. Needs c23 standard to work.*/
-#define cplot_subplots_sxyarr_new(xlen, xarr, ylen, yarr) \
-	cplot_subplots_grid_new(ylen, xlen,                   \
-		(static float[]){cplot_expand yarr, [ylen]=0},    \
+/* Same as cplot_subfigures_xyarr_new but does not allocate memory.
+   Works only with constant expressions, i.e. value known by compiler.
+   Needs c23 standard to work. */
+#define cplot_subfigures_sxyarr_new(xlen, xarr, ylen, yarr) \
+	cplot_subfigures_grid_new(ylen, xlen,                   \
+		(static float[]){cplot_expand yarr, [ylen]=0},      \
 		(static float[]){cplot_expand xarr, [xlen]=0}, 0)
 
 /*
@@ -451,7 +451,9 @@ struct cplot_figure* cplot_subplots_grid_new(int nrows, int ncols, float *ysizes
    11--222
    )";
    */
-struct cplot_figure* cplot_subplots_text_new(const char *txt);
+struct cplot_figure* cplot_subfigures_text_new(const char *txt);
+
+struct cplot_figure* cplot_add_subfigures(struct cplot_figure *fig, int n);
 
 struct cplot_figure* cplot_plot_args(struct cplot_args *args);
 static inline struct cplot_figure* cplot_plot_inl(struct cplot_args args) {
@@ -498,10 +500,10 @@ struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_
 struct cplot_figure* cplot_show_preserve_(struct cplot_figure *figure, char *name); // returns the input
 void cplot_show_(struct cplot_figure *figure, char *name); // destroys the input
 
-#define cplot_show(...) _cplot_show(__VA_ARGS__, NULL); // cplot_show(figure) OR cplot_show(figure, "name")
+#define cplot_show(...) _cplot_show(__VA_ARGS__, NULL) // cplot_show(figure) OR cplot_show(figure, "name")
 #define _cplot_show(a, b, ...) cplot_show_(a, b)
 
-#define cplot_show_preserve(...) _cplot_show_preserve(__VA_ARGS__, NULL);
+#define cplot_show_preserve(...) _cplot_show_preserve(__VA_ARGS__, NULL)
 #define _cplot_show_preserve(a, b, ...) cplot_show_preserve_(a, b)
 
 struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *figure, const char *name); // returns the input figure
@@ -516,8 +518,10 @@ struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *figure, const
 void cplot_write_mp4(struct cplot_figure *figure, const char *name, float fps); // destroys the input
 
 /* cmap is in form [rgb]*256 */
-unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned *scheme, int len);
-unsigned __attribute__((malloc))* cplot_cmap_to_colorscheme(unsigned *dest, const unsigned char *cmap, int n, int without_ends);
+#define cplot_colorscheme_to_cmap colorscheme_to_cmap__renamed__make_cmap_from_colorscheme
+#define cplot_cmap_to_colorscheme cmap_to_colorscheme__renamed__make_colorscheme_from_cmap
+unsigned char __attribute__((malloc))* cplot_make_cmap_from_colorscheme(const unsigned *scheme, int len);
+unsigned __attribute__((malloc))* cplot_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *cmap, int n, int without_ends);
 
 static inline struct cplot_axis* cplot_set_range(struct cplot_axis *axis, double min, double max) {
 	axis->min = min;

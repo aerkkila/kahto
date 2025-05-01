@@ -170,7 +170,3 @@ struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *fig, const ch
 
 	return fig;
 }
-
-void cplot_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
-	cplot_destroy(cplot_write_mp4_preserve(fig, name, fps));
-}

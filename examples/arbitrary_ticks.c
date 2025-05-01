@@ -57,10 +57,10 @@ int main() {
 	   Therefore we move texts to left by the amount of their widths, i.e. -1 width to right */
 	ticks->xyalign_text[0] = -1;
 
-	/* put both subplots to a figure */
-	struct cplot_figure *super = cplot_subplots_new(2, 1);
+	/* put both subfigures to a figure */
+	struct cplot_figure *super = cplot_subfigures_new(2, 1);
 	super->wh[0] /= 2;
-	super->children[0] = fig;
-	super->children[1] = fig2;
+	super->subfigures[0] = fig;
+	super->subfigures[1] = fig2;
 	cplot_show(super);
 }

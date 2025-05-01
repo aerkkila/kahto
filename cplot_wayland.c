@@ -117,7 +117,7 @@ static void motioncallback(struct waylandhelper *wlh, int xmove, int ymove) {
 
 	goto fig_test;
 	while ((ifig = cplot_next_ifigure_from_coords(fig, x, y)) >= 0) {
-		if (!(fig = fig->children[ifig]))
+		if (!(fig = fig->subfigures[ifig]))
 			continue;
 		/* convert coordinates to child coordinates */
 		x -= fig->ro_corner[0];

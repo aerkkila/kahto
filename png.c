@@ -1,4 +1,3 @@
-#ifdef HAVE_PNG
 #include <png.h>
 #include <string.h>
 #include <err.h>
@@ -76,17 +75,4 @@ struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *fig, const ch
 	write_png(bgr, name, fig->wh[0], fig->wh[1]);
 	free(bgr);
 	return fig;
-}
-
-#else // not HAVE_PNG
-struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *a, const char *b) {
-	fprintf(stderr, "cplot library was compiled without support for writing a png image.\n"
-		"Configure and compile again with libpng enabled.\n"
-	);
-	return a;
-}
-#endif // HAVE_PNG
-
-void cplot_write_png(struct cplot_figure *fig, const char *name) {
-	cplot_destroy(cplot_write_png_preserve(fig, name));
 }
