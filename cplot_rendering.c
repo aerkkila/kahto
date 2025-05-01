@@ -496,50 +496,6 @@ static void init_triangle(unsigned char *to, int tow, int toh) {
 	}
 }
 
-#if 0
-static void init_circle(unsigned char *to, int tow, int toh) {
-	int radius = (min(tow, toh)-1) / 2;
-	memset(to, 0, tow*toh);
-	to += radius * tow + radius;
-	int radius2 = radius * radius;
-	for (int j=0; j<=radius; j++) {
-		int j3 = (j+0.5) * (j+0.5);
-		int j2 = j * j;
-		for (int i=0; i<=radius; i++) {
-			int i3 = (i+0.5) * (i+0.5);
-			int i2 = i * i;
-			int value = j3 + i3 < radius2 ? 255 :
-				j3 + i2 < radius2 || j2 + i3 < radius2 ? 128 :
-				j2 + i2 < radius2 ? 80 : 0;
-			to[j*tow + i] = to[-j*tow + i] = to[j*tow - i] = to[-j*tow - i] = value;
-		}
-	}
-}
-
-static void init_circle(unsigned char *to, int tow, int toh) {
-	float origo[] = {tow/2., toh/2.};
-	float radius = min(tow-1, toh-1) / 2.; // -1 because measured at the center of the pixel: -(2*0.5)
-	float radius2 = radius * radius;
-	/* x = sqrt(r2 - y2) */
-	for (int j=0; j<toh; j++) {
-		float dy2 = j+0.5 - origo[1];
-		dy2 *= dy2;
-		float dx = sqrt(radius2 - dy2);
-		float xleft = origo[0] - dx;
-		float xright = origo[0] + dx;
-		int ixleft = xleft; // points at the fractional pixel
-		int ixright = xright; // points at the fractional pixel
-		memset(to+j*tow, 0, ixleft);
-		float part = xleft - ixleft;
-		to[j*tow+ixleft] = iroundpos(part*255);
-		memset(to+j*tow+ixleft+1, 255, ixright-(ixleft+1));
-		part = xright - ixright;
-		to[j*tow+ixright] = iroundpos(part*255);
-		memset(to+j*tow+ixright+1, 0, tow-(ixright+1));
-	}
-}
-#endif
-
 static void init_circle(unsigned char *to, int tow, int toh) {
 	const int size = min(tow, toh);
 	const int size16 = size * 16;
