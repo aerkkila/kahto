@@ -1174,6 +1174,41 @@ void cplot_destroy(void *standalone) {
 }
 
 struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
+	if (args->plot_interlazed_y || args->labels) {
+		const char **labels = args->labels;
+		args->plot_interlazed_y = 0;
+		args->labels = NULL;
+		if (labels)
+			args->label = labels[0];
+
+		struct cplot_axes *axes = cplot_plot_args(args);
+		/* Save time by using the same minmax for all interlaced data.
+		   This is fine because data->minmax is only a tool for getting axis->minmax. */
+		struct cplot_data *data = axes->data[axes->ndata-1];
+		struct cplot_data copy = *data;
+		copy.length *= copy.yxzstride[0];
+		copy.yxzstride[0] = 1;
+		for (int yxz=0; yxz<3; yxz++) {
+			struct cplot_axis *axis = yxz == 2 ? data->caxis : data->yxaxis[yxz];
+			if (!axis)
+				continue;
+			cplot_check_dataminmax(data, yxz, data->have_minmax[yxz] | axis->range_isset);
+			data->have_minmax[yxz] = args->have_minmax[yxz] = copy.have_minmax[yxz];
+			memcpy(data->minmax[yxz], copy.minmax[yxz], sizeof(copy.minmax[yxz]));
+			memcpy(args->minmax[yxz], copy.minmax[yxz], sizeof(copy.minmax[yxz]));
+		}
+
+		args->axes = axes;
+		args->axesptr = NULL;
+		for (int i=1; i<args->ystride; i++) {
+			if (labels)
+				args->label = labels[i];
+			args->ydata += cplot_sizes[args->ytype];
+			cplot_plot_args(args);
+		}
+		return axes;
+	}
+
 	if (args->argsfun)
 		args->argsfun(args);
 	struct cplot_axes *axes1 = NULL;

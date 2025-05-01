@@ -330,6 +330,10 @@ struct cplot_args {
 	   Intended for changing the default arguments. */
 	void (*argsfun)(struct cplot_args*);
 	void *userdata; // if argsfun needs some data
+
+	/* if ystride > 1, plot the skipped data with the same stride The number of graphs equals ystride. */
+	char plot_interlazed_y;
+	const char **labels; // a different label for each data for interlazed plots
 };
 
 /* To change the defaultargs, use the following macro before #include <cplot.h>, e.g.
