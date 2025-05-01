@@ -68,12 +68,28 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 	}
 }
 
-static void get_datalevels_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axismin, double axisdiff, float scale, int stridein) {
+static void get_datalevels_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axismin, double axismax, float scale, int stridein) {
 	const $dtype *data = vdata;
 	data += istart * stridein;
 	int len = iend - istart;
+	double axisdiff = axismax - axismin;
 	for (int i=0; i<len; i++) {
 		float pos = (data[i*stridein] - axismin) / axisdiff;
+		out[i] = iround(pos*scale);
+	}
+}
+
+static void get_datalevels_with_center_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axmin0, double axmid, double axmax, float scale, int stridein) {
+	const $dtype *data = vdata;
+	data += istart * stridein;
+	int len = iend - istart;
+	double axmin[] = {axmin0, axmid};
+	double axdiff[] = {axmid - axmin0, axmax - axmid};
+	float move[] = {0, 0.5};
+	for (int i=0; i<len; i++) {
+		double val = data[i*stridein];
+		int ind = val >= axmid;
+		float pos = (val - axmin[ind]) / axdiff[ind] * 0.5 + move[ind];
 		out[i] = iround(pos*scale);
 	}
 }

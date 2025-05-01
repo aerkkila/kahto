@@ -227,6 +227,7 @@ struct cplot_axis* cplot_coloraxis_new(struct cplot_axes *axes, int x_or_y) {
 	caxis->po[0] = 1;
 	caxis->po[1] = 1.0/30;
 	caxis->ticks = cplot_ticks_new((void*)caxis);
+	caxis->center = 0./0.;
 	return caxis;
 }
 
@@ -928,32 +929,50 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int axeswidth, i
 	if (!axis || axis->direction < 0)
 		return;
 	int isx = axis->direction == 0;
-	int length = axis->ro_area[!isx+2] - axis->ro_area[!isx];
 
 	if (axis->cmap) {
 		const unsigned char *cmap = axis->cmap;
-		unsigned char rcmap[256*3];
-		if (axis->reverse_cmap) {
-			for (int i=0; i<256; i++) {
-				rcmap[i*3+0] = cmap[(255-i)*3+0];
-				rcmap[i*3+1] = cmap[(255-i)*3+1];
-				rcmap[i*3+2] = cmap[(255-i)*3+2];
+		int len = axis->ro_area[2+!isx] - axis->ro_area[0+!isx];
+		int len1 = axis->ro_area[2+isx] - axis->ro_area[0+isx];
+		unsigned char levels[len];
+		{
+			unsigned short values[len];
+			if (!isx) // y-axis goes from bottom to top
+				for (int i=0; i<len; i++)
+					values[i] = len-1-i;
+			else
+				for (int i=0; i<len; i++)
+					values[i] = i;
+			if (my_isnan(axis->center))
+				get_datalevels_u2(0, len, values, levels, 0, len-1, 255, 1);
+			else {
+				double center_rel = axis->center / (axis->max - axis->min);
+				double center = len * center_rel;
+				get_datalevels_with_center_u2(0, len, values, levels, 0, center, len-1, 255, 1);
 			}
-			cmap = rcmap;
 		}
+		if (axis->reverse_cmap)
+			for (int i=0; i<len; i++)
+				levels[i] = 255 - levels[i];
+		uint32_t (*canvas1)[ystride] = (void*)(canvas + axis->ro_area[1]*ystride + axis->ro_area[0]);
 		if (!isx)
-			for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
-				long ind0 = j*ystride;
-				unsigned color = from_cmap(cmap + (length - (j - axis->ro_area[1])) * 255 / length * 3);
-				for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
-					canvas[ind0 + i] = color;
+			for (int j=0; j<len; j++) {
+				unsigned color = from_cmap(cmap + levels[j] * 3);
+				for (int i=0; i<len1; i++)
+					canvas1[j][i] = color;
 			}
-		else
-			for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
-				long ind0 = j*ystride;
-				for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
-					canvas[ind0 + i] = from_cmap(cmap + (i - axis->ro_area[0]) * 255 / length * 3);
-			}
+		else {
+			for (int i=0; i<len; i++)
+				canvas1[0][i] = from_cmap(cmap + levels[i] * 3);
+			for (int j=1; j<len1; j++)
+				memcpy(canvas1[j], canvas1[0], sizeof(canvas1[0]));
+			/* vaihtakaani memcpy:ksi
+			   for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
+			   long ind0 = j*ystride;
+			   for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
+			   canvas[ind0 + i] = from_cmap(cmap + levels[i] * 3);
+			   }*/
+		}
 	}
 
 	if (axis->linestyle.style != cplot_line_none_e) {
@@ -1120,6 +1139,8 @@ static struct cplot_data* add_data(struct cplot_args *args) {
 		data->caxis->range_isset = 0;
 	}
 	if (data->caxis) {
+		if (!my_isnan(args->caxis_center))
+			data->caxis->center = args->caxis_center;
 		if (data->cmap)
 			data->caxis->cmap = data->cmap;
 		else if (data->cmh_enum) {

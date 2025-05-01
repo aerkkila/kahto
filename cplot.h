@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 27
+#define __cplot_version_in_program 28
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -173,7 +173,8 @@ struct cplot_axis {
 	struct cplot_axes *axes;
 	int direction, outside; // direction: x=0, y=1
 	float pos;
-	double min, max;
+	double min, max,
+		   center; // works only for coloraxis
 	int range_isset, ro_line[4];
 	struct cplot_ticks *ticks;
 	struct cplot_axistext **text;
@@ -342,6 +343,8 @@ struct cplot_args {
 	int cmh_enum, icolor;
 	/* end struct cplot_data */
 
+	double caxis_center; // datavalue that evaluates to center color of cmap
+
 	/* Excecuted in cplot_plot_args before anything else is done.
 	   Intended for changing the default arguments. */
 	void (*argsfun)(struct cplot_args*);
@@ -370,7 +373,9 @@ struct cplot_args {
 	.linestyle.thickness = 1./600,			\
 	.errstyle.style = cplot_line_normal_e,	\
 	.icolor = cplot_automatic,				\
-	.errstyle.thickness = 1./600 cplot_update_defaultargs
+	.errstyle.thickness = 1./600,           \
+	.caxis_center = 0./0.                   \
+	cplot_update_defaultargs
 
 #define cplot_lineargs						\
 	.linestyle.style = cplot_line_normal_e,	\

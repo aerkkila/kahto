@@ -880,15 +880,13 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 }
 
 void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_axes *axes, long start) {
-	double yxzmin[] = {
+	double yxmin[] = {
 		data->yxaxis[0]->min,
 		data->yxaxis[1]->min,
-		data->caxis ? data->caxis->min : 0,
 	};
-	double yxzdiff[] = {
-		data->yxaxis[0]->max - yxzmin[0],
-		data->yxaxis[1]->max - yxzmin[1],
-		data->caxis ? data->caxis->max - yxzmin[2] : 0,
+	double yxdiff[] = {
+		data->yxaxis[0]->max - yxmin[0],
+		data->yxaxis[1]->max - yxmin[1],
 	};
 	const int *margin = data->yxaxis[0]->axes->ro_inner_margin;
 	const int *xywh0 = data->yxaxis[0]->axes->ro_inner_xywh;
@@ -918,7 +916,7 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, s
 	int line_thickness = topixels(data->linestyle.thickness, axes);
 	if (line_thickness < 1) line_thickness = 1;
 
-	double xpix_per_unit = yxlen[1] / yxzdiff[1] * data->yxzstep[1]; // Used if x is not given.
+	double xpix_per_unit = yxlen[1] / yxdiff[1] * data->yxzstep[1]; // Used if x is not given.
 
 	struct draw_data_args data_args = {
 		.canvas = canvas,
@@ -948,10 +946,16 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, s
 		long iend = min(istart+npoints, data->length);
 		long num = iend - istart;
 		if (data->yxzdata[1])
-			get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxzmin[1], yxzdiff[1], yxlen[1], data->yxzstride[1], 2, margin[0]);
-		if (data->yxzdata[2])
-			get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels, yxzmin[2], yxzdiff[2], 255, data->yxzstride[2]);
-		get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxzmin[0], yxzdiff[0], yxlen[0], data->yxzstride[0], 2, margin[1]);
+			get_datapx[data->yxztype[1]](istart, iend, data->yxzdata[1], xypixels+0, yxmin[1], yxdiff[1], yxlen[1], data->yxzstride[1], 2, margin[0]);
+		if (data->yxzdata[2]) {
+			if (my_isnan(data->caxis->center))
+				get_datalevels[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels,
+					data->caxis->min, data->caxis->max, 255, data->yxzstride[2]);
+			else
+				get_datalevels_with_center[data->yxztype[2]](istart, iend, data->yxzdata[2], zlevels,
+					data->caxis->min, data->caxis->center, data->caxis->max, 255, data->yxzstride[2]);
+		}
+		get_datapx_inv[data->yxztype[0]](istart, iend, data->yxzdata[0], xypixels+1, yxmin[0], yxdiff[0], yxlen[0], data->yxzstride[0], 2, margin[1]);
 		if (data->linestyle.style) {
 			struct _cplot_line_args args = {
 				.xypixels = xypixels,
@@ -998,7 +1002,7 @@ void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, s
 				continue;
 			const int ixcoord = 0;
 			short errb[npoints];
-			get_datapx_inv[data->yxztype[0]](istart, iend, data->err.yx[icoord], errb, yxzmin[0], yxzdiff[0], yxlen[0], data->yxzstride[0], 1, margin[1]);
+			get_datapx_inv[data->yxztype[0]](istart, iend, data->err.yx[icoord], errb, yxmin[0], yxdiff[0], yxlen[0], data->yxzstride[0], 1, margin[1]);
 			int area[] = xywh_to_area(xywh0);
 			struct cplot_linestyle style = data->errstyle;
 			for (int i=0; i<iend-istart; i++) {
