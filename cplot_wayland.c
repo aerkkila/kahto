@@ -210,32 +210,35 @@ void* cplot_show_preserve(void *vplot) {
 		if (wlh_key_should_repeat(&wlh))
 			wlh.key_callback(&wlh);
 
-		if (wlh.can_redraw) {
-			standalone->wh[0] = wlh.xres;
-			standalone->wh[1] = wlh.yres;
-			int should_commit = 0;
-			if (wlh.redraw) {
-				cplot_draw(standalone, wlh.data, standalone->wh[0]);
-				should_commit++;
-			}
+		if (!wlh.can_redraw)
+			goto next;
+		standalone->wh[0] = wlh.xres;
+		standalone->wh[1] = wlh.yres;
+		int should_commit = 0;
+		if (wlh.redraw) {
+			cplot_draw(standalone, wlh.data, standalone->wh[0]);
+			should_commit++;
+		}
+		if (standalone->update) {
+			double now = starttime < 0 ? 0 : get_time() - starttime;
+			int ret = standalone->update(vplot, wlh.data, wlh.xres, updatecount++, now);
+			if (ret < 0)
+				break;
+			should_commit += ret;
+		}
+		if (cookie.highlight.used && cookie.highlight.id_canvascopy != standalone->draw_counter)
+			cookie.highlight.update = 1;
+		if (cookie.highlight.update) {
+			should_commit = 1;
+			highlight_data(&wlh);
+		}
+		if (should_commit) {
+			wlh_commit(&wlh);
 			if (starttime < 0)
 				starttime = get_time();
-			if (standalone->update) {
-				int ret = standalone->update(vplot, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
-				if (ret < 0)
-					break;
-				should_commit += ret;
-			}
-			if (cookie.highlight.used && cookie.highlight.id_canvascopy != standalone->draw_counter)
-				cookie.highlight.update = 1;
-			if (cookie.highlight.update) {
-				should_commit = 1;
-				highlight_data(&wlh);
-			}
-			if (should_commit)
-				wlh_commit(&wlh);
 		}
-		usleep(10000);
+next:
+		usleep(9000);
 	}
 	wlh_destroy(&wlh);
 	free(cookie.highlight.canvascopy);
