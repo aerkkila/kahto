@@ -60,9 +60,10 @@ compiler_flag_works() {
 }
 
 found=
+cflags=
 for std in gnu23 gnu2x; do
 	if compiler_flag_works "--std=$std"; then
-		printf "CFLAGS = --std=$std\n" >> $file
+		cflags="--std=$std"
 		found=1
 		break
 	fi
@@ -70,5 +71,12 @@ done
 if [ ! "$found" ]; then
 	echo "Warning: gnu23 not available. You may have to edit the source code."
 fi
+
+[ "$cflags" = "" ] && space="" || space=" "
+if compiler_flag_works "-fpermissive"; then
+	cflags="${cflags}${space}-fpermissive"
+fi
+
+printf "CFLAGS = %s\n" "$cflags" >> $file
 
 rm -f $tmpfile

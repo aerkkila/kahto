@@ -148,8 +148,12 @@ unsigned char __attribute__((malloc))* cplot_colorscheme_to_cmap(const unsigned 
 }
 
 unsigned* cplot_cmap_to_colorscheme(unsigned *dest, const unsigned char *cmap, int len, int without_ends) {
-	float step = 255.f / (float)(len - !without_ends);
-	float indf = !!without_ends * 0.5f*step;
+	int divisor = len - !without_ends;
+	float step=1, indf=127.5;
+	if (divisor > 0) {
+		step = 255.f / (float)divisor;
+		indf = !!without_ends * 0.5f*step;
+	}
 	for (int i=0; i<len; i++) {
 		int ind = iroundpos(indf) * 3;
 		dest[i] = RGB(cmap[ind], cmap[ind+1], cmap[ind+2]);
@@ -846,13 +850,13 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 		if (!isx)
 			pos_rel = 1 - pos_rel;
 		line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
-		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axes, 0);
+		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, axes, NULL, 0);
 		int area_text[4] = {0};
 		if (ttra && tick[0])
 			put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation_grad, area_text, 0);
 		if (ticks->gridstyle.style) {
 			gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, NULL, 0);
 		}
 	}
 
@@ -867,10 +871,10 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int axeswidth
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
-			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, axes, 0);
+			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, axes, NULL, 0);
 			if (ticks->gridstyle1.style) {
 				gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, axes, 0);
+				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, axes, NULL, 0);
 			}
 		}
 	}
@@ -1382,7 +1386,7 @@ void cplot_draw_grid(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			gridline[!isx] = gridline[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, axes, NULL, 0);
 		}
 	}
 }

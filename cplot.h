@@ -77,12 +77,20 @@ extern int cplot_default_width, cplot_default_height;
 struct cplot_axis;
 struct cplot_data;
 
-enum cplot_linestyle_e {cplot_line_none_e, cplot_line_normal_e, cplot_line_dashed_e};
+enum cplot_linestyle_e {
+	cplot_line_none_e, cplot_line_normal_e, cplot_line_dashed_e,
+	cplot_line_bresenham_xiaolin_e, cplot_line_circle_e,
+};
 
 /* fixed order means changing the order of the fields will be avoided in future updates.
    Therefore, one can quite safely fill the struct by referring only to the first field by name.
    E.g. struct cplot_markerstyle mstyle = {.marker="x", 0.01,};
    */
+
+struct cplot_marker {
+	unsigned char *bmap;
+	short w, h, pixelsize;
+};
 
 struct cplot_linestyle {
 	enum cplot_linestyle_e style;
