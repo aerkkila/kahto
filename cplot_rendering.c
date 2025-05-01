@@ -1103,19 +1103,17 @@ void cplot_legend_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
 
 	int leg_x0 = axes->legend.ro_xywh[0];
 	int leg_y0 = axes->legend.ro_xywh[1];
-	int rowh = ttra_set_fontheight(axes->ttra, topixels(axes->legend.rowheight, axes));
 	int linewidth = topixels(axes->legend.borderstyle.thickness, axes);
 	/* lisään y:hyn +1:n, että kirjaimen ja viivan väliin jää tyhjä pikseli */
 	ttra_set_xy0(axes->ttra, leg_x0 + axes->legend.ro_text_left + linewidth, leg_y0 + linewidth + 1);
 	int text_left = axes->legend.ro_text_left;
-	int rownumber = 0;
 	for (int i=0; i<axes->ndata; i++) {
 		if (!axes->data[i]->label)
 			continue;
 		legend_draw_marker(
 			axes, axes->data[i], canvas, ystride,
-			leg_x0 + linewidth + text_left/2,
-			leg_y0 + linewidth + (rownumber+++0.5)*rowh, text_left);
+			leg_x0 + text_left/2,
+			(axes->legend.ro_datay[i] + axes->legend.ro_datay[i+1]) / 2 - linewidth*0.5, text_left);
 		/* drawing a literal marker changes fontheight */
 		if (axes->data[i]->label) {
 			ttra_set_fontheight(axes->ttra, topixels(axes->legend.rowheight, axes));

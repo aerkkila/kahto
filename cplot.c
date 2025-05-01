@@ -991,15 +991,23 @@ void cplot_get_legend_dims_chars(struct cplot_axes *axes, int *lines, int *cols)
 }
 
 void cplot_get_legend_dims_px(struct cplot_axes *axes, int *y, int *x) {
+	struct legend *lg = &axes->legend;
 	*x = *y = 0;
-	int rowh = ttra_set_fontheight(axes->ttra, topixels(axes->legend.rowheight, axes));
-	for (int i=0; i<axes->ndata; i++)
+	int rowh = ttra_set_fontheight(axes->ttra, topixels(lg->rowheight, axes));
+	if (lg->ro_datay_len <= axes->ndata) {
+		free(lg->ro_datay);
+		lg->ro_datay = malloc((lg->ro_datay_len = axes->ndata+1) * sizeof(lg->ro_datay[0]));
+	}
+	lg->ro_datay[0] = *y;
+	for (int i=0; i<axes->ndata; i++) {
+		lg->ro_datay[i+1] = *y;
 		if (axes->data[i]->label) {
 			int w, h;
 			ttra_get_textdims_pixels(axes->ttra, axes->data[i]->label, &w, &h);
-			*y += h;
+			lg->ro_datay[i+1] = *y += h;
 			*x = max(*x, w);
 		}
+	}
 	if (!*y)
 		return;
 	axes->legend.ro_text_left = iroundpos(axes->legend.symbolspace_per_rowheight * rowh);
@@ -1129,6 +1137,7 @@ void cplot_destroy_axes(struct cplot_axes *axes) {
 	free(axes->axis);
 	ttra_destroy(axes->ttra);
 	free(axes->ttra);
+	free(axes->legend.ro_datay);
 
 	for (int i=0; i<axes->ndata; i++)
 		cplot_destroy_data(axes->data[i]);

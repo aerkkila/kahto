@@ -133,10 +133,9 @@ static void motioncallback(struct waylandhelper *wlh, int xmove, int ymove) {
 			continue;
 		if (wlh->mousey < leg_y || wlh->mousey > leg_y+legpos[3])
 			continue;
-		int row = (wlh->mousey - leg_y) / topixels(axes->legend.rowheight, axes);
-		int count = 0;
 		for (int idata=0; idata<axes->ndata; idata++)
-			if (axes->data[idata]->label && count++ == row) {
+			if (axes->legend.ro_datay[idata+1] > wlh->mousey &&
+				axes->legend.ro_datay[idata] <= wlh->mousey) {
 				if (hi->used && hi->iaxes == iaxes && hi->idata == idata)
 					return; // nothing changed
 				hi->iaxes = iaxes;
