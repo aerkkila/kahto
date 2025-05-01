@@ -1105,7 +1105,7 @@ void cplot_destroy_data(struct cplot_data *data) {
 	if (data->cmap_owner)
 		free(data->cmap);
 	if (data->labelowner)
-		free(data->label);
+		free((void*)(intptr_t)data->label);
 	for (int i=0; i<4; i++)
 		if (data->err_owner[i])
 			free(data->err.yx[i]);
@@ -1160,7 +1160,7 @@ struct cplot_axes* cplot_plot_args(struct cplot_args *args) {
 
 	/* copy if necessary */
 	for (int idim=0; idim<3; idim++) {
-		if (!(args->copy[idim] || args->yxzowner[idim] < 0))
+		if (!(args->yxzowner[idim] < 0))
 			continue;
 		size_t size = cplot_sizes[data->yxztype[idim]] * data->length;
 		void *old = data->yxzdata[idim];

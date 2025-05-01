@@ -21,14 +21,11 @@
 #define cplot_iy 1
 
 /* returns some of the enumerations above according to the data type */
-#define cplot_type(a) ((int)( \
-		(typeof(a))1.5 == 1 ?	/* integer or floating point number */ \
-		/* integer */ \
-		sizeof(a) + (		/* size of integer */ \
-			(typeof(a))(-1) < 0 ?	/* signed or unsigned */ \
-			10 : 0 )			/* signed integer is enumerated as size + 10 */ \
-			/* floating point */ \
-			: sizeof(a) + 20 ))		/* floating point number is enumerated as size + 20 */
+#define cplot_type(a) ((int)(                                                \
+		sizeof(a) + (             /* enumeration is datasize + identifier */ \
+			(typeof(a))1.5 == 1 ? /* integer or floating point number */     \
+			(typeof(a))(-1) < 0 ? /* signed or unsigned integer */           \
+			10 : 0 : 20)))        /* identifiers for signed, unsigned and floating point respectively */
 
 extern const unsigned char cplot_sizes[];
 
@@ -40,7 +37,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 21
+#define __cplot_version_in_program 22
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -80,10 +77,9 @@ struct cplot_data;
 
 enum cplot_linestyle_e {cplot_line_none_e, cplot_line_normal_e, cplot_line_dashed_e};
 
-/* Fixed order means that future updates won't change the order of the fields.
-   Therefore, one can safely fill the struct by referring only to the first field by name.
+/* fixed order means changing the order of the fields will be avoided in future updates.
+   Therefore, one can quite safely fill the struct by referring only to the first field by name.
    E.g. struct cplot_markerstyle mstyle = {.marker="x", 0.01,};
-   Otherwise, the structs can change in the future.
    */
 
 struct cplot_linestyle {
@@ -221,8 +217,8 @@ struct cplot_data {
 	char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
 	char owner[3], cmap_owner;
 	double yxz0[3], yxzstep[3];
-	char *label;	// 1. fixed order
-	int labelowner;	// 2. fixed order
+	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
+	int labelowner;    // 2. fixed order
 	union cplot_errorbars err;
 	char err_owner[4];
 	/* style */
@@ -308,8 +304,8 @@ struct cplot_args {
 	char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
 	char yxzowner[3], cmap_owner;
 	double y0, x0, z0, ystep, xstep, zstep;
-	char *label;	// 1. fixed order
-	int labelowner;	// 2. fixed order; Copied, if owner = -1.
+	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
+	int labelowner;    // 2. fixed order; Copied, if owner = -1.
 	union cplot_errorbars err;
 	char err_owner[4]; // to copy, owner = -1
 
@@ -322,7 +318,6 @@ struct cplot_args {
 	int cmh_enum, icolor;
 	/* end struct cplot_data */
 
-	char copy[3]; // Deprecated. Use 'owner = -1' instead.
 	/* Excecuted in cplot_plot_args before anything else is done.
 	   Intended for changing the default arguments. */
 	void (*argsfun)(struct cplot_args*);
