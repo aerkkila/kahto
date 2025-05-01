@@ -285,7 +285,7 @@ struct cplot_figure* cplot_figure_bare_new() {
 	figure->ttra->fonttype = ttra_sans_e;
 	figure->ttra->chop_lines = 1;
 
-	figure->topixels_reference = cplot_super_height;
+	figure->topixels_reference = cplot_this_height;
 	figure->colorscheme.colors = cplot_colorschemes[0];
 	figure->title.rowheight = 0.05;
 
@@ -872,12 +872,11 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int figurewid
 		ttra->canvas = canvas;
 		ttra->realw = ystride;
 		ttra->realh = figureheight;
-		ttra->w = ticks->ro_labelarea[2] - ticks->ro_labelarea[0];
-		ttra->h = ticks->ro_labelarea[3] - ticks->ro_labelarea[1];
 		ttra->fg_default = ticks->color;
 		ttra->bg_default = -1;
 		ttra_print(ttra, "\033[0m");
 		ttra_set_fontheight(ttra, topixels(ticks->rowheight, figure));
+		ttra->fg_default = 0xff<<24;
 	}
 
 	int iort = ticks->axis->direction == 0;
@@ -943,14 +942,13 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
 	ttra->canvas = canvas;
 	ttra->realw = ystride;
 	ttra->realh = figureheight;
-	ttra->w = axistext->ro_area[2] - axistext->ro_area[0];
-	ttra->h = axistext->ro_area[3] - axistext->ro_area[1];
 	ttra->fg_default = axistext->axis->linestyle.color;
 	ttra->bg_default = -1;
 	ttra_print(ttra, "\033[0m");
 	ttra_set_fontheight(ttra, topixels(axistext->rowheight, axistext->axis->figure));
 	int *area = axistext->ro_area;
 	put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
+	ttra->fg_default = 0xff<<24;
 }
 
 void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
@@ -994,12 +992,6 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int figurewidth,
 				canvas1[0][i] = from_cmap(cmap + levels[i] * 3);
 			for (int j=1; j<len1; j++)
 				memcpy(canvas1[j], canvas1[0], sizeof(canvas1[0]));
-			/* vaihtakaani memcpy:ksi
-			   for (int j=axis->ro_area[1]; j<axis->ro_area[3]; j++) {
-			   long ind0 = j*ystride;
-			   for (int i=axis->ro_area[0]; i<axis->ro_area[2]; i++)
-			   canvas[ind0 + i] = from_cmap(cmap + levels[i] * 3);
-			   }*/
 		}
 	}
 
@@ -1033,15 +1025,20 @@ void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystr
 		cplot_data_render(figure->data[i], canvas, ystride, figure, 0);
 	cplot_legend_draw(figure, canvas, ystride);
 
+	struct ttra *ttra = figure->ttra;
+	ttra->canvas = canvas;
+	ttra->realw = ystride;
+	ttra->realh = figure->wh[1];
+	ttra->fg_default = 0xff<<24;
+	ttra->bg_default = -1;
+	ttra_printf(ttra, "\e[0m");
 	if (figure->title.text) {
 		struct cplot_text *text = &figure->title;
-		struct ttra *ttra = figure->ttra;
 		ttra_set_fontheight(ttra, topixels(text->rowheight, figure));
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
 	for (int i=0; i<figure->ntexts; i++) {
 		struct cplot_text *text = figure->texts+i;
-		struct ttra *ttra = figure->ttra;
 		ttra_set_fontheight(ttra, topixels(text->rowheight, figure));
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
@@ -1443,28 +1440,28 @@ void cplot_figure_draw(struct cplot_figure *figure, uint32_t *canvas, int ystrid
 		figure->revert_fixes(figure);
 }
 
-static void subplots_xywh_to_pixels(struct cplot_figure *subplots, int islot, int px[4]) {
-	px[0] = iroundpos(subplots->children_xywh[islot][0] * subplots->wh[0]);
-	px[1] = iroundpos(subplots->children_xywh[islot][1] * subplots->wh[1]);
-	px[2] = iroundpos(subplots->wh[0] * subplots->children_xywh[islot][2]);
-	px[3] = iroundpos(subplots->wh[1] * subplots->children_xywh[islot][3]);
-	if (px[0] + px[2] > subplots->wh[0])
-		px[2] = subplots->wh[0] - px[0];
-	if (px[1] + px[3] > subplots->wh[1])
-		px[3] = subplots->wh[1] - px[1];
+static void children_xywh_to_pixels(struct cplot_figure *fig, int islot, int px[4]) {
+	px[0] = iroundpos(fig->children_xywh[islot][0] * fig->ro_inner_xywh[2]) + fig->ro_inner_xywh[0];
+	px[1] = iroundpos(fig->children_xywh[islot][1] * fig->ro_inner_xywh[3]) + fig->ro_inner_xywh[1];
+	px[2] = iroundpos(fig->ro_inner_xywh[2] * fig->children_xywh[islot][2]);
+	px[3] = iroundpos(fig->ro_inner_xywh[3] * fig->children_xywh[islot][3]);
+	if (px[0] + px[2] > fig->wh[0])
+		px[2] = fig->wh[0] - px[0];
+	if (px[1] + px[3] > fig->wh[1])
+		px[3] = fig->wh[1] - px[1];
 }
 
-void cplot_xywh_to_children(struct cplot_figure *subplots) {
-	for (int isub=0; isub<subplots->nchildren; isub++) {
-		if (!subplots->children[isub])
+void cplot_xywh_to_children(struct cplot_figure *fig) {
+	for (int ichild=0; ichild<fig->nchildren; ichild++) {
+		if (!fig->children[ichild])
 			continue;
 		int xywh_px[4];
-		subplots_xywh_to_pixels(subplots, isub, xywh_px);
-		subplots->children[isub]->wh[0] = xywh_px[2];
-		subplots->children[isub]->wh[1] = xywh_px[3];
-		subplots->children[isub]->super = (void*)subplots;
-		subplots->children[isub]->ro_corner[0] = xywh_px[0];
-		subplots->children[isub]->ro_corner[1] = xywh_px[1];
+		children_xywh_to_pixels(fig, ichild, xywh_px);
+		fig->children[ichild]->wh[0] = xywh_px[2];
+		fig->children[ichild]->wh[1] = xywh_px[3];
+		fig->children[ichild]->ro_corner[0] = xywh_px[0];
+		fig->children[ichild]->ro_corner[1] = xywh_px[1];
+		fig->children[ichild]->super = fig;
 	}
 }
 
@@ -1522,8 +1519,8 @@ void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride)
 }
 
 void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
-	cplot_xywh_to_children(fig);
 	cplot_figure_draw(fig, canvas, ystride); // before children to not cover them with background color
+	cplot_xywh_to_children(fig);
 	if (fig->after_drawing)
 		fig->after_drawing(fig, canvas, ystride);
 	struct cplot_figure *f;

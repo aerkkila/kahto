@@ -407,6 +407,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
 struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float position);
 struct cplot_axis* cplot_coloraxis_new(struct cplot_figure *figure, int x_or_y);
 struct cplot_figure* cplot_figure_new();
+struct cplot_figure* cplot_figure_bare_new(); // does not create x and y axes
 struct cplot_figure* cplot_subplots_new(int nrows, int ncols);
 /* xsizes[ncols] defines the proportional width of each column
  * the leftover space is divided equally between all columns with 0 value:
