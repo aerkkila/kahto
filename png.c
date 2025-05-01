@@ -1,5 +1,4 @@
-#ifdef HAVE_PNG // wraps the whole file
-
+#ifdef HAVE_PNG
 #include <png.h>
 #include <string.h>
 #include <err.h>
@@ -88,8 +87,15 @@ void* cplot_write_png_preserve(void *vstandalone, const char *name) {
 	return vstandalone;
 }
 
+#else // not HAVE_PNG
+void* cplot_write_png_preserve(void *a, const char *b) {
+	fprintf(stderr, "cplot library was compiled without support for writing a png image.\n"
+		"Configure and compile again with libpng enabled.\n"
+	);
+	return a;
+}
+#endif // HAVE_PNG
+
 void *cplot_write_png(void *vstandalone, const char *name) {
 	return cplot_destroy(cplot_write_png_preserve(vstandalone, name)), NULL;
 }
-
-#endif // HAVE_PNG

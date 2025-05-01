@@ -1382,8 +1382,8 @@ void* cplot_show(void *vplot) {
 #else
 void* cplot_show_preserve(void *vplot) {
 	fprintf(stderr, "cplot was compiled without support for creating a window\n"
-		"Install waylandhelper and compile again.\n",
-		__func__);
+		"Configure and compile again with libwaylandhelper enabled.\n",
+	);
 	return vplot;
 }
 #endif
