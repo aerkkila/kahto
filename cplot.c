@@ -535,6 +535,33 @@ static long get_first_for_data(struct cplot_data *data, int yxz) {
 	}
 }
 
+void cplot_check_dataminmax(struct cplot_data *data, int yxz, int range_isset) {
+	if (data->yxztype[yxz] == cplot_notype) {
+		if (!(range_isset & cplot_minbit))
+			data->minmax[yxz][0] = data->yxz0[yxz] + get_first_for_data(data, yxz) * data->yxzstep[yxz];
+		if (!(range_isset & cplot_maxbit))
+			data->minmax[yxz][1] = data->yxz0[yxz] + get_last_for_data(data, yxz) * data->yxzstep[yxz];
+		return;
+	}
+	switch (range_isset & (cplot_minbit|cplot_maxbit)) {
+		case 0:
+			get_minmax_for_data(data, yxz);
+			data->have_minmax[yxz] |= cplot_minbit|cplot_maxbit;
+			break;
+		case cplot_maxbit:
+			/* data minimum not known yet and axis minimum is not fixed */
+			get_min_for_data(data, yxz);
+			data->have_minmax[yxz] |= cplot_minbit;
+			break;
+		case cplot_minbit:
+			get_max_for_data(data, yxz);
+			data->have_minmax[yxz] |= cplot_maxbit;
+			break;
+		default:
+			__builtin_unreachable();
+	}
+}
+
 void cplot_make_range(struct cplot_axes *axes) {
 	unsigned isset = cplot_minbit|cplot_maxbit;
 	for (int i=0; i<axes->naxis; i++)
@@ -549,41 +576,30 @@ void cplot_make_range(struct cplot_axes *axes) {
 
 		for (int yxz=0; yxz<3; yxz++) {
 			struct cplot_axis *axis = yxz < 2 ? data->yxaxis[yxz] : data->caxis;
-			if (data->yxztype[yxz] == cplot_notype) {
-				if (!(data->have_minmax[yxz] & cplot_minbit)) {
-					data->minmax[yxz][0] = data->yxz0[yxz] + get_first_for_data(data, yxz) * data->yxzstep[yxz];
-					data->have_minmax[yxz] |= cplot_minbit;
-				}
-				if (!(data->have_minmax[yxz] & cplot_maxbit)) {
-					data->minmax[yxz][1] = data->yxz0[yxz] + get_last_for_data(data, yxz) * data->yxzstep[yxz];
-					data->have_minmax[yxz] |= cplot_maxbit;
+			if (!axis)
+				continue;
+			cplot_check_dataminmax(data, yxz, axis->range_isset | data->have_minmax[yxz]);
+			if (!(axis->range_isset & cplot_minbit)) {
+				if (axis->range_isset & cplot_minbit<<4) // we use this temporarily to mark initialized minmax
+					update_min(axis->min, data->minmax[yxz][0]);
+				else {
+					axis->min = data->minmax[yxz][0];
+					axis->range_isset |= cplot_minbit<<4;
 				}
 			}
-			else
-				switch (data->have_minmax[yxz] | axis->range_isset) {
-					case 0:
-						get_minmax_for_data(data, yxz);
-						data->have_minmax[yxz] |= cplot_minbit|cplot_maxbit;
-						break;
-					case cplot_maxbit:
-						/* data minimum not known yet and axis minimum is not fixed */
-						get_min_for_data(data, yxz);
-						data->have_minmax[yxz] |= cplot_minbit;
-						break;
-					case cplot_minbit:
-						get_max_for_data(data, yxz);
-						data->have_minmax[yxz] |= cplot_maxbit;
-						break;
-					default: break;
+			if (!(axis->range_isset & cplot_maxbit)) {
+				if (axis->range_isset & cplot_maxbit<<4) // we use this temporarily to mark initialized minmax
+					update_max(axis->max, data->minmax[yxz][1]);
+				else {
+					axis->max = data->minmax[yxz][1];
+					axis->range_isset |= cplot_maxbit<<4;
 				}
-
-			update_min(axis->min, data->minmax[yxz][0]);
-			update_max(axis->max, data->minmax[yxz][1]);
+			}
 		}
 	}
 
 	for (int i=0; i<axes->naxis; i++)
-		axes->axis[i]->range_isset |= cplot_minbit | cplot_maxbit;
+		axes->axis[i]->range_isset = cplot_minbit | cplot_maxbit;
 }
 
 /* Tätä voisi nopeuttaa käymällä löydettyä kohtaa läpi eteenpäin kunnes löytyy vapaa paikka
