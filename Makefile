@@ -48,6 +48,7 @@ all: libcplot.so
 
 tulosta:
 	@echo dep_get: $(dep_get)
+	@echo LDLIBS: $(LDLIBS)
 
 testi.out: testi.c cplot.o $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
