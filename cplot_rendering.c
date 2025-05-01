@@ -706,6 +706,23 @@ static void init_4star(unsigned char *to, int tow, int toh) {
 	free(to16);
 }
 
+void init_literal(unsigned char *bmap, int w, int h, struct cplot_data *data) {
+	struct ttra *ttra = data->yxaxis[0]->axes->ttra;
+	/* bitmap is probably smaller than fontheight */
+	int bw, bh;
+	unsigned char *bm;
+	ttra_set_fontheight(ttra, 50);
+	ttra_get_bitmap(ttra, data->markerstyle.marker, &bw, &bh);
+	ttra_set_fontheight(ttra, h * ttra->fontheight / (float)bh);
+
+	bm = ttra_get_bitmap(ttra, data->markerstyle.marker, &bw, &bh);
+	memset(bmap, 0, w*h);
+	int minw = bw < w ? bw : w;
+	int minh = bh < h ? bh : h;
+	for (int j=0; j<minh; j++)
+		memcpy(bmap + j*w, bm + j*bw, minw);
+}
+
 static void draw_data_y(struct draw_data_args *restrict ar) {
 	for (int idata=0; idata<ar->len; idata++) {
 		double xd = (ar->x0 + idata) * ar->xpix_per_unit;
@@ -825,43 +842,26 @@ static int cplot_visible_data(struct cplot_data *data) {
 }
 
 static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned char *bmap, int *has_marker, int *width, int *height) {
-	void literal_initfun(unsigned char *bmap, int w, int h) {
-		struct ttra *ttra = data->yxaxis[0]->axes->ttra;
-		/* bitmap is probably smaller than fontheight */
-		int bw, bh;
-		unsigned char *bm;
-		ttra_set_fontheight(ttra, 50);
-		ttra_get_bitmap(ttra, data->markerstyle.marker, &bw, &bh);
-		ttra_set_fontheight(ttra, h * ttra->fontheight / (float)bh);
-
-		bm = ttra_get_bitmap(ttra, data->markerstyle.marker, &bw, &bh);
-		memset(bmap, 0, w*h);
-		int minw = bw < w ? bw : w;
-		int minh = bh < h ? bh : h;
-		for (int j=0; j<minh; j++)
-			memcpy(bmap + j*w, bm + j*bw, minw);
-	}
-
-	*has_marker = 1;
-	typeof(init_circle) *initfun = literal_initfun;
 	if (!data->markerstyle.marker) {
 		*has_marker = 0;
 		return NULL;
 	}
-	else if (!data->markerstyle.literal)
+	typeof(init_literal) *initfun = init_literal;
+	*has_marker = 1;
+	if (!data->markerstyle.literal)
 		switch (*data->markerstyle.marker) {
 			case ' ':
 			case  0 : *has_marker = 0;
 			case '.': return NULL;
-			case '+': initfun = init_plus; break;
-			case '^': initfun = init_triangle; break;
+			case '+': initfun = (void*)init_plus; break;
+			case '^': initfun = (void*)init_triangle; break;
 			case '*':
-			case '4': initfun = init_4star; break;
-			case 'o': initfun = init_circle; break;
+			case '4': initfun = (void*)init_4star; break;
+			case 'o': initfun = (void*)init_circle; break;
 			default: break;
 		}
 
-	initfun(bmap, *width, *height);
+	initfun(bmap, *width, *height, data);
 
 	if (data->markerstyle.nofill) {
 		int W = *width, H = *height;
@@ -870,7 +870,7 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 		int x0 = (W - w) / 2,
 			y0 = (H - h) / 2;
 		unsigned char *bmap1 = malloc(w * h);
-		initfun(bmap1, w, h);
+		initfun(bmap1, w, h, data);
 		for (int j=0; j<h; j++)
 			for (int i=0; i<w; i++)
 				bmap[(j+y0)*W + i+x0] -= bmap1[j*w+i];
