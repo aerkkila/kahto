@@ -30,7 +30,7 @@ static int omit_utf8(const char *str, int len) {
 void end_typingmode(cookie_t* cookie) {
 	switch (cookie->mode) {
 		case typing_savename:
-			cplot_write_png(cookie->standalone, cookie->input);
+			cplot_write_png_preserve(cookie->standalone, cookie->input);
 			break;
 		case typing_none: break;
 	}
@@ -86,7 +86,7 @@ static void keycallback(struct waylandhelper *wlh) {
 		switch (syms[isym]) {
 			case XKB_KEY_s:
 				if (wlh->last_keymods & WLR_MODIFIER_CTRL)
-					cplot_write_png(cookie->standalone, NULL);
+					cplot_write_png_preserve(cookie->standalone, NULL);
 				else {
 					printf("filename: \e[s"), fflush(stdout);
 					cookie->mode = typing_savename;
