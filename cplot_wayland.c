@@ -3,11 +3,19 @@
 
 enum cplot_show_mode {typing_none, typing_savename};
 
+struct highlight {
+	int iaxes, idata;
+	char update, used;
+	uint32_t *canvascopy;
+	int id_canvascopy;
+};
+
 struct cplot_show_cookie {
 	void *standalone;
 	char input[256];
 	int len_input;
 	enum cplot_show_mode mode;
+	struct highlight highlight;
 };
 #define cookie_t struct cplot_show_cookie
 
@@ -99,8 +107,86 @@ static void keycallback(struct waylandhelper *wlh) {
 	}
 }
 
+static void motioncallback(struct waylandhelper *wlh, int xmove, int ymove) {
+	cookie_t *cookie = wlh->userdata;
+	struct cplot_standalone_common *standalone = cookie->standalone;
+	struct cplot_axes **axess = (void*)&cookie->standalone;
+	int naxes = 1;
+	if (standalone->type == cplot_axes_e);
+	else if (standalone->type == cplot_subplots_e) {
+		naxes = ((struct cplot_subplots*)standalone)->naxes;
+		axess = ((struct cplot_subplots*)standalone)->axes;
+	}
+	else
+		goto turn_off_highlight;
+
+/* The data is highlighted when cursor is on its legend item. */
+	struct highlight *hi = &cookie->highlight;
+	for (int iaxes=0; iaxes<naxes; iaxes++) {
+		struct cplot_axes *axes = axess[iaxes];
+		if (!axes->legend.visible)
+			continue;
+		const int *legpos = axes->legend.ro_xywh;
+		int leg_x = axes->ro_corner[0]+legpos[0];
+		int leg_y = axes->ro_corner[1]+legpos[1];
+		if (wlh->mousex < leg_x || wlh->mousex > leg_x+legpos[2])
+			continue;
+		if (wlh->mousey < leg_y || wlh->mousey > leg_y+legpos[3])
+			continue;
+		int row = (wlh->mousey - leg_y) / topixels(axes->legend.rowheight, axes);
+		int count = 0;
+		for (int idata=0; idata<axes->ndata; idata++)
+			if (axes->data[idata]->label && count++ == row) {
+				if (hi->used && hi->iaxes == iaxes && hi->idata == idata)
+					return; // nothing changed
+				hi->iaxes = iaxes;
+				hi->idata = idata;
+				hi->used = hi->update = 1;
+				return;
+			}
+		break;
+	}
+
+turn_off_highlight:
+	if (hi->used)
+		hi->update = 1;
+	hi->used = 0;
+}
+
+void highlight_data(struct waylandhelper *wlh) {
+	cookie_t *cookie = wlh->userdata;
+	struct highlight *hl = &cookie->highlight;
+	struct cplot_standalone_common *common = cookie->standalone;
+	hl->update = 0;
+	if (hl->canvascopy && hl->id_canvascopy == common->draw_counter) {
+		/* there is an old highlight which must be erased */
+		copy_canvas(wlh->data, hl->canvascopy, wlh->xres, common);
+	}
+	else {
+		/* there is not an old highlight */
+		free(hl->canvascopy);
+		hl->canvascopy = duplicate_canvas(wlh->data, wlh->xres, common);
+		hl->id_canvascopy = common->draw_counter;
+	}
+	if (!hl->used)
+		return;
+
+	/* highlight the data */
+	struct cplot_axes *axes = (void*)common;
+	if (common->type == cplot_subplots_e)
+		axes = ((struct cplot_subplots*)common)->axes[hl->iaxes];
+	else if (common->type != cplot_axes_e)
+		return;
+	struct cplot_data *data = axes->data[hl->idata];
+	struct cplot_data copy = *data;
+	copy.linestyle.thickness *= 3;
+	copy.markerstyle.size *= 3;
+	copy.errstyle.thickness *= 3;
+	cplot_data_render(&copy, wlh->data, wlh->xres, axes, 0);
+}
+
 void* cplot_show_preserve(void *vplot) {
-	struct cplot_axes *standalone = vplot;
+	struct cplot_standalone_common *standalone = vplot;
 	struct waylandhelper wlh = standalone->wlh ? *standalone->wlh : (struct waylandhelper){
 		.xresmin = 20,
 		.yresmin = 20,
@@ -114,11 +200,12 @@ void* cplot_show_preserve(void *vplot) {
 	wlh.xres = standalone->wh[0];
 	wlh.yres = standalone->wh[1];
 	wlh.key_callback = keycallback;
+	wlh.motion_callback = motioncallback;
 	wlh.userdata = &cookie;
 	wlh.title = standalone->name;
 
 	wlh_init(&wlh);
-	long updatecount = 0;
+	long updatecount = 1;
 	double starttime = -1;
 	while (!wlh.stop && wlh_roundtrip(&wlh) >= 0) {
 		if (wlh_key_should_repeat(&wlh))
@@ -135,10 +222,16 @@ void* cplot_show_preserve(void *vplot) {
 			if (starttime < 0)
 				starttime = get_time();
 			if (standalone->update) {
-				int ret = standalone->update(standalone, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
+				int ret = standalone->update(vplot, wlh.data, wlh.xres, updatecount++, get_time() - starttime);
 				if (ret < 0)
 					break;
 				should_commit += ret;
+			}
+			if (cookie.highlight.used && cookie.highlight.id_canvascopy != standalone->draw_counter)
+				cookie.highlight.update = 1;
+			if (cookie.highlight.update) {
+				should_commit = 1;
+				highlight_data(&wlh);
 			}
 			if (should_commit)
 				wlh_commit(&wlh);
@@ -146,6 +239,7 @@ void* cplot_show_preserve(void *vplot) {
 		usleep(10000);
 	}
 	wlh_destroy(&wlh);
+	free(cookie.highlight.canvascopy);
 	standalone->wlh = old_wlh;
 	return vplot;
 }

@@ -1247,6 +1247,7 @@ void set_colors(struct cplot_axes *axes) {
 }
 
 void cplot_axes_draw(struct cplot_axes *axes, uint32_t *canvas, int ystride) {
+	++axes->draw_counter;
 	set_colors(axes);
 	if (cplot_axes_layout(axes)) {
 		if (axes->fix_too_little_space) {
@@ -1283,6 +1284,8 @@ void cplot_subplots_to_axes(struct cplot_subplots *subplots) {
 		subplots->axes[isub]->wh[1] = xywh_px[3];
 		subplots->axes[isub]->startcanvas = xywh_px[1] * subplots->wh[0] + xywh_px[0];
 		subplots->axes[isub]->super = (void*)subplots;
+		subplots->axes[isub]->ro_corner[0] = xywh_px[0];
+		subplots->axes[isub]->ro_corner[1] = xywh_px[1];
 	}
 }
 
@@ -1346,21 +1349,28 @@ void cplot_draw(void *vplot, uint32_t *canvas, int ystride) {
 		struct cplot_subplots *subplots = vplot;
 		cplot_subplots_to_axes(subplots);
 		cplot_fill_u4(canvas, subplots->background, subplots->wh[0], subplots->wh[1], ystride);
+		++subplots->draw_counter;
 		for (int i=0; i<subplots->naxes; i++)
 			if (subplots->axes[i])
 				cplot_axes_draw(subplots->axes[i], canvas, ystride);
 	}
 }
 
-static uint32_t __attribute__((malloc))* copy_canvas(uint32_t *canvas, int ystride, void *vplot) {
+static uint32_t* copy_canvas(void *vdest, uint32_t *canvas, int ystride, void *vplot) {
 	struct cplot_standalone_common *plot = vplot;
 	int width = plot->wh[0],
 	    height = plot->wh[1];
-	uint32_t (*copy)[width] = malloc(height * sizeof(copy[0])),
+	uint32_t (*dest)[width] = vdest,
 			 (*src)[ystride] = (void*)canvas;
 	for (int i=0; i<height; i++)
-		memcpy(copy[i], src[i], sizeof(copy[0]));
-	return (void*)copy;
+		memcpy(dest[i], src[i], sizeof(dest[0]));
+	return vdest;
+}
+
+static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *canvas, int ystride, void *vplot) {
+	struct cplot_standalone_common *plot = vplot;
+	uint32_t *copy = malloc(plot->wh[0] * plot->wh[1] * sizeof(uint32_t));
+	return copy_canvas(copy, canvas, ystride, vplot);
 }
 
 void* cplot_show(void *vplot) {

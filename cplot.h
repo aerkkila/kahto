@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 23
+#define __cplot_version_in_program 24
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -241,7 +241,7 @@ enum cplot_topixels_reference {cplot_super_height, cplot_super_width, cplot_this
 
 #define inherit_cplot_standalone_common \
 	enum cplot_standalone_type type;    \
-	int wh[2];                          \
+	int draw_counter, wh[2];            \
 	unsigned background;                \
 	struct waylandhelper *wlh;          \
 	char *name; /* window title (cplot_show) or filename (cplot_save_png) */ \
@@ -268,7 +268,7 @@ struct cplot_axes {
 	struct cplot_axis **axis, *last_caxis;
 	int naxis, mem_axis;
 	struct ttra *ttra;
-	int ro_inner_xywh[4], ro_inner_margin[4];
+	int ro_inner_xywh[4], ro_inner_margin[4], ro_corner[2];
 	float margin[4];
 	struct cplot_data **data;
 	int ndata, mem_data, icolor;
