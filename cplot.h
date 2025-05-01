@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 26
+#define __cplot_version_in_program 27
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -199,11 +199,14 @@ struct cplot_axistext {
 	int ro_area[4];
 };
 
+enum cplot_coords_reference {cplot_dataarea_e, cplot_axesarea_e};
+
 struct cplot_text {
 	const char *text; // const will be discarded on destroy, if owner
 	float xy[2], rowheight, // fixed order until this
 		  rotation_grad, hvalign[2];
 	char owner;
+	enum cplot_coords_reference reference;
 	int ro_area[4];
 };
 

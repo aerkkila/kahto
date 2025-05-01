@@ -1068,10 +1068,12 @@ void texts_placement(struct cplot_axes *axes) {
 		struct cplot_text *text = axes->texts+i;
 		area[0] = iroundpos(axes->wh[0] * text->xy[0]);
 		area[1] = iroundpos(axes->wh[1] * text->xy[1]);
-		area[2] = axes->wh[0];
-		area[3] = axes->wh[1];
 		if (text->rowheight == 0)
 			text->rowheight = axes->legend.rowheight;
+		if (text->reference == cplot_dataarea_e) {
+			area[0] += axes->ro_inner_xywh[0];
+			area[1] += axes->ro_inner_xywh[1];
+		}
 	}
 }
 
