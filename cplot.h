@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 29
+#define __cplot_version_in_program 30
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -495,8 +495,14 @@ void cplot_destroy_data(struct cplot_data *data);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 
 /* Available only if compiled with waylandhelper */
-struct cplot_figure* cplot_show_preserve(struct cplot_figure *figure); // returns the input
-void cplot_show(struct cplot_figure *figure); // destroys the input
+struct cplot_figure* cplot_show_preserve_(struct cplot_figure *figure, char *name); // returns the input
+void cplot_show_(struct cplot_figure *figure, char *name); // destroys the input
+
+#define cplot_show(...) _cplot_show(__VA_ARGS__, NULL); // cplot_show(figure) OR cplot_show(figure, "name")
+#define _cplot_show(a, b, ...) cplot_show_(a, b)
+
+#define cplot_show_preserve(...) _cplot_show_preserve(__VA_ARGS__, NULL);
+#define _cplot_show_preserve(a, b, ...) cplot_show_preserve_(a, b)
 
 struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *figure, const char *name); // returns the input figure
 void cplot_write_png(struct cplot_figure *figure, const char *name); // destroys the input

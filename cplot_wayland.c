@@ -190,7 +190,7 @@ new_copy:
 	cplot_data_render(&copy, canvas, wlh->xres, hl->fig, 0);
 }
 
-struct cplot_figure* cplot_show_preserve(struct cplot_figure *fig) {
+struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) {
 	struct waylandhelper wlh = fig->wlh ? *fig->wlh : (struct waylandhelper){
 		.xresmin = 20,
 		.yresmin = 20,
@@ -206,7 +206,7 @@ struct cplot_figure* cplot_show_preserve(struct cplot_figure *fig) {
 	wlh.key_callback = keycallback;
 	wlh.motion_callback = motioncallback;
 	wlh.userdata = &cookie;
-	wlh.title = fig->name;
+	wlh.title = name ? name : fig->name;
 
 	wlh_init(&wlh);
 	long updatecount = 1;

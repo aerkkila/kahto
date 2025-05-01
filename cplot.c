@@ -1543,14 +1543,14 @@ static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *src1d
 	return copy_canvas(copy, wh[0], src1d, src_ystride, wh);
 }
 
-void cplot_show(struct cplot_figure *fig) {
-	cplot_destroy(cplot_show_preserve(fig));
+void cplot_show_(struct cplot_figure *fig, char *name) {
+	cplot_destroy(cplot_show_preserve_(fig, name));
 }
 
 #ifdef HAVE_wlh
 #include "cplot_wayland.c"
 #else
-struct cplot_figure* cplot_show(struct cplot_figure *fig) {
+struct cplot_figure* cplot_show_(struct cplot_figure *fig, char *name) {
 	fprintf(stderr, "cplot was compiled without support for creating a window\n"
 		"Configure and compile again with libwaylandhelper enabled.\n",
 	);
