@@ -95,8 +95,8 @@ int main(int argc, char **argv) {
 		dlclose(kahva);
 	}
 
-	struct cplot_axes *axes = cplot_axes_new();
+	struct cplot_figure *figure = cplot_figure_new();
 	for (int ikäyrä=0; ikäyrä<käyriä; ikäyrä++)
-		cplot_yx(y[ikäyrä], x, n, cplot_lineargs, .axes=axes);
-	cplot_destroy(cplot_show(axes));
+		cplot_yx(y[ikäyrä], x, n, cplot_lineargs, .figure=figure);
+	cplot_show(figure);
 }
