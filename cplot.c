@@ -271,8 +271,7 @@ struct ttra* cplot_figure_ttra_new(struct cplot_figure *figure) {
 	return figure->ttra;
 }
 
-struct cplot_figure* cplot_figure_void_new() {
-	struct cplot_figure *figure = calloc(1, sizeof(struct cplot_figure));
+struct cplot_figure* cplot_figure_void(struct cplot_figure *figure) {
 	figure->background = -1;
 
 	figure->wh[0] = cplot_default_width;
@@ -298,14 +297,21 @@ struct cplot_figure* cplot_figure_void_new() {
 	return figure;
 }
 
-struct cplot_figure* cplot_figure_new() {
-	struct cplot_figure *figure = cplot_figure_void_new();
+struct cplot_figure* cplot_figure_void_new() {
+	return cplot_figure_void(calloc(1, sizeof(struct cplot_figure)));
+}
+
+struct cplot_figure* cplot_figure_init_axes(struct cplot_figure *figure) {
 	figure->axis = calloc((figure->mem_axis = 4) + 1, sizeof(void*));
 	figure->axis[0] = cplot_axis_new(figure, 'x', 1);
 	figure->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
 	figure->axis[1] = cplot_axis_new(figure, 'y', 0);
 	figure->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
 	return figure;
+}
+
+struct cplot_figure* cplot_figure_new() {
+	return cplot_figure_init_axes(cplot_figure_void_new());
 }
 
 struct cplot_figure* cplot_subfigures_put_rows_and_cols(struct cplot_figure *fig, int nrows, int ncols) {
@@ -1264,7 +1270,7 @@ void cplot_destroy_data(struct cplot_data *data) {
 	free(data);
 }
 
-void cplot_destroy_single(struct cplot_figure *fig) {
+struct cplot_figure* cplot_destroy_single(struct cplot_figure *fig) {
 	/* Subfigures must be destroyed already or referenced by other pointers. */
 	free(fig->subfigures);
 	free(fig->subfigures_xywh);
@@ -1294,7 +1300,7 @@ void cplot_destroy_single(struct cplot_figure *fig) {
 		free(fig->colorscheme.colors);
 
 	memset(fig, 0, sizeof(*fig));
-	free(fig);
+	return fig;
 }
 
 void cplot_destroy(struct cplot_figure *fig) {
@@ -1302,7 +1308,7 @@ void cplot_destroy(struct cplot_figure *fig) {
 		return;
 	for (int i=0; i<fig->nsubfigures; i++)
 		cplot_destroy(fig->subfigures[i]);
-	cplot_destroy_single(fig);
+	free(cplot_destroy_single(fig));
 }
 
 struct cplot_figure* cplot_clean(struct cplot_figure *fig) {
@@ -1310,25 +1316,13 @@ struct cplot_figure* cplot_clean(struct cplot_figure *fig) {
 		return fig;
 	for (int i=0; i<fig->nsubfigures; i++)
 		cplot_destroy(fig->subfigures[i]);
-	fig->nsubfigures = 0;
-	if (fig->naxis > 2) {
-		for (int i=2; i<fig->naxis; i++)
-			cplot_destroy_axis(fig->axis[i]);
-		fig->naxis = 2;
-	}
-	for (int i=0; i<fig->naxis; i++)
-		fig->axis[i]->range_isset = 0;
-
-	for (int i=0; i<fig->ndata; i++)
-		cplot_destroy_data(fig->data[i]);
-	fig->ndata = 0;
-
-	for (int i=fig->ntexts-1; i>=0; i--)
-		if (fig->texts[i].owner)
-			free((void*)(intptr_t)fig->texts[i].text);
-	fig->ntexts = 0;
-
-	fig->icolor = 0;
+	struct ttra *ttra = fig->ttra;
+	fig->ttra_owner = 0;
+	int ttra_owner = fig->ttra_owner;
+	cplot_destroy_single(fig); // fig not freed
+	cplot_figure_init_axes(cplot_figure_void(fig));
+	fig->ttra = ttra;
+	fig->ttra_owner = ttra_owner;
 	return fig;
 }
 

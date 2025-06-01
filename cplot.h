@@ -569,8 +569,8 @@ void cplot_axis_datarange(struct cplot_axis*);
 void cplot_make_range(struct cplot_figure *);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
 struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
-/* Removes all data, other axis than first two, texts, and subfigures.
-   Makes axis ranges unset. Sets icolor = 0. */
+/* Figure is re-initialized as in cplot_figure_new(), except that ttra is preserved.
+   This increases performance because initializing ttra is slow. */
 struct cplot_figure* cplot_clean(struct cplot_figure*);
 
 /* These are used automatically when necessary
