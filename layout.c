@@ -354,6 +354,18 @@ int cplot_figure_layout(struct cplot_figure *fig) {
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	memset(fig->ro_inner_margin, 0, sizeof(fig->ro_inner_margin));
+	if (!fig->ttra) {
+		struct cplot_figure *super = fig;
+		while (super->super) {
+			super = super->super;
+			if (super->ttra) {
+				fig->ttra = super->ttra;
+				goto break0;
+			}
+		}
+		cplot_figure_ttra_new(fig);
+break0:
+	}
 	if (!fig->ttra->text_initialized)
 		ttra_init(fig->ttra);
 	if (fig->title.text) {

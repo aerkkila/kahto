@@ -263,16 +263,20 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 	return ticks;
 }
 
+struct ttra* cplot_figure_ttra_new(struct cplot_figure *figure) {
+	figure->ttra = calloc(1, sizeof(struct ttra));
+	figure->ttra->fonttype = ttra_sans_e;
+	figure->ttra->chop_lines = 1;
+	figure->ttra_owner = 1;
+	return figure->ttra;
+}
+
 struct cplot_figure* cplot_figure_void_new() {
 	struct cplot_figure *figure = calloc(1, sizeof(struct cplot_figure));
 	figure->background = -1;
 
 	figure->wh[0] = cplot_default_width;
 	figure->wh[1] = cplot_default_height;
-
-	figure->ttra = calloc(1, sizeof(struct ttra));
-	figure->ttra->fonttype = ttra_sans_e;
-	figure->ttra->chop_lines = 1;
 
 	figure->topixels_reference = cplot_this_height;
 	figure->colorscheme.colors = cplot_colorschemes[0];
@@ -1268,8 +1272,10 @@ void cplot_destroy_single(struct cplot_figure *fig) {
 	for (int i=0; i<fig->naxis; i++)
 		cplot_destroy_axis(fig->axis[i]);
 	free(fig->axis);
-	ttra_destroy(fig->ttra);
-	free(fig->ttra);
+	if (fig->ttra_owner) {
+		ttra_destroy(fig->ttra);
+		free(fig->ttra);
+	}
 	free(fig->legend.ro_datay);
 
 	for (int i=0; i<fig->ndata; i++)
@@ -1297,6 +1303,33 @@ void cplot_destroy(struct cplot_figure *fig) {
 	for (int i=0; i<fig->nsubfigures; i++)
 		cplot_destroy(fig->subfigures[i]);
 	cplot_destroy_single(fig);
+}
+
+struct cplot_figure* cplot_clean(struct cplot_figure *fig) {
+	if (!fig)
+		return fig;
+	for (int i=0; i<fig->nsubfigures; i++)
+		cplot_destroy(fig->subfigures[i]);
+	fig->nsubfigures = 0;
+	if (fig->naxis > 2) {
+		for (int i=2; i<fig->naxis; i++)
+			cplot_destroy_axis(fig->axis[i]);
+		fig->naxis = 2;
+	}
+	for (int i=0; i<fig->naxis; i++)
+		fig->axis[i]->range_isset = 0;
+
+	for (int i=0; i<fig->ndata; i++)
+		cplot_destroy_data(fig->data[i]);
+	fig->ndata = 0;
+
+	for (int i=fig->ntexts-1; i>=0; i--)
+		if (fig->texts[i].owner)
+			free((void*)(intptr_t)fig->texts[i].text);
+	fig->ntexts = 0;
+
+	fig->icolor = 0;
+	return fig;
 }
 
 struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
@@ -1520,7 +1553,7 @@ void cplot_connect_x(struct cplot_figure **figs, int nconnected) {
 }
 
 void cplot_layout(struct cplot_figure *fig) {
-	/* this figure first because ro_inner_xywh is needed in subfigures */
+	/* this figure first because ro_inner_xywh and other things are needed in subfigures */
 	if (cplot_figure_layout(fig) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
 		cplot_figure_layout(fig);

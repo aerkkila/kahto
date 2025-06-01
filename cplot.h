@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 31
+#define __cplot_version_in_program 32
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -280,6 +280,7 @@ struct cplot_figure {
 	   after computing the layout, each size is changed according to the smallest x-axis */
 	struct cplot_figure **connected_x; int nconnected_x;
 	struct ttra *ttra;
+	char ttra_owner;
 	int ro_inner_xywh[4], ro_inner_margin[4], ro_corner[2];
 	float margin[4];
 	struct cplot_data **data;
@@ -404,6 +405,11 @@ struct cplot_args {
 	.ztype=cplot_type(*(z)),	\
 	__VA_ARGS__					\
 	})
+
+/* Manual call is needed, if parameters in ttra such as ttra->fonttype are modified before calling
+   the drawing or layout function which calls this automatically if necessary.
+   Manual call is also needed, if the ttra instance should not be shared with fig->super. */
+struct ttra* cplot_figure_ttra_new(struct cplot_figure *fig);
 
 struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis);
 struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float position);
@@ -563,6 +569,9 @@ void cplot_axis_datarange(struct cplot_axis*);
 void cplot_make_range(struct cplot_figure *);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
 struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
+/* Removes all data, other axis than first two, texts, and subfigures.
+   Makes axis ranges unset. Sets icolor = 0. */
+struct cplot_figure* cplot_clean(struct cplot_figure*);
 
 /* These are used automatically when necessary
    but user might need these in user-defined drawing functions, e.g. figure->update. */
