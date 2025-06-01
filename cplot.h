@@ -18,10 +18,6 @@
 #define cplot_f8  (9 + 4)
 #define cplot_f10 (9 + 8)
 
-/* For example: assert(figure->axis[cplot_ix]->direction == cplot_ix); // x-axis */
-#define cplot_ix 0
-#define cplot_iy 1
-
 /* returns some of the enumerations above according to the data type */
 #define cplot_type(a) ((int)(                                                  \
 		sizeof(a)/2 + (           /* enumeration is datasize/2 + identifier */ \
@@ -30,6 +26,10 @@
 			1 : 6 : 9)))          /* identifiers for signed, unsigned and floating point respectively */
 
 extern const unsigned char cplot_sizes[];
+
+/* For example: assert(figure->axis[cplot_ix]->direction == cplot_ix); // x-axis */
+#define cplot_ix 0
+#define cplot_iy 1
 
 /* To zoom axis to some piece of data, set axis->range_isset = cplot_range_isset */
 #define cplot_minbit 1
