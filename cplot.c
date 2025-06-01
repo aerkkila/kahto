@@ -1579,6 +1579,10 @@ void cplot_render(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
 void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
 	cplot_layout(fig);
 	cplot_render(fig, canvas, ystride);
+	/* Legend placement is broken until figure is redrawn due to e.g. size change.
+	   This is a workaround until I find the reason why it does not work on the first time. */
+	cplot_layout(fig);
+	cplot_render(fig, canvas, ystride);
 }
 
 static uint32_t* copy_canvas(uint32_t *dest1d, int dest_ystride, uint32_t *src1d, int src_ystride, int *wh) {
