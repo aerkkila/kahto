@@ -75,6 +75,8 @@ static void get_datalevels_@dtype(long istart, long iend, const void *vdata, uns
 	double axisdiff = axismax - axismin;
 	for (int i=0; i<len; i++) {
 		float pos = (data[i*stridein] - axismin) / axisdiff;
+		if (pos > 1) pos = 1;
+		if (pos < 0) pos = 0;
 		out[i] = iround(pos*scale);
 	}
 }
@@ -90,6 +92,8 @@ static void get_datalevels_with_center_@dtype(long istart, long iend, const void
 		double val = data[i*stridein];
 		int ind = val >= axmid;
 		float pos = (val - axmin[ind]) / axdiff[ind] * 0.5 + move[ind];
+		if (pos > 1) pos = 1;
+		if (pos < 0) pos = 0;
 		out[i] = iround(pos*scale);
 	}
 }
