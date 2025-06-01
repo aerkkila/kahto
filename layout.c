@@ -284,13 +284,14 @@ void cplot_make_inner_margin(struct cplot_figure *fig) {
 			float innerfraction = (1 - 2 * size05_axis) / (s1 - s0);
 			float m0_axis = size05_axis - innerfraction * s0;
 			float m1_axis = 1 - (m0_axis + innerfraction);
+			int backwards = axis->direction == 1; // y-axis
 			if (m0_axis > 0) {
 				int m0 = iroundpos(m0_axis * axislen);
-				update_max(fig->ro_inner_margin[axis->direction], m0);
+				update_max(fig->ro_inner_margin[axis->direction + 2*backwards], m0);
 			}
 			if (m1_axis > 0) {
 				int m1 = iroundpos(m1_axis * axislen);
-				update_max(fig->ro_inner_margin[axis->direction+2], m1);
+				update_max(fig->ro_inner_margin[axis->direction + 2*!backwards], m1);
 			}
 		}
 	}
