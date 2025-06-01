@@ -262,6 +262,7 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 	_axis_line_orthogonal(axis, &args);
 }
 
+/* add room for markers whose value is in the axis area but which are clipped partially */
 void cplot_make_inner_margin(struct cplot_figure *fig) {
 	for (int i=0; i<fig->ndata; i++) {
 		struct cplot_data *data = fig->data[i];
@@ -411,12 +412,10 @@ int cplot_figure_layout(struct cplot_figure *fig) {
 	cplot_make_inner_margin(fig);
 
 	/* while (1) but avoid halting in certain situations */
-	int firsttime = 1;
-	for (int _iloop=0; _iloop<30; _iloop++) {
+	for (int iloop=0; iloop<30; iloop++) {
 		/* parallel size */
 		for (int i=0; i<fig->naxis; i++)
-			axis_set_parallel_sizes(fig->axis[i], firsttime);
-		firsttime = 0;
+			axis_set_parallel_sizes(fig->axis[i], iloop);
 
 		/*      ⁰⁰              ⁰¹
 		 *      ¹⁰    0 (x0)    ³⁰

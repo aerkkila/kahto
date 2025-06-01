@@ -268,7 +268,7 @@ struct cplot_figure {
 	   This is called as the last thing in the drawing function. */
     void (*after_drawing)(struct cplot_figure*, uint32_t *canvas, int ystride);
 	struct cplot_figure *super;
-	char ro_cannot_draw;
+	char ro_cannot_draw : 1, ro_colors_set : 1;
 
 	struct cplot_figure **subfigures;
 	float (*subfigures_xywh)[4];
@@ -561,17 +561,18 @@ void cplot_make_range(struct cplot_figure *);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
 struct cplot_args* cplot_default_lineargs(struct cplot_args *args); // returns the input
 
-/* To be used in the user-defined drawing function, e.g. figure->update. */
+/* These are used automatically when necessary
+   but user might need these in user-defined drawing functions, e.g. figure->update. */
 int  cplot_topixels(float size, struct cplot_figure *figure) __attribute__((pure));
+void cplot_xywh_to_figure(struct cplot_figure*);
+void cplot_render(struct cplot_figure *figure, uint32_t *canvas, int ystride);
+void cplot_layout(struct cplot_figure *figure);
+void cplot_set_colors(struct cplot_figure*);
 void cplot_legend_draw(struct cplot_figure*, uint32_t *canvas, int ystride);
 void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_figure *figure, long start);
 void cplot_clear_data(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride);
-
-/* Käyttäjä ei tarvitse näitä. */
-void cplot_xywh_to_figure(struct cplot_figure*);
-void cplot_figure_draw(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 
 void cplot__sprint_supernum(char *out, int sizeout, int num);
 float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...);

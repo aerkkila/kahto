@@ -1009,7 +1009,12 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int figurewidth,
 }
 
 void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
-	cplot_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
+	if (figure->background)
+		cplot_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
+	if (figure->ro_cannot_draw)
+		return;
+	if (!figure->ro_colors_set)
+		cplot_set_colors(figure);
 
 	for (int i=0; i<figure->naxis; i++)
 		cplot_axis_draw(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
@@ -1040,8 +1045,10 @@ void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystr
 }
 
 static void set_icolor(struct cplot_data *data) {
-	if (data->icolor != cplot_automatic)
+	if (data->icolor != cplot_automatic) {
+		data->yxaxis[0]->figure->ro_colors_set = 0;
 		return;
+	}
 	struct cplot_figure *figure = data->yxaxis[0]->figure;
 	data->icolor = figure->icolor;
 	if (data->color)
@@ -1392,7 +1399,7 @@ void cplot_forward_datacolor(struct cplot_data *data) {
 		data->errstyle.color = data->color;
 }
 
-void set_colors(struct cplot_figure *figure) {
+void cplot_set_colors(struct cplot_figure *figure) {
 	struct cplot_colorscheme *cs = &figure->colorscheme;
 	if (!cs->colors || cs->cmh_enum) {
 		cs->ncolors = figure->ndata;
@@ -1413,23 +1420,7 @@ void set_colors(struct cplot_figure *figure) {
 			figure->data[i]->color = cs->colors[figure->data[i]->icolor % cs->ncolors];
 		cplot_forward_datacolor(figure->data[i]);
 	}
-}
-
-void cplot_figure_draw(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
-	++figure->draw_counter;
-	set_colors(figure);
-	if (cplot_figure_layout(figure)) {
-		if (figure->fix_too_little_space) {
-			figure->fix_too_little_space(figure);
-			if (cplot_figure_layout(figure))
-				return;
-		}
-		else
-			return;
-	}
-	cplot_figure_render(figure, canvas, ystride);
-	if (figure->revert_fixes)
-		figure->revert_fixes(figure);
+	figure->ro_colors_set = 1;
 }
 
 static void subfigures_xywh_to_pixels(struct cplot_figure *fig, int islot, int px[4]) {
@@ -1444,16 +1435,16 @@ static void subfigures_xywh_to_pixels(struct cplot_figure *fig, int islot, int p
 }
 
 void cplot_xywh_to_subfigures(struct cplot_figure *fig) {
-	for (int ichild=0; ichild<fig->nsubfigures; ichild++) {
-		if (!fig->subfigures[ichild])
+	for (int isub=0; isub<fig->nsubfigures; isub++) {
+		if (!fig->subfigures[isub])
 			continue;
 		int xywh_px[4];
-		subfigures_xywh_to_pixels(fig, ichild, xywh_px);
-		fig->subfigures[ichild]->wh[0] = xywh_px[2];
-		fig->subfigures[ichild]->wh[1] = xywh_px[3];
-		fig->subfigures[ichild]->ro_corner[0] = xywh_px[0];
-		fig->subfigures[ichild]->ro_corner[1] = xywh_px[1];
-		fig->subfigures[ichild]->super = fig;
+		subfigures_xywh_to_pixels(fig, isub, xywh_px);
+		fig->subfigures[isub]->wh[0] = xywh_px[2];
+		fig->subfigures[isub]->wh[1] = xywh_px[3];
+		fig->subfigures[isub]->ro_corner[0] = xywh_px[0];
+		fig->subfigures[isub]->ro_corner[1] = xywh_px[1];
+		fig->subfigures[isub]->super = fig;
 	}
 }
 
@@ -1510,15 +1501,32 @@ void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride)
 	}
 }
 
-void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
-	cplot_figure_draw(fig, canvas, ystride); // before subfigures to not cover them with background color
+void cplot_layout(struct cplot_figure *fig) {
+	/* this figure first because ro_inner_xywh is needed in subfigures */
+	if (cplot_figure_layout(fig) && fig->fix_too_little_space) {
+		fig->fix_too_little_space(fig);
+		cplot_figure_layout(fig);
+	}
+	/* then subfigures */
 	cplot_xywh_to_subfigures(fig);
-	if (fig->after_drawing)
-		fig->after_drawing(fig, canvas, ystride);
+	for (int i=0; i<fig->nsubfigures; i++)
+		if ((fig->subfigures[i]))
+			cplot_layout(fig->subfigures[i]);
+}
+
+void cplot_render(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
+	cplot_figure_render(fig, canvas, ystride); // before subfigures to not cover them with background color
 	struct cplot_figure *f;
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((f = fig->subfigures[i]))
-			cplot_draw(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
+			cplot_render(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
+	if (fig->revert_fixes)
+		fig->revert_fixes(fig);
+}
+
+void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
+	cplot_layout(fig);
+	cplot_render(fig, canvas, ystride);
 }
 
 static uint32_t* copy_canvas(uint32_t *dest1d, int dest_ystride, uint32_t *src1d, int src_ystride, int *wh) {
@@ -1536,7 +1544,7 @@ static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *src1d
 }
 
 #ifdef HAVE_PNG
-#include "png.c"
+#include "cplot_png.c"
 #else
 struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *a, const char *b) {
 	fprintf(stderr, "cplot library was compiled without support for writing a png image.\n"
