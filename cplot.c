@@ -1594,7 +1594,7 @@ void cplot_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
 #else
 struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) {
 	fprintf(stderr, "cplot was compiled without support for creating a window\n"
-		"Configure and compile again with libwaylandhelper enabled.\n",
+		"Configure and compile again with libwaylandhelper enabled.\n"
 	);
 	return fig;
 }
