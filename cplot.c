@@ -767,23 +767,27 @@ int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rhei
 	int width = figure->wh[0],
 	height = figure->wh[1];
 	unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
+	if (!figure->ro_colors_set)
+		cplot_set_colors(figure);
+	unsigned background = figure->background;
+	cplot_fill_u4((void*)image, background, width, height, width);
 	for (int i=0; i<figure->ndata; i++)
 		cplot_data_render(figure->data[i], (void*)image, width, figure, 0);
 
 	/* including the pointed spot */
 	short (*spaceright)[w] = malloc(w*h * sizeof(short));
 	for (int j=h-1; j>=0; j--)
-		spaceright[j][w-1] = !image[j+y0][x1-1];
+		spaceright[j][w-1] = image[j+y0][x1-1] == background;
 	for (int j=h-1; j>=0; j--)
 		for (int i=w-2; i>=0; i--)
-			spaceright[j][i] = (spaceright[j][i+1] + 1) * !image[j+y0][i+x0];
+			spaceright[j][i] = (spaceright[j][i+1] + 1) * (image[j+y0][i+x0] == background);
 
 	short (*spacedown)[w] = malloc(w*h * sizeof(short));
 	for (int i=w-1; i>=0; i--)
-		spacedown[h-1][i] = !image[y1-1][i+x0];
+		spacedown[h-1][i] = image[y1-1][i+x0] == background;
 	for (int j=h-2; j>=0; j--)
 		for (int i=w-1; i>=0; i--)
-			spacedown[j][i] = (spacedown[j+1][i] + 1) * !image[j+y0][i+x0];
+			spacedown[j][i] = (spacedown[j+1][i] + 1) * (image[j+y0][i+x0] == background);
 
 	*xout = x0, *yout = y0;
 	int jpos, ipos, nextpos;
@@ -1577,10 +1581,6 @@ void cplot_render(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
 }
 
 void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
-	cplot_layout(fig);
-	cplot_render(fig, canvas, ystride);
-	/* Legend placement is broken until figure is redrawn due to e.g. size change.
-	   This is a workaround until I find the reason why it does not work on the first time. */
 	cplot_layout(fig);
 	cplot_render(fig, canvas, ystride);
 }
