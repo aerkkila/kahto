@@ -11,7 +11,7 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *t
 	double min = tk->axis->min;
 	double range = tk->axis->max - min;
 	int textloc[2] = {0};
-	ttra_set_fontheight(ttra, topixels(tk->rowheight, tk->axis->figure));
+	set_fontheight(tk->axis->figure, tk->rowheight);
 
 	int xywh[4], *inner_margin = tk->axis->figure->ro_inner_margin;
 	memcpy(xywh, tk->axis->figure->ro_inner_xywh, sizeof(xywh));
@@ -181,7 +181,7 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 		area[4], max01[2] = {0};
 	char labelbuff[128];
 	char *label = labelbuff;
-	ttra_set_fontheight(ttra, topixels(tk->rowheight, args->fig));
+	set_fontheight(args->fig, tk->rowheight);
 	for (int i=0; i<nlabels; i++) {
 		tk->get_tick(tk, i, &label, 128);
 		put_text(ttra, label, 0, 0, tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
@@ -211,7 +211,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 		if (!axis->text[itext])
 			continue;
 		struct cplot_axistext *axistext = axis->text[itext];
-		ttra_set_fontheight(ttra, topixels(axistext->rowheight, args->fig));
+		set_fontheight(args->fig, axistext->rowheight);
 		int area[4];
 		put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
 		sizes[itext] = iside ? area[iort+2] : -area[iort];
@@ -370,7 +370,7 @@ break0:
 	if (!fig->ttra->text_initialized)
 		ttra_init(fig->ttra);
 	if (fig->title.text) {
-		ttra_set_fontheight(fig->ttra, topixels(fig->title.rowheight, fig));
+		set_fontheight(fig, fig->title.rowheight);
 		put_text(fig->ttra, fig->title.text, fig->wh[0]*0.5, 0, -0.5, 0.1, fig->title.rotation_grad, fig->title.ro_area, 1);
 		imargin_xyxy[1] += fig->title.ro_area[3];
 	}

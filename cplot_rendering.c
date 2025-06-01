@@ -1151,7 +1151,7 @@ void cplot_legend_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) 
 			text_left);
 		/* drawing a literal marker changes fontheight */
 		if (fig->data[i]->label) {
-			ttra_set_fontheight(fig->ttra, topixels(fig->legend.rowheight, fig));
+			set_fontheight(fig, fig->legend.rowheight);
 			uint32_t mem = fig->ttra->bg_default;
 			fig->ttra->bg_default = fillcolor;
 			ttra_printf(fig->ttra, "\033[0m%s\n", fig->data[i]->label);

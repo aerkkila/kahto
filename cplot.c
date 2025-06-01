@@ -101,6 +101,10 @@ static inline int __attribute__((pure)) topixels(float size, struct cplot_figure
 	}
 }
 
+static int set_fontheight(struct cplot_figure *figure, float size) {
+	return ttra_set_fontheight(figure->ttra, topixels(size*figure->fontheightmul, figure));
+}
+
 static inline int intsum_02(const int *a) { return a[0] + a[2]; }
 
 #define no_room_for_legend(figure) ((figure)->legend.ro_place_err < 0)
@@ -251,7 +255,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 	ticks->gridstyle.thickness = 1.0 / 1200;
 	ticks->gridstyle.color = 0xffcccccc;
 
-	ticks->rowheight = 2.4*ticks->length;
+	ticks->rowheight = 1./35;
 	ticks->visible = 1;
 	ticks->have_labels = 1;
 
@@ -280,8 +284,9 @@ struct cplot_figure* cplot_figure_void(struct cplot_figure *figure) {
 	figure->topixels_reference = cplot_this_height;
 	figure->colorscheme.colors = cplot_colorschemes[0];
 	figure->title.rowheight = 0.05;
+	figure->fontheightmul = 1;
 
-	figure->legend.rowheight = 1.0 / 40;
+	figure->legend.rowheight = 1.0 / 35;
 	figure->legend.symbolspace_per_rowheight = 1.25;
 	figure->legend.posx = 0;
 	figure->legend.posy = 1;
@@ -870,14 +875,14 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int figurewid
 	struct cplot_figure *figure = ticks->axis->figure;
 
 	if (ticks->have_labels) {
-		ttra = ticks->axis->figure->ttra;
+		ttra = figure->ttra;
 		ttra->canvas = canvas;
 		ttra->realw = ystride;
 		ttra->realh = figureheight;
 		ttra->fg_default = ticks->color;
 		ttra->bg_default = -1;
 		ttra_print(ttra, "\033[0m");
-		ttra_set_fontheight(ttra, topixels(ticks->rowheight, figure));
+		set_fontheight(figure, ticks->rowheight);
 		ttra->fg_default = 0xff<<24;
 	}
 
@@ -947,7 +952,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
 	ttra->fg_default = axistext->axis->linestyle.color;
 	ttra->bg_default = -1;
 	ttra_print(ttra, "\033[0m");
-	ttra_set_fontheight(ttra, topixels(axistext->rowheight, axistext->axis->figure));
+	set_fontheight(axistext->axis->figure, axistext->rowheight);
 	int *area = axistext->ro_area;
 	put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
 	ttra->fg_default = 0xff<<24;
@@ -1041,12 +1046,12 @@ void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystr
 	ttra_printf(ttra, "\e[0m");
 	if (figure->title.text) {
 		struct cplot_text *text = &figure->title;
-		ttra_set_fontheight(ttra, topixels(text->rowheight, figure));
+		set_fontheight(figure, text->rowheight);
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
 	for (int i=0; i<figure->ntexts; i++) {
 		struct cplot_text *text = figure->texts+i;
-		ttra_set_fontheight(ttra, topixels(text->rowheight, figure));
+		set_fontheight(figure, text->rowheight);
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
 
@@ -1085,7 +1090,7 @@ void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *c
 void cplot_get_legend_dims_px(struct cplot_figure *figure, int *Height, int *Width) {
 	struct legend *lg = &figure->legend;
 	*Width = *Height = 0;
-	int rowh = ttra_set_fontheight(figure->ttra, topixels(lg->rowheight, figure));
+	int rowh = set_fontheight(figure, lg->rowheight);
 	if (lg->ro_datay_len <= figure->ndata) {
 		free(lg->ro_datay);
 		lg->ro_datay = malloc((lg->ro_datay_len = figure->ndata+1) * sizeof(lg->ro_datay[0]));

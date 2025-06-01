@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 32
+#define __cplot_version_in_program 33
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -292,6 +292,7 @@ struct cplot_figure {
 	enum cplot_topixels_reference topixels_reference;
 	void (*fix_too_little_space)(struct cplot_figure*);
 	void (*revert_fixes)(struct cplot_figure*);
+	float fontheightmul; // multiply all fontheights (rowheight) with this number
 
 	struct legend {
 		float rowheight, symbolspace_per_rowheight;
