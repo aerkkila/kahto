@@ -1501,6 +1501,24 @@ void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride)
 	}
 }
 
+void cplot_connect_x(struct cplot_figure **figs, int nconnected) {
+	int x0 = figs[0]->ro_inner_xywh[0];
+	int x1 = x0 + figs[0]->ro_inner_xywh[2];
+	for (int i=1; i<nconnected; i++) {
+		int *xywh = figs[i]->ro_inner_xywh;
+		if (xywh[0] > x0)
+			x0 = xywh[0];
+		else if (xywh[0] + xywh[2] < x1)
+			x1 = xywh[0] + xywh[2];
+	}
+
+	for (int i=0; i<nconnected; i++) {
+		int *xywh = figs[i]->ro_inner_xywh;
+		xywh[0] = x0;
+		xywh[2] = x1 - x0;
+	}
+}
+
 void cplot_layout(struct cplot_figure *fig) {
 	/* this figure first because ro_inner_xywh is needed in subfigures */
 	if (cplot_figure_layout(fig) && fig->fix_too_little_space) {
@@ -1512,6 +1530,8 @@ void cplot_layout(struct cplot_figure *fig) {
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((fig->subfigures[i]))
 			cplot_layout(fig->subfigures[i]);
+	if (fig->nconnected_x)
+		cplot_connect_x(fig->connected_x, fig->nconnected_x);
 }
 
 void cplot_render(struct cplot_figure *fig, uint32_t *canvas, int ystride) {

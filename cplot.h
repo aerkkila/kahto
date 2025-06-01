@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 30
+#define __cplot_version_in_program 31
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -276,6 +276,9 @@ struct cplot_figure {
 
 	struct cplot_axis **axis, *last_caxis;
 	int naxis, mem_axis;
+	/* these figures share the same x-coordinates
+	   after computing the layout, each size is changed according to the smallest x-axis */
+	struct cplot_figure **connected_x; int nconnected_x;
 	struct ttra *ttra;
 	int ro_inner_xywh[4], ro_inner_margin[4], ro_corner[2];
 	float margin[4];
