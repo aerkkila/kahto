@@ -26,20 +26,27 @@
 
 const int __cplot_version_in_library = __cplot_version_in_program;
 
-unsigned cplot_colorscheme_a[] = { // color deficient semi friendly, semi dark
+unsigned cplot_colorscheme_00[] = { // color deficient semi friendly, semi dark
 	0xff000000, 0xfff20700, 0xff505eff, 0xfff781bf, 0xff108a4f, 0xff66ccff, 0xffffc73a,
-	0xff986eff, 0xffffff33, 0xffa65628, 0xff999999, 0,
+	0xffc84eff, 0xffffff33, 0xffa65628, 0xff999999, 0
 };
-unsigned cplot_colorscheme_b[] = { // color deficient friendly, semi dark
-	0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, /*0xff9f4a96, */0xff56b4e9, 0,
+unsigned cplot_colorscheme_01[] = { // color deficient friendly, semi dark
+	0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, /*0xff9f4a96, */0xff56b4e9, 0
+};
+unsigned cplot_colorscheme_02[] = { // picked from 12 hue values with some changes
+	0xff000000, 0xffff0000, 0xff0000ff, 0xff00b300, 0xffff8000, 0xffff00ff,
+	0xff8659b3, 0xff80bfff, 0xff99004d, 0xffb3b300, 0xff4d9991,
+	0
 };
 unsigned *cplot_colorschemes[] = {
-	cplot_colorscheme_a,
-	cplot_colorscheme_b,
+	cplot_colorscheme_00,
+	cplot_colorscheme_01,
+	cplot_colorscheme_02,
 };
 int cplot_ncolors[] = {
-	arrlen(cplot_colorscheme_a) - 1,
-	arrlen(cplot_colorscheme_b) - 1,
+	arrlen(cplot_colorscheme_00) - 1,
+	arrlen(cplot_colorscheme_01) - 1,
+	arrlen(cplot_colorscheme_02) - 1,
 };
 
 static void cplot_fill_u4(uint32_t *canvas, uint32_t color, int w, int h, int ystride) {
