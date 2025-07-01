@@ -18,6 +18,7 @@ struct cplot_show_cookie {
 	int len_input;
 	enum cplot_show_mode mode;
 	struct highlight highlight;
+	char pause;
 };
 #define cookie_t struct cplot_show_cookie
 
@@ -104,6 +105,9 @@ static void keycallback(struct waylandhelper *wlh) {
 				break;
 			case XKB_KEY_q:
 				wlh->stop = 1;
+				break;
+			case XKB_KEY_space:
+				cookie->pause = !cookie->pause;
 				break;
 		}
 	}
@@ -224,7 +228,7 @@ struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) 
 			cplot_draw(fig, wlh.data, fig->wh[0]);
 			should_commit++;
 		}
-		if (fig->update) {
+		if (!cookie.pause && fig->update) {
 			double now = starttime < 0 ? 0 : get_time() - starttime;
 			int ret = fig->update(fig, wlh.data, wlh.xres, updatecount++, now);
 			if (ret < 0)
@@ -237,10 +241,11 @@ struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) 
 			should_commit = 1;
 			highlight_data(&wlh);
 		}
-		switch (async_update(fig->async, wlh.data, wlh.xres)) {
-			case 1: should_commit = 1; break;
-			case -1: goto Break;
-		}
+		if (!cookie.pause)
+			switch (async_update(fig->async, wlh.data, wlh.xres)) {
+				case 1: should_commit = 1; break;
+				case -1: goto Break;
+			}
 		if (should_commit) {
 			wlh_commit(&wlh);
 			if (starttime < 0)
