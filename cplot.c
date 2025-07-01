@@ -1484,29 +1484,10 @@ void cplot_xywh_to_subfigures(struct cplot_figure *fig) {
 	}
 }
 
-void cplot_clear_data(struct cplot_figure *figure, uint32_t *canvas, int realw) {
-	char bg[4];
-	uint32_t background = figure->background;
-	memcpy(bg, &background, 4);
+void cplot_clear_data(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
 	int ystart = figure->ro_inner_xywh[1];
-	int yend = ystart + figure->ro_inner_xywh[3];
 	int xstart = figure->ro_inner_xywh[0];
-	int xend = xstart + figure->ro_inner_xywh[2];
-	for (int i=1; i<4; i++)
-		if (bg[i] != bg[0])
-			goto loop;
-
-	int width = (xend - xstart) * 4;
-	for (int i=ystart; i<yend; i++)
-		memset(canvas + i * realw + xstart, bg[0], width);
-	return;
-
-loop:
-	for (int i=ystart; i<yend; i++) {
-		int y = i * realw;
-		for (int ii=xstart; ii<xend; ii++)
-			canvas[y + ii] = background;
-	}
+	cplot_fill_u4(canvas+ystride*ystart+xstart, figure->background, figure->ro_inner_xywh[2], figure->ro_inner_xywh[3], ystride);
 }
 
 /* For animation. Selectively copied from draw_ticks. */
