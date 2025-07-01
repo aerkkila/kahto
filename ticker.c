@@ -170,7 +170,6 @@ static double get_linticker_base(double max, int *maxpower_out) {
 			base *= 10;
 			maxpower++;
 		}
-		/* pitäisi huomioida likipitäen yhtäsuuruus */
 		if (base > max) {
 			base *= 0.1;
 			maxpower--;
@@ -181,7 +180,6 @@ static double get_linticker_base(double max, int *maxpower_out) {
 			base *= 0.1;
 			maxpower--;
 		}
-	//max *= maxsign;
 	if (maxpower_out)
 		*maxpower_out = maxpower;
 	return base;
@@ -281,20 +279,20 @@ void cplot_init_ticker_default(struct cplot_ticks *this, double min, double max)
 		if (diff0 < best.diff)
 			best = (struct best) {
 				.min = iminnow0 / 10.0 * base0,
-					.max = imaxnow0 / 10.0 * base0,
-					.iopt = iopt,
-					.which = 0,
-					.n = n0,
-					.diff = diff0,
+				.max = imaxnow0 / 10.0 * base0,
+				.iopt = iopt,
+				.which = 0,
+				.n = n0,
+				.diff = diff0,
 			};
-		else if (diff1 < best.diff)
+		if (diff1 < best.diff)
 			best = (struct best) {
 				.min = iminnow1 / 10.0 * base1,
-					.max = imaxnow1 / 10.0 * base1,
-					.iopt = iopt,
-					.which = 1,
-					.n = n1,
-					.diff = diff1,
+				.max = imaxnow1 / 10.0 * base1,
+				.iopt = iopt,
+				.which = 1,
+				.n = n1,
+				.diff = diff1,
 			};
 	}
 
