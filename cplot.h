@@ -1,6 +1,6 @@
 #ifndef __cplot_h__
 #define __cplot_h__
-#include <stdlib.h> // cplot_line_inl uses malloc
+#include <stdlib.h> // malloc, pthread_t
 #include <stdint.h> // uint32_t
 
 #define cplot_notype 0
@@ -264,7 +264,7 @@ struct cplot_figure {
 	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
 	int (*update)(struct cplot_figure*, uint32_t *canvas, int ystride, long count, double elapsed);
 	void *userdata;
-	/* This allowes user to draw arbitrary things to the figure.
+	/* This allows user to draw arbitrary things to the figure.
 	   This is called as the last thing in the drawing function. */
     void (*after_drawing)(struct cplot_figure*, uint32_t *canvas, int ystride);
 	struct cplot_figure *super;
@@ -304,6 +304,8 @@ struct cplot_figure {
 		unsigned fillcolor;
 		enum cplot_placement placement;
 	} legend;
+
+	struct cplot_async *async;
 };
 
 struct cplot_args {
@@ -562,6 +564,20 @@ void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticks *this, double min, 
 
 static inline struct cplot_axis* cplot_xaxis0(struct cplot_figure *figure) { return figure->axis[cplot_ix0axis]; }
 static inline struct cplot_axis* cplot_yaxis0(struct cplot_figure *figure) { return figure->axis[cplot_iy0axis]; }
+
+struct cplot_async {
+	struct cplot_figure *figure;
+	signed char _pause, _status;
+	pthread_t thread;
+	uint32_t *canvas;
+	int ystride;
+};
+struct cplot_async* cplot_async_show(struct cplot_figure*);
+int cplot_async_pause(struct cplot_async *async);
+void cplot_async_continue(struct cplot_async *async);
+void cplot_async_destroy(struct cplot_async *async);
+void cplot_async_stop(struct cplot_async *async);
+int cplot_async_running(struct cplot_async *async);
 
 void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 int  cplot_figure_layout(struct cplot_figure *figure);

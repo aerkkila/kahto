@@ -237,6 +237,10 @@ struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) 
 			should_commit = 1;
 			highlight_data(&wlh);
 		}
+		switch (async_update(fig->async, wlh.data, wlh.xres)) {
+			case 1: should_commit = 1; break;
+			case -1: goto Break;
+		}
 		if (should_commit) {
 			wlh_commit(&wlh);
 			if (starttime < 0)
@@ -245,6 +249,7 @@ struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) 
 next:
 		usleep(9000);
 	}
+Break:
 	wlh_destroy(&wlh);
 	free(cookie.highlight.canvascopy);
 	fig->wlh = old_wlh;
