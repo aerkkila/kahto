@@ -1581,24 +1581,30 @@ static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *src1d
 	return copy_canvas(copy, wh[0], src1d, src_ystride, wh);
 }
 
+static int async_response = 2,
+		   async_request = 1,
+		   async_step = 3;
+
 static int async_update(struct cplot_async *async, uint32_t *canvas, int ystride) {
 	if (!async)
 		return 0;
-	if (async->_status == 1)
+	if (async->_exit == async_request)
 		return -1;
-	if (async->_pause != 1)
+	if (async->_lock != async_request)
 		return 0;
 	async->canvas = canvas;
 	async->ystride = ystride;
-	async->_pause = 2;
-	while (async->_pause == 2)
-		usleep(9000);
+	async->_lock = async_response;
+	while (async->_lock == async_response)
+		usleep(3000);
+	if (async->_lock == async_step)
+		async->_lock = async_request;
 	return 1;
 }
 
-int cplot_async_pause(struct cplot_async *async) {
-	async->_pause = 1;
-	while (async->_pause != 2) {
+int cplot_async_lock(struct cplot_async *async) {
+	async->_lock = async_request;
+	while (async->_lock != async_response) {
 		if (!cplot_async_running(async))
 			return 1;
 		usleep(10);
@@ -1606,14 +1612,34 @@ int cplot_async_pause(struct cplot_async *async) {
 	return 0;
 }
 
-void cplot_async_continue(struct cplot_async *async) {
-	async->_pause = 0;
+void cplot_async_unlock(struct cplot_async *async) {
+	async->_lock = 0;
+}
+
+void cplot_async_unlock_step(struct cplot_async *async) {
+	async->_lock = async_step;
+}
+
+void cplot_async_stop(struct cplot_async *async) {
+	async->_exit = async_request;
+}
+
+int cplot_async_running(struct cplot_async *async) {
+	return async->_exit != async_response;
+}
+
+void cplot_async_destroy(struct cplot_async *async) {
+	if (cplot_async_running(async))
+		cplot_async_stop(async);
+	pthread_join(async->_thread, NULL);
+	cplot_destroy(async->figure);
+	free(async);
 }
 
 static void* async_show(void *vargs) {
 	struct cplot_async *h = vargs;
 	cplot_show_preserve(h->figure);
-	h->_status = 2;
+	h->_exit = async_response;
 	return NULL;
 }
 
@@ -1621,24 +1647,27 @@ struct cplot_async* cplot_async_show(struct cplot_figure *fig) {
 	struct cplot_async *h = calloc(1, sizeof(*h));
 	h->figure = fig;
 	fig->async = h;
-	pthread_create(&h->thread, NULL, async_show, h);
+	pthread_create(&h->_thread, NULL, async_show, h);
 	return h;
 }
 
-void cplot_async_stop(struct cplot_async *async) {
-	async->_status = 1;
+static void* async_write_mp4(void *vargs) {
+	struct cplot_async *h = vargs;
+	cplot_async_unlock_step(h);
+	cplot_write_mp4_preserve(h->figure, NULL, h->_fps);
+	h->_exit = async_response;
+	return NULL;
 }
 
-int cplot_async_running(struct cplot_async *async) {
-	return async->_status != 2;
-}
-
-void cplot_async_destroy(struct cplot_async *async) {
-	if (cplot_async_running(async))
-		cplot_async_stop(async);
-	pthread_join(async->thread, NULL);
-	cplot_destroy(async->figure);
-	free(async);
+struct cplot_async* cplot_async_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
+	struct cplot_async *h = calloc(1, sizeof(*h));
+	h->figure = fig;
+	h->_fps = fps;
+	if (name)
+		fig->name = (void*)(intptr_t)name;
+	fig->async = h;
+	pthread_create(&h->_thread, NULL, async_write_mp4, h);
+	return h;
 }
 
 #ifdef HAVE_PNG

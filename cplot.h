@@ -511,6 +511,7 @@ struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_
 /* Available only if compiled with waylandhelper */
 struct cplot_figure* cplot_show_preserve_(struct cplot_figure *figure, char *name); // returns the input
 void cplot_show_(struct cplot_figure *figure, char *name); // destroys the input
+struct cplot_async* cplot_async_show(struct cplot_figure*);
 
 #define cplot_show(...) _cplot_show(__VA_ARGS__, NULL) // cplot_show(figure) OR cplot_show(figure, "name")
 #define _cplot_show(a, b, ...) cplot_show_(a, b)
@@ -528,6 +529,7 @@ void cplot_write_png(struct cplot_figure *figure, const char *name); // destroys
 /* Available only if compiled with video support. Function figure->update has to be defined. */
 struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *figure, const char *name, float fps); // returns the input
 void cplot_write_mp4(struct cplot_figure *figure, const char *name, float fps); // destroys the input
+struct cplot_async* cplot_async_write_mp4(struct cplot_figure *fig, const char *name, float fps);
 
 /* cmap is in form [rgb]*256 */
 #define cplot_colorscheme_to_cmap colorscheme_to_cmap__renamed__make_cmap_from_colorscheme
@@ -567,17 +569,18 @@ static inline struct cplot_axis* cplot_yaxis0(struct cplot_figure *figure) { ret
 
 struct cplot_async {
 	struct cplot_figure *figure;
-	signed char _pause, _status;
-	pthread_t thread;
 	uint32_t *canvas;
 	int ystride;
+	pthread_t _thread;
+	signed char _lock, _exit;
+	float _fps;
 };
-struct cplot_async* cplot_async_show(struct cplot_figure*);
-int cplot_async_pause(struct cplot_async *async);
-void cplot_async_continue(struct cplot_async *async);
+int cplot_async_lock(struct cplot_async *async);
+void cplot_async_unlock(struct cplot_async *async);
+void cplot_async_unlock_step(struct cplot_async *async);
 void cplot_async_destroy(struct cplot_async *async);
-void cplot_async_stop(struct cplot_async *async);
 int cplot_async_running(struct cplot_async *async);
+void cplot_async_stop(struct cplot_async *async); // destroy without stop is enough
 
 void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 int  cplot_figure_layout(struct cplot_figure *figure);

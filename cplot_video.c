@@ -147,17 +147,26 @@ static int write_frame(struct cplot_video *video, uint32_t *argb) {
 	return encode(video->fcontext, video->ctx, video->stream, video->frame, video->packet);
 }
 
+static int video_async_update(struct cplot_figure *fig, uint32_t *canvas, int ystride, long count, double elapsed) {
+	return async_update(fig->async, canvas, ystride);
+}
+
 struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *fig, const char *name, float fps) {
 	fig->wh[0] -= fig->wh[0] % 2; // has to be a multiple of 2
 	fig->wh[1] -= fig->wh[1] % 2; // has to be a multiple of 2
 	int w = fig->wh[0], h = fig->wh[1];
 	uint32_t *argb = malloc(w * h * sizeof(uint32_t));
 	cplot_draw(fig, argb, w);
+	if (!name)
+		name = fig->name;
 	mkdir_file(name);
 
 	struct cplot_video video;
 	if (cplot_init_video(&video, name, w, h, fps))
 		return fig;
+
+	if (!fig->update)
+		fig->update = video_async_update;
 
 	long updatecount = -1;
 	double interval = 1 / fps;
