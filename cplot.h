@@ -581,7 +581,6 @@ int cplot_async_running(struct cplot_async *async);
 
 void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 int  cplot_figure_layout(struct cplot_figure *figure);
-void cplot_clear_slot(struct cplot_figure *fig, int islot, uint32_t *canvas, int ystride);
 void cplot_axis_datarange(struct cplot_axis*);
 void cplot_make_range(struct cplot_figure *);
 struct cplot_args* cplot_defaultargs(struct cplot_args *args); // returns the input
