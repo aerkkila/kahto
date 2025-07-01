@@ -388,13 +388,15 @@ static int check_line(int *line, const int *area) {
 		if (slope == 0)
 			return 1;
 		line[1] = area[1];
-		line[0] = iround(line[2] - ((line[3]-line[1]) / slope));
+		if ((line[0] = iround(line[2] - ((line[3]-line[1]) / slope))) < area[0])
+			return 1;
 	}
 	else if (line[1] >= area[3]) {
 		if (slope == 0)
 			return 1;
 		line[1] = area[3]-1;
-		line[0] = iround(line[2] - ((line[3]-line[1]) / slope));
+		if ((line[0] = iround(line[2] - ((line[3]-line[1]) / slope))) < area[0])
+			return 1;
 	}
 
 	if (line[2] < area[0]) {
@@ -410,13 +412,15 @@ static int check_line(int *line, const int *area) {
 		if (slope == 0)
 			return 1;
 		line[3] = area[1];
-		line[2] = iround(line[0] + ((line[3]-line[1]) / slope));
+		if ((line[2] = iround(line[0] + ((line[3]-line[1]) / slope))) < area[2])
+			return 1;
 	}
 	else if (line[3] >= area[3]) {
 		if (slope == 0)
 			return 1;
 		line[3] = area[3]-1;
-		line[2] = iround(line[0] + ((line[3]-line[1]) / slope));
+		if ((line[2] = iround(line[0] + ((line[3]-line[1]) / slope))) < area[2])
+			return 1;
 	}
 	return 0;
 }
