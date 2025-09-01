@@ -104,7 +104,7 @@ struct kahto_markerstyle {
 	const char* marker;	// 1. fixed order
 	float size;		// 2. fixed order
 	float nofill;	// 3. fixed order
-	int literal;
+	int literal:1, count:1;
 	unsigned color;
 };
 
@@ -465,7 +465,7 @@ struct kahto_figure* kahto_subfigures_grid_new(int nrows, int ncols, float *ysiz
 		(static float[]){kahto_expand xarr, [xlen]=0}, 0)
 
 /*
-   This creates a subplot grid, where each figure has the same position position with the corresponding number in txt.
+   This creates a subplot grid, where each figure has the same position with the corresponding number in txt.
    For example:
    *  "1100000\n"
    *  "11--222\n"

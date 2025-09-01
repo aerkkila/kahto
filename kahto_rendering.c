@@ -35,6 +35,7 @@ static inline uint32_t from_cmap(const unsigned char *ptr) {
 
 struct draw_data_args {
 	uint32_t *canvas;
+	unsigned *canvascount;
 	int ystride;
 	const unsigned char *bmap;
 	int mapw, maph, x, y;
@@ -49,10 +50,35 @@ struct draw_data_args {
 	int reverse_cmap;
 };
 
+static void draw_datum_count(struct draw_data_args *ar) {
+	unsigned (*count)[ar->axis_xywh_outer[2]] = (void*)ar->canvascount;
+	int x = ar->x, y = ar->y;
+	float alpha = ar->alpha;
+	if (!ar->bmap) {
+		if (0 <= x && x < ar->axis_xywh_outer[2] && 0 <= y && y < ar->axis_xywh_outer[3])
+			count[y][x] += alpha;
+		return;
+	}
+	int j0 = max(0, y-ar->maph/2);
+	int j1 = min(ar->axis_xywh_outer[3]-1, y+(ar->maph-ar->maph/2));
+	int i0 = max(0, x-ar->mapw/2);
+	int i1 = min(ar->axis_xywh_outer[2]-1, x+(ar->mapw-ar->mapw/2));
+	int bj0 = j0 - (y-ar->maph/2);
+	int bi0 = i0 - (x-ar->mapw/2);
+	const unsigned char (*bmap)[ar->mapw] = (void*)ar->bmap;
+	alpha /= 255;
+	for (int j=j0; j<j1; j++, bj0++)
+		for (int i=i0, bi=bi0; i<i1; i++, bi++)
+			count[j][i] += bmap[bj0][bi] * alpha;
+}
+
 static inline void draw_datum(struct draw_data_args *ar) {
+	if (ar->canvascount)
+		draw_datum_count(ar);
 	if (!ar->bmap) {
 		if (0 <= ar->x && ar->x < ar->axis_xywh_outer[2] && 0 <= ar->y && ar->y < ar->axis_xywh_outer[3])
 			ar->canvas[(ar->axis_xywh_outer[1] + ar->y) * ar->ystride + ar->axis_xywh_outer[0] + ar->x] = ar->color;
+		/* alphaa ei ole toteutettu tähän */
 		return;
 	}
 	int x0_ = ar->axis_xywh_outer[0],       y0_ = ar->axis_xywh_outer[1];
@@ -366,6 +392,9 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 		*ydata = graph->data.list.ydata,
 		*zdata = graph->data.list.zdata;
 
+	if (graph->markerstyle.count)
+		data_args.canvascount = calloc(xywh0[2] * xywh0[3], sizeof(unsigned));
+
 	long length = graph->data.list.ydata->length;
 	for (long istart=start; istart<length; ) {
 		long iend = min(istart+npoints, length);
@@ -399,6 +428,7 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 			};
 			connect_data_xy(&args, &graph->linestyle, &linepen_dataargs);
 		}
+
 		if (marker) {
 			data_args.xypixels = xypixels;
 			data_args.x0 = istart;
@@ -445,6 +475,48 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 		}
 		istart = iend;
 	}
+
+	if (!data_args.canvascount)
+		return;
+
+	unsigned (*count)[xywh0[2]] = (void*)data_args.canvascount;
+	float min, max;
+	if (!caxis || caxis->range_isset != kahto_range_isset) {
+		min = max = count[0][0];
+		for (int j=0; j<xywh0[3]; j++)
+			for (int i=0; i<xywh0[2]; i++)
+				if (count[j][i] > max)
+					max = count[j][i];
+				else if (count[j][i] < min)
+					min = count[j][i];
+		if (caxis) {
+			caxis->min = min;
+			caxis->max = max;
+		}
+	}
+	else
+		min = caxis->min,
+			max = caxis->max;
+	float range = max - min;
+
+	const unsigned char *cmap = caxis ? caxis->cmap : cmh_colormaps[default_colormap].map;
+	uint32_t (*canvasview)[ystride] = (void*)(canvas + xywh0[1]*ystride + xywh0[0]);
+	for (int j=0; j<xywh0[3]; j++)
+		for (int i=0; i<xywh0[2]; i++) {
+			if (!count[j][i])
+				continue;
+			float level = (count[j][i] - min) / range;
+			if (level < 0)
+				level = 0;
+			else if (level > 1)
+				level = 1;
+			int ilevel = iroundpos(level * 255);
+			if (count[j][i] < 255)
+				tocanvas(&canvasview[j][i], count[j][i], from_cmap(cmap+ilevel*3));
+			else
+				canvasview[j][i] = from_cmap(cmap+ilevel*3);
+		}
+	free(data_args.canvascount);
 }
 
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
