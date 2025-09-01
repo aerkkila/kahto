@@ -775,8 +775,8 @@ static void make_datapx(short *xypixels, int stride, long istart, long iend,
 {
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
 	double x0 = xdata->minmax[0] - axis_x0;
-	for (long idata=istart; idata<iend; idata++)
-		xypixels[idata*stride] = iroundpos((x0 + (idata)*xstep) * xpix_per_unit) + addthis;
+	for (long idata=istart, ipix=0; idata<iend; idata++, ipix++)
+		xypixels[ipix*stride] = iroundpos((x0 + idata*xstep) * xpix_per_unit) + addthis;
 }
 
 /* huomio: datan liittäminen kahden tämän funktion kutsun välillä on toteuttamatta */
