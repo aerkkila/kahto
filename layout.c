@@ -71,7 +71,7 @@ static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
 		limits[0] = limits[1] = 0;
 		return;
 	}
-	int *area = axis->ticks->ro_labelarea;
+	const int *area = axis->ticks->ro_labelarea;
 
 	if (ipar == 1)
 		update_max(limits[0], fig->title.ro_area[3]);
@@ -216,6 +216,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 		put_text(axis->figure->ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
 		sizes[itext] = iside ? area[iort+2] : -area[iort];
 		update_max(imaxtext, sizes[itext]);
+		/* save the parallel size to avoid calling put_text again */
 		axistext->ro_area[!iort] = area[!iort];
 		axistext->ro_area[!iort+2] = area[!iort+2];
 	}
@@ -278,7 +279,7 @@ void cplot_make_inner_margin(struct cplot_figure *fig) {
 			/* This was derived using pen and paper. Reading this code might be challenging. */
 			float s0 = (max(axis->min, data->minmax[iaxis][0]) - axis->min) / axisrange;
 			float s1 = (min(axis->max, data->minmax[iaxis][1]) - axis->min) / axisrange;
-			float size05_axis = topixels(size, fig)*0.5 / axislen;
+			float size05_axis = tofpixels(size, fig)*0.5 / axislen;
 			float innerfraction = (1 - 2 * size05_axis) / (s1 - s0);
 			float m0_axis = size05_axis - innerfraction * s0;
 			float m1_axis = 1 - (m0_axis + innerfraction);
@@ -295,57 +296,59 @@ void cplot_make_inner_margin(struct cplot_figure *fig) {
 	}
 }
 
-static void adjust_moveaxis(int *area, int iort, int side, int *testarea, const int *limits, int *moveaxis) {
-	if (side) {
-		if (testarea[iort+side*2] <= area[iort]) // not in line with the axis
-			return;
-	}
-	else if (testarea[iort] >= area[iort+2]) // not in line with the axis
+/* x0y0x1y1 -> 0123; side 0 affects axis 1 and 3 */
+static int addmargincoord(int ixyxy, int side) {
+	return ixyxy%2 + side*2;
+}
+
+static void adjust_addmargin(const int *area, int iort, int side, int *testarea, int *addmargin) {
+	if (testarea[iort+side*2] <= area[iort+!side*2]) // not in line with the axis
 		return;
 	int ipar = !iort;
 	if (testarea[ipar] < area[ipar])
-		update_max(moveaxis[ipar], testarea[ipar+2]-area[ipar]);
+		update_max(addmargin[addmargincoord(ipar, 0)], testarea[ipar+2]-area[ipar]);
 	else
-		update_max(moveaxis[ipar+2], area[ipar+2]-testarea[ipar]);
+		update_max(addmargin[addmargincoord(ipar, 1)], area[ipar+2]-testarea[ipar]);
 }
 
-static void set_moveaxis_based_on_texts(struct cplot_axis *axis, const int *limits, int *moveaxis) {
+static void set_addmargin_based_on_texts(struct cplot_axis *axis, int *addmargin) {
 	struct cplot_figure *fig = axis->figure;
-	struct cplot_ticks *tk;
-	if (!axis || !(tk = axis->ticks) || !tk || !tk->visible || !tk->have_labels)
+	struct cplot_ticks *tk = axis->ticks;
+	if (!tk || !tk->visible || !tk->have_labels)
 		return;
-	int *area = tk->ro_labelarea,
-		iort = axis->direction == 0,
-		ipar = axis->direction == 1,
-		side = axis->pos >= 0.5;
+	const int *area = tk->ro_labelarea,
+			   iort = axis->direction == 0, // 1, if x-axis
+			   ipar = axis->direction == 1, // 1, if y-axis
+			   side = axis->pos >= 0.5;
 
+	/* y-axis labels might overlap with the title */
 	if (ipar == 1 && fig->title.text && fig->title.text[0])
-		adjust_moveaxis(area, iort, side, fig->title.ro_area, limits, moveaxis);
+		adjust_addmargin(area, iort, side, fig->title.ro_area, addmargin);
 
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
 		struct cplot_axis *ax1 = fig->axis[iaxis];
 		if (ax1->direction == axis->direction)
 			continue;
 		for (int i=0; i<ax1->ntexts; i++)
-			adjust_moveaxis(area, iort, side, ax1->text[i]->ro_area, limits, moveaxis);
+			adjust_addmargin(area, iort, side, ax1->text[i]->ro_area, addmargin);
 	}
 }
 
-static void fit_to_figure(struct cplot_axis **axis_xyxy, int limits[4][2], int *moveaxis) {
+static void fit_to_figure(struct cplot_axis **axis_xyxy, int limits[4][2], int *addmargin) {
 	for (int iaxis=0; iaxis<4; iaxis++) {
 		if (!axis_xyxy[iaxis])
 			continue;
 		struct cplot_ticks *tk = axis_xyxy[iaxis]->ticks;
 		if (!tk || !tk->visible)
 			continue;
-		int try = limits[iaxis][0] - tk->ro_labelarea[iaxis%2];
-		update_max(moveaxis[iaxis%2 + 0*2], try);
+		int try = limits[iaxis][0] - tk->ro_labelarea[iaxis%2 + 0];
+		update_max(addmargin[addmargincoord(iaxis, 0)], try);
 		try = tk->ro_labelarea[iaxis%2 + 2] - limits[iaxis][1];
-		update_max(moveaxis[iaxis%2 + 1*2], try);
+		update_max(addmargin[addmargincoord(iaxis, 1)], try);
 	}
 }
 
-/* Close your eyes. I am going to do something scary. */
+/* This will make people freak out. */
 #define return return fig->ro_cannot_draw =
 
 int cplot_figure_layout(struct cplot_figure *fig) {
@@ -447,13 +450,13 @@ break0:
 			{imargin0[0], fig->wh[0]-imargin0[2]},
 			{imargin0[1], fig->wh[1]-imargin0[3]},
 		},
-			moveaxis[4] = {0};
+			addmargin[4] = {0};
 		/* Make sure everything fits into the figure. */
-		fit_to_figure(axis_xyxy, limits, moveaxis);
+		fit_to_figure(axis_xyxy, limits, addmargin);
 
 		for (int i=0; i<4; i++)
 			if (axis_xyxy[i])
-				set_moveaxis_based_on_texts(axis_xyxy[i], limits[i], moveaxis);
+				set_addmargin_based_on_texts(axis_xyxy[i], addmargin);
 
 		/* These make sure that two axis do not conflict. */
 		for (int i=0; i<4; i++)
@@ -464,27 +467,27 @@ break0:
 		for (int i=0; i<4; i++)
 			if (axis_xyxy[i])
 				limits_to_conflicts(axis_xyxy[i], limits[i]);
-		/* top left */
-		if (limits[0][0] < limits[1][0])
-			update_max(moveaxis[0], limits[0][0]);
-		else update_max(moveaxis[1], limits[1][0]);
-		/* top right */
-		if (limits[0][1] < limits[3][0])
-			update_max(moveaxis[0], limits[0][1]);
-		else update_max(moveaxis[3], limits[3][0]);
-		/* bottom left */
-		if (limits[2][0] < limits[1][1])
-			update_max(moveaxis[2], limits[2][0]);
-		else update_max(moveaxis[1], limits[1][1]);
-		/* bottom right */
-		if (limits[2][1] < limits[3][1])
-			update_max(moveaxis[2], limits[2][1]);
-		else update_max(moveaxis[3], limits[3][1]);
+		int margleft = 0, margright = 2, margtop = 1, margbottom = 3;
+		if (limits[0][0] || limits[0][0] < limits[1][0]) // top left
+			update_max(addmargin[margleft], limits[0][0]);
+		else update_max(addmargin[margtop], limits[1][0]);
+
+		if (limits[0][1] || limits[0][1] < limits[3][0]) // top right
+			update_max(addmargin[margright], limits[0][1]);
+		else update_max(addmargin[margtop], limits[3][0]);
+
+		if (limits[2][0] || limits[2][0] < limits[1][1]) // bottom left
+			update_max(addmargin[margleft], limits[2][0]);
+		else update_max(addmargin[margbottom], limits[1][1]);
+
+		if (limits[2][1] || limits[2][1] < limits[3][1]) // bottom right
+			update_max(addmargin[margright], limits[2][1]);
+		else update_max(addmargin[margbottom], limits[3][1]);
 
 		for (int i=0; i<4; i++)
-			if (moveaxis[i]) {
+			if (addmargin[i]) {
 				for (; i<4; i++)
-					fig->ro_inner_margin[i] += moveaxis[i];
+					fig->ro_inner_margin[i] += addmargin[i];
 				goto next;
 			}
 		goto loop_done;
