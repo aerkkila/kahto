@@ -39,7 +39,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 38
+#define __kahto_version_in_program 39
 extern const int __kahto_version_in_library;
 #ifndef KAHTO_NO_VERSION_CHECK
 static void __attribute__((constructor)) kahto_check_version() {
@@ -167,13 +167,16 @@ struct kahto_ticks {
 	int ro_lines[2], ro_lines1[2], ro_labelarea[4];
 };
 
+enum kahto_feature {kahto_position_e, kahto_color_e, kahto_alpha_e};
+
 struct kahto_axis {
 	struct kahto_figure *figure;
-	int direction, outside; // direction: x=0, y=1
+	char direction, outside, visible; // direction: x=0, y=1
 	float pos;
 	double min, max,
 		   center; // works only for coloraxis
 	int range_isset, ro_line[4];
+	enum kahto_feature feature;
 	struct kahto_ticks *ticks;
 	struct kahto_axistext **text;
 	int ntexts, memtext;
@@ -237,7 +240,7 @@ struct kahto_graph {
 	struct kahto_linestyle linestyle, errstyle;	// fixed order
 	unsigned color; // overridden by style.color
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
-	unsigned char *cmap;
+	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1; // only needed with colormesh
@@ -273,7 +276,7 @@ struct kahto_figure {
 	float (*subfigures_xywh)[4];
 	int nsubfigures, memsubfigures;
 
-	struct kahto_axis **axis, *last_caxis;
+	struct kahto_axis **axis;
 	int naxis, mem_axis;
 	/* these figures share the same x-coordinates
 	   after computing the layout, each size is changed according to the smallest x-axis */
@@ -321,6 +324,7 @@ struct kahto_args {
 	double minmax[5][2];
 	char have_minmax[5], // bits: kahto_minbit, kahto_maxbit
 		 yxzowner[5];
+	enum kahto_feature zfeature; // = color
 	/* below must match with kahto_graph */
 	struct kahto_axis *yaxis, *xaxis, *caxis; // yaxis must stay first
 	char cmap_owner;
@@ -332,7 +336,7 @@ struct kahto_args {
 		linestyle, errstyle;
 	unsigned color;
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
-	unsigned char *cmap;
+	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1; // only needed with colormesh
@@ -368,7 +372,9 @@ struct kahto_args {
 	.errstyle.style = kahto_line_normal_e,	\
 	.icolor = kahto_automatic,				\
 	.errstyle.thickness = 1./600,           \
-	.caxis_center = 0./0.                   \
+	.caxis_center = 0./0.,                  \
+	.zfeature = kahto_color_e,				\
+	.alpha = 255							\
 	kahto_update_defaultargs
 
 #define kahto_lineargs						\

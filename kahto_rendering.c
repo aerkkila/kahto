@@ -37,6 +37,7 @@ struct draw_data_args {
 	int ystride;
 	const unsigned char *bmap;
 	int mapw, maph, x, y;
+	unsigned char alpha;
 	const int *axis_xywh_outer;
 	uint32_t color;
 
@@ -62,9 +63,10 @@ static inline void draw_datum(struct draw_data_args *ar) {
 	int i1  = min(ar->mapw, x1_ - x0);
 	uint32_t (*canvas)[ar->ystride] = (void*)ar->canvas;
 	const unsigned char (*bmap)[ar->mapw] = (void*)ar->bmap;
+	int alpha = ar->alpha;
 	for (int j=j0, y=y0+j0; j<j1; j++, y++)
 		for (int i=i0; i<i1; i++)
-			tocanvas(canvas[y]+x0+i, bmap[j][i], ar->color);
+			tocanvas(canvas[y]+x0+i, bmap[j][i]*alpha/255, ar->color);
 }
 
 static inline void draw_datum_for_line(struct draw_data_args *ar) {
@@ -743,6 +745,15 @@ static void draw_data_xy(struct draw_data_args *restrict ar) {
 	}
 }
 
+static void draw_data_xya(struct draw_data_args *restrict ar) {
+	for (int idata=0; idata<ar->len; idata++) {
+		ar->x = ar->xypixels[idata*2];
+		ar->y = ar->xypixels[idata*2+1];
+		ar->alpha = ar->zlevels[idata];
+		draw_datum(ar);
+	}
+}
+
 static void draw_data_xyc(struct draw_data_args *restrict ar) {
 	if (ar->reverse_cmap)
 		for (int idata=0; idata<ar->len; idata++) {
@@ -896,6 +907,7 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 		.cmap = caxis ? caxis->cmap : NULL,
 		.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
 		.color = graph->color,
+		.alpha = graph->alpha,
 		/*
 		 * xypixels, x0, len
 		 * zlevels
@@ -951,8 +963,12 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 			data_args.x0 = istart;
 			data_args.len = num;
 			data_args.zlevels = zlevels;
-			if (zdata)
-				draw_data_xyc(&data_args);
+			if (caxis) {
+				if (caxis->feature == kahto_color_e)
+					draw_data_xyc(&data_args);
+				else if (caxis->feature == kahto_alpha_e)
+					draw_data_xya(&data_args);
+			}
 			else if (graph->colors)
 				draw_data_xyc_list(&data_args, graph->colors, graph->ncolors);
 			else
@@ -1026,6 +1042,7 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 			.color = graph->color,
 			.cmap = caxis ? caxis->cmap : NULL,
 			.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
+			.alpha = graph->alpha,
 		};
 		if (graph->data.list.zdata)
 			draw_datum_cmap(&args);

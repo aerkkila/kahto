@@ -220,6 +220,7 @@ unsigned* kahto_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *
 struct kahto_axis* kahto_axis_void_new(struct kahto_figure *figure) {
 	struct kahto_axis *axis = calloc(1, sizeof(struct kahto_axis));
 	axis->figure = figure;
+	axis->center = 0.0 / 0.0;
 	if (figure->mem_axis < figure->naxis+1)
 		figure->axis = realloc(figure->axis, (figure->mem_axis+=2) * sizeof(void*));
 	figure->axis[figure->naxis++] = axis;
@@ -238,6 +239,7 @@ long kahto_get_startcanvas(struct kahto_figure *fig, struct kahto_figure *dest, 
 
 struct kahto_axis* kahto_axis_new(struct kahto_figure *figure, int x_or_y, float pos) {
 	struct kahto_axis *axis = kahto_axis_void_new(figure);
+	axis->visible = 1;
 	axis->linestyle.color = 0xff<<24;
 	axis->linestyle.thickness = 1.0 / 400;
 	axis->linestyle.style = 1;
@@ -252,18 +254,31 @@ struct kahto_axis* kahto_axis_new(struct kahto_figure *figure, int x_or_y, float
 
 struct kahto_axis* kahto_coloraxis_new(struct kahto_figure *figure, int x_or_y) {
 	struct kahto_axis *caxis = kahto_axis_void_new(figure);
-	figure->last_caxis = caxis;
-	caxis->figure = figure;
+	caxis->visible = 1;
 	caxis->max = 1;
 	caxis->cmap = cmh_colormaps[default_colormap].map;
+	caxis->feature = kahto_color_e;
 	caxis->direction = x_or_y != 'x';
 	caxis->outside = 1;
 	caxis->pos = 1;
 	caxis->po[0] = 1;
 	caxis->po[1] = 1.0/30;
 	caxis->ticks = kahto_ticks_new((void*)caxis);
-	caxis->center = 0./0.;
 	return caxis;
+}
+
+struct kahto_axis* kahto_featureaxis_new(struct kahto_figure *figure, int x_or_y, enum kahto_feature feature) {
+	switch (feature) {
+		case kahto_position_e: return kahto_axis_new(figure, x_or_y, 1);
+		case kahto_color_e:    return kahto_coloraxis_new(figure, x_or_y);
+		default: break;
+	}
+	struct kahto_axis *axis = kahto_axis_void_new(figure);
+	axis->min = 0;
+	axis->max = 1;
+	axis->direction = x_or_y != 'x';
+	axis->feature = feature;
+	return axis;
 }
 
 struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis) {
@@ -884,7 +899,7 @@ void kahto_axistext_draw(struct kahto_axistext *axistext, unsigned *canvas, int 
 }
 
 void kahto_axis_draw(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
-	if (!axis || axis->direction < 0)
+	if (!axis || axis->direction < 0 || !axis->visible)
 		return;
 	int isx = axis->direction == 0;
 
@@ -1187,10 +1202,12 @@ found:
 	if (!graph->yxaxis[1])
 		graph->yxaxis[1] = kahto_xaxis0(args->figure);
 	if (graph->data.arr[2] && !graph->yxaxis[2]) {
-		if (args->figure->last_caxis)
-			graph->yxaxis[2] = args->figure->last_caxis;
-		else
-			graph->yxaxis[2] = kahto_coloraxis_new(args->figure, 'y');
+		for (int i=args->figure->naxis-1; i>=0; i--)
+			if (args->figure->axis[i]->feature == args->zfeature) {
+				graph->yxaxis[2] = args->figure->axis[i];
+				goto found1; }
+		graph->yxaxis[2] = kahto_featureaxis_new(args->figure, 'y', args->zfeature);
+found1:
 	}
 	if (graph->yxaxis[2]) {
 		struct kahto_axis *caxis = graph->yxaxis[2];
