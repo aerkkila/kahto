@@ -1172,10 +1172,64 @@ void texts_placement(struct cplot_figure *figure) {
 
 static struct cplot_data* add_data(struct cplot_args *args) {
 	if (args->figure->mem_data < args->figure->ndata+1)
-		args->figure->data = realloc(args->figure->data, (args->figure->mem_data = args->figure->ndata+3) * sizeof(void*));
+		args->figure->data = realloc(args->figure->data,
+			(args->figure->mem_data = args->figure->ndata+3) * sizeof(void*));
+
 	struct cplot_data *data;
 	args->figure->data[args->figure->ndata++] = data = malloc(sizeof(struct cplot_data));
-	memcpy(data, &args->ydata, sizeof(struct cplot_data));
+	/* copy to cplot_data the part which is shared with cplot_args */
+	memcpy(&data->yxaxis, &args->yaxis, sizeof(struct cplot_data) - (&data->yxaxis - data));
+
+	/* find or create a data_container for the data */
+#define nth(ptr, n) (&(ptr) + (n))
+	for (int iyxz=0; iyxz<arrlen(data->data.arr); iyxz++) {
+		void *thedata = *nth(args->ydata, iyxz);
+		if (!thedata) {
+			data->data.arr[iyxz] = NULL;
+			continue; }
+
+		int *type = nth(args->ytype, iyxz);
+		if (*type == cplot_notype)
+			*type = args->ytype; // unspecified type equals ytype, useful with errorbars
+
+		struct cplot_data_container *con = NULL;
+		if (args->yxzowner[iyxz] != -1)
+			for (con=args->figure->containers.next; con; con=con->next) {
+				if (con->data == thedata &&
+					con->type == *type &&
+					con->length == args->len &&
+					con->stride == *nth(args->ystride, iyxz)
+				) {
+					data->yxzdata[iyxz] = con;
+					goto found; }
+			}
+
+		/* add a new container */
+		con = data->yxzdata[iyxz] = calloc(1, sizeof(*con));
+		con->data = thedata;
+		con->type = *nth(args->ytype, iyxz);
+		con->length = args->len;
+		con->stride = *nth(args->ystride, iyxz);
+		con->prev = &args->figure->containers;
+		con->next = con->prev->next;
+		con->prev->next = con;
+		if (con->next)
+			con->next->prev = con;
+
+found:
+		++con->n_users;
+		if (args->yxzowner[iyxz])
+			con->owner = args->yxzowner[iyxz];
+		if (args->have_minmax[iyxz] & cplot_minbit) {
+			con->minmax[0] = args->minmax[iyxz][0];
+			con->have_minmax |= cplot_minbit;
+		}
+		if (args->have_minmax[iyxz] & cplot_maxbit) {
+			con->minmax[1] = args->minmax[iyxz][1];
+			con->have_minmax |= cplot_maxbit;
+		}
+	}
+#undef nth
 
 	if (!data->yxaxis[0])
 		data->yxaxis[0] = cplot_yaxis0(args->figure);
@@ -1277,17 +1331,25 @@ void cplot_destroy_axis(struct cplot_axis *axis) {
 	free(axis);
 }
 
+void cplot_data_container_unlink(struct cplot_data_container *data) {
+	if (--data->n_users)
+		return;
+	if (data->owner)
+		free(data->data);
+	data->data = NULL;
+	if (data->next)
+		data->next->prev = data->prev;
+	data->prev->next = data->next;
+	free(data);
+}
+
 void cplot_destroy_data(struct cplot_data *data) {
-	for (int j=0; j<3; j++)
-		if (data->owner[j])
-			free(data->yxzdata[j]);
+	for (int j=0; j<arrlen(data->data.arr); j++)
+		cplot_data_container_unlink(data->data.arr[j]);
 	if (data->cmap_owner)
 		free(data->cmap);
 	if (data->labelowner)
 		free((void*)(intptr_t)data->label);
-	for (int i=0; i<4; i++)
-		if (data->err_owner[i])
-			free(data->err.yx[i]);
 	free(data);
 }
 
@@ -1401,37 +1463,26 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 	struct cplot_data *data = add_data(args);
 
 	/* copy if necessary */
-	for (int idim=0; idim<3; idim++) {
-		if (!(args->yxzowner[idim] < 0))
+	for (int idim=0; idim<arrlen(data->data.arr); idim++) {
+		struct cplot_data_container *con = data->data.arr[idim];
+		if (!con || con->owner != -1)
 			continue;
-		size_t size = cplot_sizes[data->yxztype[idim]] * data->length;
-		void *old = data->yxzdata[idim];
-		if (!(data->yxzdata[idim] = malloc(size)))
+		size_t size = cplot_sizes[con->type] * con->length;
+		void *old = con->data;
+		if (!(con->data = malloc(size)))
 			fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
-		if (data->yxzstride[idim] == 1)
-			memcpy(data->yxzdata[idim], old, size);
+		if (con->stride == 1)
+			memcpy(con->data, old, size);
 		else {
 			/* after copying, stride == 1 */
-			char *dt = data->yxzdata[idim];
-			int size1 = cplot_sizes[data->yxztype[idim]],
-			stride = data->yxzstride[idim];
+			char *dt = con->data;
+			size = cplot_sizes[con->type],
+			stride = con->stride;
 			for (int i=data->length-1; i>=0; i--)
-				memcpy(dt+i*size1, (char*)old+i*stride*size1, size1);
-			data->yxzstride[idim] = 1;
+				memcpy(dt+i*size, (char*)old+i*stride*size, size);
+			con->stride = 1;
 		}
-		data->owner[idim] = 1;
-	}
-
-	/* copy err if necessary */
-	for (int ierr=0; ierr<4; ierr++) {
-		if (args->err_owner[ierr] >= 0)
-			continue;
-		size_t size = cplot_sizes[data->yxztype[ierr/2]] * data->length; // same type with the main data
-		void *old = data->err.yx[ierr];
-		if (!(data->err.yx[ierr] = malloc(size)))
-			fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
-		memcpy(data->err.yx[ierr], old, size);
-		data->err_owner[ierr] = 1;
+		con->owner = 1;
 	}
 
 	if (data->labelowner < 0) {

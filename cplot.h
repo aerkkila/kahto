@@ -212,13 +212,6 @@ struct cplot_text {
 	int ro_area[4];
 };
 
-union cplot_errorbars {
-	struct {
-		void *y0, *y1, *x0, *x1;
-	} list;
-	void *yx[4];
-};
-
 struct cplot_data_container {
 	void *data;
 	int type;
@@ -227,16 +220,22 @@ struct cplot_data_container {
 	char have_minmax, owner;
 	double minmax[2];
 	int n_users;
+	struct cplot_data_container *prev, *next;
 };
 
 struct cplot_data {
-	struct cplot_data_container *yxzdata[3];
+	union {
+		struct {
+			struct cplot_data_container *ydata, *xdata, *zdata, *e0data, *e1data;
+		} list;
+		struct cplot_data_container *arr[5];
+	} data;
+	/* the rest must match with cplot_args */
 	struct cplot_axis *yxaxis[2], *caxis;
 	char cmap_owner;
 	double yxz0[3], yxzstep[3];
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order
-	union cplot_errorbars err;
 	/* style */
 	struct cplot_markerstyle markerstyle;	// fixed order
 	struct cplot_linestyle linestyle, errstyle;	// fixed order
@@ -289,6 +288,7 @@ struct cplot_figure {
 	float margin[4];
 	struct cplot_data **data;
 	int ndata, mem_data, icolor;
+	struct cplot_data_container containers;
 	struct cplot_colorscheme colorscheme;
 	struct cplot_text title;
 	struct cplot_text *texts; // These do not affect the layout. Use cplot_[add_]text to modify.
@@ -317,19 +317,19 @@ struct cplot_args {
 	struct cplot_figure *figure;
 	struct cplot_figure **figureptr;
 
-	void *ydata, *xdata, *zdata;
-	int ytype, xtype, ztype;
+	void *ydata, *xdata, *zdata, *edata0, *edata1;
+	int ytype, xtype, ztype, e0type, e1type; // unspecified is assumed equal to ytype
 	long len, ylen, xlen; // xlen and ylen are for colormesh
 	short ystride, xstride, zstride;
-	struct cplot_axis *yaxis, *xaxis, *caxis;
 	double minmax[3][2];
-	char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
-	char yxzowner[3], cmap_owner;
+	char have_minmax[3], // bits: cplot_minbit, cplot_maxbit
+		 yxzowner[3]; // eowner?
+	/* below must match with cplot_data */
+	struct cplot_axis *yaxis, *xaxis, *caxis; // yaxis must stay first
+	char cmap_owner;
 	double y0, x0, z0, ystep, xstep, zstep;
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order; Copied, if owner = -1.
-	union cplot_errorbars err;
-	char err_owner[4]; // to copy, owner = -1
 
 	struct cplot_markerstyle markerstyle;
 	struct cplot_linestyle
@@ -340,6 +340,7 @@ struct cplot_args {
 	int cmh_enum, icolor;
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1; // only needed with colormesh
+	/* above must match with cplot_data */
 
 	double caxis_center; // datavalue that evaluates to center color of cmap
 
@@ -379,11 +380,12 @@ struct cplot_args {
 	.linestyle.style = cplot_line_normal_e,	\
 	.markerstyle.marker = NULL
 
+/* in all of these, variadic arguments begin at the len field */
 #define cplot_y(y, ...) cplot_plot_inl((struct cplot_args){	\
 	__cplot_defaultargs,		\
 	.ydata=(y),					\
 	.ytype=cplot_type(*(y)),	\
-	.ztype=0,					\
+	.e1type=0,					\
 	__VA_ARGS__					\
 	})
 #define cplot_yx(y, x, ...) cplot_plot_inl((struct cplot_args){	\
@@ -392,7 +394,7 @@ struct cplot_args {
 	.xdata=(x),					\
 	.ytype=cplot_type(*(y)),	\
 	.xtype=cplot_type(*(x)),	\
-	.ztype=0,					\
+	.e1type=0,					\
 	__VA_ARGS__					\
 	})
 #define cplot_yz(y, z, ...) cplot_plot_inl((struct cplot_args){	\
@@ -401,6 +403,7 @@ struct cplot_args {
 	.zdata=(z),					\
 	.ytype=cplot_type(*(y)),	\
 	.ztype=cplot_type(*(z)),	\
+	.e1type=0,                  \
 	__VA_ARGS__					\
 	})
 #define cplot_yxz(y, x, z, ...) cplot_plot_inl((struct cplot_args){	\
@@ -411,8 +414,10 @@ struct cplot_args {
 	.ytype=cplot_type(*(y)),	\
 	.xtype=cplot_type(*(x)),	\
 	.ztype=cplot_type(*(z)),	\
+	.e1type=0,                  \
 	__VA_ARGS__					\
 	})
+/* variadic arguments begin at the ylen field */
 #define cplot_colormesh(z, ...) cplot_plot_inl((struct cplot_args){ \
 	__cplot_defaultargs,     \
 	.zdata=(z),              \
