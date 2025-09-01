@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 37
+#define __cplot_version_in_program 38
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -297,7 +297,8 @@ struct cplot_figure {
 	float fracsizemul; // multiply all fractional sizes with this number
 
 	struct legend {
-		float rowheight, symbolspace_per_rowheight;
+		/* if legend would cover some data, its size is multiplied with scale in range [minscale,1] */
+		float rowheight, symbolspace_per_rowheight, scale, minscale;
 		/* if visible = -1, legend is drawn only if it doesn't cover any data */
 		int ro_xywh[4], ro_text_left, visible, ro_place_err, *ro_datay, ro_datay_len;
 		float posx, posy, hvalign[2];

@@ -135,7 +135,7 @@ void inner_without_margin(int *xywh, struct cplot_figure *fig) {
 	xywh[3] = inner[3] - margin[1] - margin[3];
 }
 
-#define no_room_for_legend(figure) ((figure)->legend.ro_place_err < 0)
+#define no_room_for_legend(figure) (!!(figure)->legend.ro_place_err)
 
 void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *cols);
 void cplot_get_legend_dims_px(struct cplot_figure *figure, int *y, int *x);
@@ -326,6 +326,8 @@ struct cplot_figure* cplot_figure_void(struct cplot_figure *figure) {
 	figure->legend.borderstyle.style = cplot_line_normal_e;
 	figure->legend.borderstyle.color = 0xff<<24;
 	figure->legend.fill = cplot_fill_bg_e;
+	figure->legend.minscale = 0.6;
+	figure->legend.scale = 1;
 
 	figure->name = "cplotfigure";
 	return figure;
@@ -1042,6 +1044,11 @@ void cplot_get_legend_dims_px(struct cplot_figure *figure, int *Height, int *Wid
 void legend_placement(struct cplot_figure *figure) {
 	if (!figure->legend.visible)
 		return;
+	float coeff = 1.f / figure->legend.scale;
+	figure->legend.borderstyle.thickness *= coeff;
+	figure->legend.rowheight *= coeff;
+	figure->legend.scale = 1;
+try:
 	int height, width;
 	cplot_get_legend_dims_px(figure, &height, &width);
 	if (!height || !width)
@@ -1058,6 +1065,21 @@ void legend_placement(struct cplot_figure *figure) {
 		return;
 	int iplace=0, jplace=0;
 	figure->legend.ro_place_err = cplot_find_empty_rectangle(figure, width, height, &iplace, &jplace, figure->legend.placement);
+	if (no_room_for_legend(figure) && figure->legend.scale > figure->legend.minscale) {
+		float diff = figure->legend.scale - figure->legend.minscale;
+		float newscale;
+		if (diff >= 0.1)
+			newscale = figure->legend.scale - 0.1;
+		else if (diff >= 0.02)
+			newscale = figure->legend.scale - 0.02;
+		else
+			newscale = figure->legend.minscale;
+		float coeff = newscale / figure->legend.scale;
+		figure->legend.scale = newscale;
+		figure->legend.borderstyle.thickness *= coeff;
+		figure->legend.rowheight *= coeff;
+		goto try;
+	}
 	figure->legend.ro_xywh[0] = iplace;
 	figure->legend.ro_xywh[1] = jplace;
 }
