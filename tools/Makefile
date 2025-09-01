@@ -8,7 +8,7 @@ install: $(targets)
 	cp $^ $(directory)
 
 uninstall:
-	@rm -vrf $(directory)/$(targets)
+	@rm -vrf $(addprefix $(directory)/, $(targets))
 
 clean:
 	@rm -vrf $(targets)
