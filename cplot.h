@@ -80,6 +80,7 @@ struct cplot_data;
 enum cplot_linestyle_e {
 	cplot_line_none_e, cplot_line_normal_e, cplot_line_dashed_e,
 	cplot_line_bresenham_xiaolin_e, cplot_line_circle_e,
+	cplot_line_future_e, // This will be the default in future, but doesn't work well enough yet.
 };
 
 /* fixed order means changing the order of the fields will be avoided in future updates.

@@ -1,11 +1,11 @@
 include config.mk
 
-CFLAGS += -Wall -g -DHAVE_PNG
+CFLAGS += -Wall -g3 -gdwarf-2 -DHAVE_PNG
 CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
 OBJECTS =
-cplot_sources = cplot.h cplot_rendering.c rotate.c functions.c ticker.c layout.c cplot_png.c Makefile
+cplot_sources = cplot.h cplot_rendering.c rotate.c functions.c ticker.c layout.c cplot_png.c cplot_draw_line.c cplot_draw_triangle.c Makefile
 dep_dir = dependencies
 dep_get =
 

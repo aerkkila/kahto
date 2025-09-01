@@ -35,7 +35,7 @@ static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
 	int c2 = (fg2 * value + bg2 * eulav) / 255,
 		c1 = (fg1 * value + bg1 * eulav) / 255,
 		c0 = (fg0 * value + bg0 * eulav) / 255;
-	*ptr = color>>24<<24 | c2 << 16 | c1 << 8 | c0 << 0;
+	*ptr = (color & 0xff<<24) | c2 << 16 | c1 << 8 | c0 << 0;
 }
 
 static inline uint32_t from_cmap(const unsigned char *ptr) {
@@ -132,6 +132,8 @@ static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, ui
 			D  += D > 0 ? D_add1 : D_add0;
 		}
 }
+
+#include "cplot_draw_line.c"
 
 /* like draw_line_bresenham, but instead of a dot, each pixel is used as a center for a circle */
 static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, uint32_t color, struct draw_data_args *args) {
@@ -464,6 +466,12 @@ static uint32_t _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, ui
 static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *area,
 	struct cplot_linestyle *style, struct cplot_figure *fig, struct draw_data_args *dotargs, int32_t carry)
 {
+	if (style->style == cplot_line_future_e) {
+		draw_line_cplot(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig),
+			area[0], area[2], area[1], area[3]);
+		return 0;
+	}
+
 	int xy[4];
 	memcpy(xy, xy_c, sizeof(xy));
 	float nthickness = topixels(style->thickness, fig); // initially just thickness,
@@ -518,10 +526,10 @@ static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *a
 				break;
 			}
 			/* run through */
+		default:
 		case cplot_line_normal_e:
 		case cplot_line_bresenham_xiaolin_e:
 			_draw_thick_line_bresenham_xiaolin(canvas, ystride, xy, style->color, inthickness, area, n_ind);
-			break;
 		case cplot_line_none_e:
 			break;
 	}

@@ -88,18 +88,22 @@ static inline struct cplot_figure* __attribute__((pure)) get_toplevel_figure(str
 	return figure;
 }
 
-static inline int __attribute__((pure)) topixels(float size, struct cplot_figure *figure) {
+static inline float __attribute__((pure)) tofpixels(float size, struct cplot_figure *figure) {
 	switch (figure->topixels_reference) {
 		default:
 		case cplot_total_height:
-			return iroundpos(size * get_toplevel_figure(figure)->wh[1]);
+			return size * (float)get_toplevel_figure(figure)->wh[1];
 		case cplot_this_height:
-			return iroundpos(size * figure->wh[1]);
+			return size * (float)figure->wh[1];
 		case cplot_total_width:
-			return iroundpos(size * get_toplevel_figure(figure)->wh[0]);
+			return size * (float)get_toplevel_figure(figure)->wh[0];
 		case cplot_this_width:
-			return iroundpos(size * figure->wh[0]);
+			return size * (float)figure->wh[0];
 	}
+}
+
+static inline int __attribute__((pure)) topixels(float size, struct cplot_figure *figure) {
+	return iroundpos(tofpixels(size, figure));
 }
 
 static int set_fontheight(struct cplot_figure *figure, float size) {
