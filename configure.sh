@@ -55,6 +55,7 @@ printf "\n" >> $file
 printf "prefix = %s\n" "$prefix" >> $file
 printf "CC = %s\n" "$CC" >> $file
 
+# try to preprocess an empty input with the compiler flag
 compiler_flag_works() {
 	echo "" |$CC -Werror $1 -E -x c - >/dev/null 2>&1
 }
