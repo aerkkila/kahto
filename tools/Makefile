@@ -1,5 +1,5 @@
 directory = /usr/local/bin
-targets = cplotfun
+targets = cplotfun cplotpipe
 LDLIBS += -lcplot
 
 all: $(targets)

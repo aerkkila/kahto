@@ -1,0 +1,28 @@
+#include <cplot.h>
+#include <stdio.h>
+#include <unistd.h>
+
+int main(int argc, char **argv) {
+	int opt, separator = 0;
+	while ((opt = getopt(argc, argv, "s")) >= 0)
+		switch (opt) {
+			case 's': separator = 1; break;
+		}
+
+	char *format = separator ? "%lf %*c" : "%lf ";
+	int len = 2000;
+	double *data = malloc(len*sizeof(double));
+	double *ptr = data - 1;
+	double *end = data + len;
+	while (1) {
+		while (++ptr < end)
+			if (scanf(format, ptr) != 1)
+				goto done;
+		len *= 1.5;
+		data = realloc(data, len*sizeof(double));
+		end = data + len;
+	}
+done:
+	cplot_show(cplot_y(data, ptr-data));
+	free(data);
+}
