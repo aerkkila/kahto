@@ -425,7 +425,7 @@ break0:
 	for (int iloop=0; iloop<30; iloop++) {
 		/* parallel size */
 		for (int i=0; i<fig->naxis; i++)
-			axis_set_parallel_sizes(fig->axis[i], iloop);
+			axis_set_parallel_sizes(fig->axis[i], iloop==0);
 
 		/*      ⁰⁰              ⁰¹
 		 *      ¹⁰    0 (x0)    ³⁰
