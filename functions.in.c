@@ -98,6 +98,10 @@ static void get_datalevels_with_center_@dtype(long istart, long iend, const void
 	}
 }
 
+static double get_floating_@dtype(const void *vdata, long ind) {
+	return ((const $dtype*)vdata)[ind];
+}
+
 static double get_min_@dtype(const void *vdata, long length, int stride) {
 	const $dtype *data = vdata;
 	double min = DBL_MAX;

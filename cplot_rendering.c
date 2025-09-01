@@ -8,22 +8,6 @@
 #include "cplot.h"
 #include "definitions.h"
 
-struct draw_data_args {
-	uint32_t *canvas;
-	int ystride;
-	const unsigned char *bmap;
-	int mapw, maph, x, y;
-	const int *axis_xywh_outer;
-	uint32_t color;
-
-	short *xypixels;
-	long x0;
-	int len;
-	double xpix_per_unit, xpos0; // used if xdata is not given
-	const unsigned char *zlevels, *cmap;
-	int reverse_cmap;
-};
-
 static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
 	int eulav = 255 - value;
 	int fg2 = color >> 16 & 0xff,
@@ -45,6 +29,24 @@ static inline uint32_t from_cmap(const unsigned char *ptr) {
 		(ptr[2] << 0) |
 		(0xff << 24);
 }
+
+#include "cplot_colormesh.c"
+
+struct draw_data_args {
+	uint32_t *canvas;
+	int ystride;
+	const unsigned char *bmap;
+	int mapw, maph, x, y;
+	const int *axis_xywh_outer;
+	uint32_t color;
+
+	short *xypixels;
+	long x0;
+	int len;
+	double xpix_per_unit, xpos0; // used if xdata is not given
+	const unsigned char *zlevels, *cmap;
+	int reverse_cmap;
+};
 
 static inline void draw_datum(struct draw_data_args *ar) {
 	if (!ar->bmap) {
@@ -892,6 +894,8 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_data *data, unsigned c
 }
 
 void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_figure *fig, long start) {
+	if (data->xlength)
+		return cplot_colormesh_render(data, canvas, ystride, fig, start);
 	double yxmin[] = {
 		data->yxaxis[0]->min,
 		data->yxaxis[1]->min,

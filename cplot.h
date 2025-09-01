@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 33
+#define __cplot_version_in_program 34
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -224,7 +224,8 @@ struct cplot_data {
 	/* fixed order below */
 	void *yxzdata[3];
 	int yxztype[3];
-	long length;
+	long length,
+		 ylength, xlength; // used only with colormesh
 	/* fixed order above */
 	short yxzstride[3];
 	struct cplot_axis *yxaxis[2], *caxis;
@@ -243,6 +244,8 @@ struct cplot_data {
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap;
 	int cmh_enum, icolor;
+	unsigned equal_xy : 1, // only works with colormesh
+			 exact : 1; // only needed with colormesh
 };
 
 enum cplot_fill {cplot_no_fill_e, cplot_fill_bg_e, cplot_fill_color_e};
@@ -316,7 +319,7 @@ struct cplot_args {
 	/* struct cplot_data inlined. ydata must stay first */
 	void *ydata, *xdata, *zdata;
 	int ytype, xtype, ztype;
-	long len;
+	long len, ylen, xlen; // xlen and ylen are for colormesh
 	short ystride, xstride, zstride;
 	struct cplot_axis *yaxis, *xaxis, *caxis;
 	double minmax[3][2];
@@ -335,6 +338,8 @@ struct cplot_args {
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap;
 	int cmh_enum, icolor;
+	unsigned equal_xy : 1, // only works with colormesh
+			 exact : 1; // only needed with colormesh
 	/* end struct cplot_data */
 
 	double caxis_center; // datavalue that evaluates to center color of cmap
@@ -408,6 +413,15 @@ struct cplot_args {
 	.xtype=cplot_type(*(x)),	\
 	.ztype=cplot_type(*(z)),	\
 	__VA_ARGS__					\
+	})
+#define cplot_colormesh(z, ...) cplot_plot_inl((struct cplot_args){ \
+	__cplot_defaultargs,     \
+	.zdata=(z),              \
+	.ztype=cplot_type(*(z)), \
+	.equal_xy=1,             \
+	.exact=1,                \
+	.len=-1,                 \
+	__VA_ARGS__              \
 	})
 
 /* Manual call is needed, if parameters in ttra such as ttra->fonttype are modified before calling

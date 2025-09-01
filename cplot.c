@@ -1341,6 +1341,12 @@ struct cplot_figure* cplot_clean(struct cplot_figure *fig) {
 }
 
 struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
+	if (args->argsfun)
+		args->argsfun(args);
+
+	if (args->len < 0)
+		args->len = args->xlen * args->ylen;
+
 	if (args->plot_interlazed_y || args->labels) {
 		const char **labels = args->labels;
 		args->plot_interlazed_y = 0;
@@ -1376,8 +1382,6 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 		return figure;
 	}
 
-	if (args->argsfun)
-		args->argsfun(args);
 	struct cplot_figure *figure1 = NULL;
 	struct cplot_figure **figure = args->figureptr ? args->figureptr : &figure1;
 	if (!*figure)
