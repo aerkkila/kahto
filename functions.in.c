@@ -26,18 +26,10 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
 	for (long i=0; i<len; i++) {
 		long iout = i * strideout;
 		long iin = i * stridein;
-#if kahto_@dtype >= kahto_f4 // any floating point
-		if (
-#if kahto_@dtype == kahto_f4
-			my_isnan_float(data[iin])
-#else
-			my_isnan_double(data[iin])
-#endif
-		) {
+		if (my_isnan(data[iin])) {
 			out[iout] = NOT_A_PIXEL;
 			continue;
 		}
-#endif
 		float pos = (data[iin] - axismin) / axisdiff;
 		out[iout] = iround(pos * axislen - 0.5) + addthis;
 	}
@@ -51,18 +43,10 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 	for (long i=0; i<len; i++) {
 		long iout = i * strideout;
 		long iin = i * stridein;
-#if kahto_@dtype >= kahto_f4 // any floating point
-		if (
-#if kahto_@dtype == kahto_f4
-			my_isnan_float(data[iin])
-#else
-			my_isnan_double(data[iin])
-#endif
-		) {
+		if (my_isnan(data[iin])) {
 			out[iout] = NOT_A_PIXEL;
 			continue;
 		}
-#endif
 		float pos = (data[iin] - axismin) / axisdiff;
 		out[iout] = iround((1 - pos) * axislen - 0.5) + addthis;
 	}
