@@ -1674,6 +1674,25 @@ struct cplot_async* cplot_async_write_mp4(struct cplot_figure *fig, const char *
 	return h;
 }
 
+void cplot_async_join(struct cplot_async **async, int n) {
+	unsigned char *mask = malloc(n);
+	memset(mask, 1, n);
+	while (1) {
+		usleep(50'000);
+		int count = 0;
+		for (int i=0; i<n; i++) {
+			if (mask[i] && !cplot_async_running(async[i])) {
+				cplot_async_destroy(async[i]);
+				mask[i] = 0;
+			}
+			count += mask[i];
+		}
+		if (!count)
+			break;
+	}
+	free(mask);
+}
+
 #ifdef HAVE_PNG
 #include "cplot_png.c"
 #else

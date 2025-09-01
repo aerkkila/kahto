@@ -582,6 +582,8 @@ void cplot_async_unlock_step(struct cplot_async *async);
 void cplot_async_destroy(struct cplot_async *async);
 int cplot_async_running(struct cplot_async *async);
 void cplot_async_stop(struct cplot_async *async); // destroy without stop is enough
+/* waits for all n threads to terminate and destroys them */
+void cplot_async_join(struct cplot_async **async, int n);
 
 void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 int  cplot_figure_layout(struct cplot_figure *figure);
