@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <cplot.h>
+#include <kahto.h>
 #include <time.h>
 #include <stdio.h>
 
@@ -17,22 +17,22 @@ int main(){
 	/* Creating a new figure each time is simple but takes some time. */
 	start = clock();
 	for (int i=0; i<ndata; i++) {
-		struct cplot_figure *fig = cplot_y(data[i], length);
+		struct kahto_figure *fig = kahto_y(data[i], length);
 		sprintf(name, "tmpdir/a_%03i.png", i);
-		cplot_write_png(fig, name);
+		kahto_write_png(fig, name);
 	}
 	time = (double)(clock() - start) / CLOCKS_PER_SEC;
 	printf("%f s without preserving the figure\n", time);
 
 	/* It is faster to preserve the figure. */
 	start = clock();
-	struct cplot_figure *fig = cplot_figure_new();
+	struct kahto_figure *fig = kahto_figure_new();
 	for (int i=0; i<ndata; i++) {
-		cplot_y(data[i], length, .figure=fig);
+		kahto_y(data[i], length, .figure=fig);
 		sprintf(name, "tmpdir/b_%03i.png", i);
-		cplot_clean(cplot_write_png_preserve(fig, name));
+		kahto_clean(kahto_write_png_preserve(fig, name));
 	}
-	cplot_destroy(fig);
+	kahto_destroy(fig);
 	time = (double)(clock() - start) / CLOCKS_PER_SEC;
 	printf("%f s preserving the figure\n", time);
 

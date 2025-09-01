@@ -54,16 +54,16 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
 	}
 }
 
-struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *fig, const char *name) {
+struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *fig, const char *name) {
 	unsigned *argb = malloc(fig->wh[0] * fig->wh[1] * sizeof(unsigned));
-	cplot_draw(fig, argb, fig->wh[0]);
+	kahto_draw(fig, argb, fig->wh[0]);
 
 	char _name[80];
 	if (!name) {
 		if (fig->name)
 			name = fig->name;
 		else {
-			sprintf(_name, "cplot_%li.png", (long)time(NULL));
+			sprintf(_name, "kahto_%li.png", (long)time(NULL));
 			name = _name;
 		}
 	}

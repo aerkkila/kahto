@@ -1,4 +1,4 @@
-#include <cplot.h>
+#include <kahto.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -23,6 +23,6 @@ int main(int argc, char **argv) {
 		end = data + len;
 	}
 done:
-	cplot_show(cplot_y(data, ptr-data));
+	kahto_show(kahto_y(data, ptr-data));
 	free(data);
 }

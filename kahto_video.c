@@ -13,7 +13,7 @@
 #define negfun(fun, ...)	\
 	if (fun(__VA_ARGS__) < 0) return error(#fun), 1
 
-struct cplot_video {
+struct kahto_video {
 	int w, h, iframe;
 	float fps;
 	AVFormatContext *fcontext;
@@ -23,7 +23,7 @@ struct cplot_video {
 	AVFrame *frame;
 };
 
-int cplot_init_video(struct cplot_video *out, const char *filename, int width, int height, float fps) {
+int kahto_init_video(struct kahto_video *out, const char *filename, int width, int height, float fps) {
 	AVFormatContext *fcontext;
 	negfun(avformat_alloc_output_context2, &fcontext, NULL, NULL, filename);
 
@@ -48,7 +48,7 @@ int cplot_init_video(struct cplot_video *out, const char *filename, int width, i
 	negfun(avio_open, &fcontext->pb, filename, AVIO_FLAG_WRITE);
 	negfun(avformat_write_header, fcontext, NULL);
 
-	struct cplot_video video = {
+	struct kahto_video video = {
 		.w = width,
 		.h = height,
 		.iframe = 0,
@@ -63,7 +63,7 @@ int cplot_init_video(struct cplot_video *out, const char *filename, int width, i
 	return 0;
 }
 
-int cplot_destroy_video(struct cplot_video *video) {
+int kahto_destroy_video(struct kahto_video *video) {
 	av_write_trailer(video->fcontext);
 
 	av_frame_free(&video->frame);
@@ -117,7 +117,7 @@ static int encode(AVFormatContext *fcontext, AVCodecContext *ctx, AVStream *vstr
 	}
 }
 
-static int write_frame(struct cplot_video *video, uint32_t *argb) {
+static int write_frame(struct kahto_video *video, uint32_t *argb) {
 	negfun(av_frame_make_writable, video->frame);
 	video->frame->pts = video->iframe;
 
@@ -147,22 +147,22 @@ static int write_frame(struct cplot_video *video, uint32_t *argb) {
 	return encode(video->fcontext, video->ctx, video->stream, video->frame, video->packet);
 }
 
-static int video_async_update(struct cplot_figure *fig, uint32_t *canvas, int ystride, long count, double elapsed) {
+static int video_async_update(struct kahto_figure *fig, uint32_t *canvas, int ystride, long count, double elapsed) {
 	return async_update(fig->async, canvas, ystride);
 }
 
-struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *fig, const char *name, float fps) {
+struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const char *name, float fps) {
 	fig->wh[0] -= fig->wh[0] % 2; // has to be a multiple of 2
 	fig->wh[1] -= fig->wh[1] % 2; // has to be a multiple of 2
 	int w = fig->wh[0], h = fig->wh[1];
 	uint32_t *argb = malloc(w * h * sizeof(uint32_t));
-	cplot_draw(fig, argb, w);
+	kahto_draw(fig, argb, w);
 	if (!name)
 		name = fig->name;
 	mkdir_file(name);
 
-	struct cplot_video video;
-	if (cplot_init_video(&video, name, w, h, fps))
+	struct kahto_video video;
+	if (kahto_init_video(&video, name, w, h, fps))
 		return fig;
 
 	if (!fig->update)
@@ -175,7 +175,7 @@ struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *fig, const ch
 		video.iframe++;
 	}
 	encode(video.fcontext, video.ctx, video.stream, NULL, video.packet);
-	cplot_destroy_video(&video);
+	kahto_destroy_video(&video);
 
 	return fig;
 }

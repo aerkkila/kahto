@@ -5,7 +5,7 @@
 #ifndef CPLOT_NO_VERSION_CHECK
 #define CPLOT_NO_VERSION_CHECK
 #endif
-#include "cplot.h"
+#include "kahto.h"
 #include "definitions.h"
 
 static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
@@ -30,7 +30,7 @@ static inline uint32_t from_cmap(const unsigned char *ptr) {
 		(0xff << 24);
 }
 
-#include "cplot_colormesh.c"
+#include "kahto_colormesh.c"
 
 struct draw_data_args {
 	uint32_t *canvas;
@@ -134,7 +134,7 @@ static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, ui
 		}
 }
 
-#include "cplot_draw_line.c"
+#include "kahto_draw_line.c"
 
 /* like draw_line_bresenham, but instead of a dot, each pixel is used as a center for a circle */
 static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, uint32_t color, struct draw_data_args *args) {
@@ -167,25 +167,25 @@ static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, ui
 		}
 }
 
-struct _cplot_dashed_line_args {
+struct _kahto_dashed_line_args {
 	uint32_t *canvas, color, *colors;
 	int ystride, *xy, ithickness, *axis_area, nosteep, patternlength;
-	struct cplot_figure *fig;
+	struct kahto_figure *fig;
 	float *pattern;
 };
 
-struct _cplot_line_args {
+struct _kahto_line_args {
 	short *xypixels;
 	long x0, len;
 	uint32_t *canvas;
 	const int ystride, *axis_xywh;
-	struct cplot_figure *fig;
+	struct kahto_figure *fig;
 };
 
-static uint32_t draw_line_bresenham_dashed(struct _cplot_dashed_line_args *args, uint32_t carry) {
+static uint32_t draw_line_bresenham_dashed(struct _kahto_dashed_line_args *args, uint32_t carry) {
 	int nosteep		= args->nosteep,
 		ystride		= args->ystride;
-	struct cplot_figure *fig = args->fig;
+	struct kahto_figure *fig = args->fig;
 	uint32_t *canvas	     = args->canvas,
 			 color           = args->color,
 			 *colors         = args->colors,
@@ -292,9 +292,9 @@ static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uin
 	}
 }
 
-static uint32_t draw_line_xiaolin_dashed(struct _cplot_dashed_line_args *args, uint32_t carry) {
+static uint32_t draw_line_xiaolin_dashed(struct _kahto_dashed_line_args *args, uint32_t carry) {
 	int nosteep = args->nosteep;
-		struct cplot_figure *fig = args->fig;
+		struct kahto_figure *fig = args->fig;
 	uint32_t (*canvas)[args->ystride] = (void*)args->canvas,
 			 color = args->color, *colors = args->colors, colornow;
 
@@ -445,7 +445,7 @@ static void _draw_thick_line_bresenham_xiaolin(uint32_t *canvas, int ystride,
 		draw_line_xiaolin(canvas, ystride, xy, color);
 }
 
-static uint32_t _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, uint32_t carry) {
+static uint32_t _draw_thick_line_dashed(struct _kahto_dashed_line_args *args, uint32_t carry) {
 	uint32_t new_carry = carry;
 	if (!check_line(args->xy, args->axis_area))
 		new_carry = draw_line_xiaolin_dashed(args, carry);
@@ -464,10 +464,10 @@ static uint32_t _draw_thick_line_dashed(struct _cplot_dashed_line_args *args, ui
 }
 
 static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *area,
-	struct cplot_linestyle *style, struct cplot_figure *fig, struct draw_data_args *dotargs, int32_t carry)
+	struct kahto_linestyle *style, struct kahto_figure *fig, struct draw_data_args *dotargs, int32_t carry)
 {
-	if (style->style == cplot_line_future_e) {
-		draw_line_cplot(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig),
+	if (style->style == kahto_line_future_e) {
+		draw_line_kahto(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig),
 			area[0], area[2], area[1], area[3]);
 		return 0;
 	}
@@ -508,29 +508,29 @@ static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *a
 	static float __default_dashpattern[] = {1.0/60, 1.0/60};
 
 	switch (style->style) {
-		case cplot_line_dashed_e:
+		case kahto_line_dashed_e:
 			if (!style->pattern) {
 				style->pattern = __default_dashpattern;
 				style->patternlen = 2;
 			}
 			if (!style->patternlen)
 				style->patternlen = 2;
-			struct _cplot_dashed_line_args args = {
+			struct _kahto_dashed_line_args args = {
 				canvas, style->color, style->colors, ystride, xy, inthickness, area, n_ind,
 				style->patternlen, fig, style->pattern };
 			carry = _draw_thick_line_dashed(&args, carry);
 			break;
-		case cplot_line_circle_e:
+		case kahto_line_circle_e:
 			if (dotargs) {
 				_draw_line_circle_e(canvas, ystride, xy, style->color, dotargs);
 				break;
 			}
 			/* run through */
 		default:
-		case cplot_line_normal_e:
-		case cplot_line_bresenham_xiaolin_e:
+		case kahto_line_normal_e:
+		case kahto_line_bresenham_xiaolin_e:
 			_draw_thick_line_bresenham_xiaolin(canvas, ystride, xy, style->color, inthickness, area, n_ind);
-		case cplot_line_none_e:
+		case kahto_line_none_e:
 			break;
 	}
 	return carry;
@@ -718,7 +718,7 @@ static void init_4star(unsigned char *to, int tow, int toh) {
 	free(to16);
 }
 
-void init_literal(unsigned char *bmap, int w, int h, struct cplot_graph *graph) {
+void init_literal(unsigned char *bmap, int w, int h, struct kahto_graph *graph) {
 	struct ttra *ttra = graph->yxaxis[0]->figure->ttra;
 	/* bitmap is probably smaller than fontheight */
 	int bw, bh;
@@ -771,7 +771,7 @@ static void draw_data_xyc_list(struct draw_data_args *restrict ar, const uint32_
 }
 
 static void make_datapx(short *xypixels, int stride, long istart, long iend,
-	double xpix_per_unit, double axis_x0, int addthis, struct cplot_data *xdata)
+	double xpix_per_unit, double axis_x0, int addthis, struct kahto_data *xdata)
 {
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
 	double x0 = xdata->minmax[0] - axis_x0;
@@ -780,7 +780,7 @@ static void make_datapx(short *xypixels, int stride, long istart, long iend,
 }
 
 /* huomio: datan liittäminen kahden tämän funktion kutsun välillä on toteuttamatta */
-static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot_linestyle *linestyle, struct draw_data_args *dataargs) {
+static void connect_data_xy(struct _kahto_line_args *restrict args, struct kahto_linestyle *linestyle, struct draw_data_args *dataargs) {
 	int axis_area[] = xywh_to_area(args->axis_xywh);
 
 	uint32_t carry = 0;
@@ -799,15 +799,15 @@ static void connect_data_xy(struct _cplot_line_args *restrict args, struct cplot
 	}
 }
 
-static int cplot_visible_marker(const char *str) {
+static int kahto_visible_marker(const char *str) {
 	return str && (unsigned char)*str > ' ';
 }
 
-static int cplot_visible_graph(struct cplot_graph *graph) {
-	return cplot_visible_marker(graph->markerstyle.marker) || graph->linestyle.style || graph->errstyle.style;
+static int kahto_visible_graph(struct kahto_graph *graph) {
+	return kahto_visible_marker(graph->markerstyle.marker) || graph->linestyle.style || graph->errstyle.style;
 }
 
-static unsigned char* cplot_data_marker_bmap(struct cplot_graph *graph, unsigned char *bmap, int *has_marker, int *width, int *height) {
+static unsigned char* kahto_data_marker_bmap(struct kahto_graph *graph, unsigned char *bmap, int *has_marker, int *width, int *height) {
 	if (!graph->markerstyle.marker) {
 		*has_marker = 0;
 		return NULL;
@@ -845,9 +845,9 @@ static unsigned char* cplot_data_marker_bmap(struct cplot_graph *graph, unsigned
 	return bmap;
 }
 
-void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride, struct cplot_figure *fig, long start) {
+void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start) {
 	if (is_colormesh(graph))
-		return cplot_colormesh_render(graph, canvas, ystride, fig, start);
+		return kahto_colormesh_render(graph, canvas, ystride, fig, start);
 	double yxmin[] = {
 		graph->yxaxis[0]->min,
 		graph->yxaxis[1]->min,
@@ -866,25 +866,25 @@ void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride
 	int width, height, marker;
 	width = height = topixels(graph->markerstyle.size, fig);
 	unsigned char bmap_buff[width*height];
-	unsigned char *bmap = cplot_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
+	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
 	/* bmap points to bmap_buff or is NULL */
 
 	unsigned char *linepen_bmap = NULL;
 	int linepen_width, linepen_height, helper;
 	linepen_width = linepen_height = topixels(graph->linestyle.thickness, fig);
 	unsigned char linepen_buff[linepen_width*linepen_height];
-	if (graph->linestyle.style == cplot_line_circle_e) {
-		struct cplot_graph copy = *graph;
+	if (graph->linestyle.style == kahto_line_circle_e) {
+		struct kahto_graph copy = *graph;
 		copy.markerstyle.marker = "o";
 		copy.markerstyle.size = graph->linestyle.thickness;
 		copy.markerstyle.literal = copy.markerstyle.nofill = 0;
-		linepen_bmap = cplot_data_marker_bmap(&copy, linepen_buff, &helper, &linepen_width, &linepen_height);
+		linepen_bmap = kahto_data_marker_bmap(&copy, linepen_buff, &helper, &linepen_width, &linepen_height);
 	}
 
 	int line_thickness = topixels(graph->linestyle.thickness, fig);
 	if (line_thickness < 1) line_thickness = 1;
 
-	struct cplot_axis *caxis = graph->yxaxis[2];
+	struct kahto_axis *caxis = graph->yxaxis[2];
 
 	struct draw_data_args data_args = {
 		.canvas = canvas,
@@ -908,7 +908,7 @@ void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride
 	linepen_dataargs.mapw = linepen_width;
 	linepen_dataargs.maph = linepen_height;
 
-	struct cplot_data
+	struct kahto_data
 		*xdata = graph->data.list.xdata,
 		*ydata = graph->data.list.ydata,
 		*zdata = graph->data.list.zdata;
@@ -934,7 +934,7 @@ void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride
 		}
 		get_datapx_inv[ydata->type](istart, iend, ydata->data, xypixels+1, yxmin[0], yxdiff[0], yxlen[0], ydata->stride, 2, margin[1]);
 		if (graph->linestyle.style) {
-			struct _cplot_line_args args = {
+			struct _kahto_line_args args = {
 				.xypixels = xypixels,
 				.x0 = istart,
 				.len = num,
@@ -960,14 +960,14 @@ void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride
 
 		/* error bars */
 		for (int icoord=0; icoord<2; icoord++) {
-			struct cplot_data *edata = graph->data.arr[arrlen(graph->data.arr)-2+icoord];
+			struct kahto_data *edata = graph->data.arr[arrlen(graph->data.arr)-2+icoord];
 			if (!edata)
 				continue;
 			const int ixcoord = 0;
 			short errb[npoints];
 			get_datapx_inv[edata->type](istart, iend, edata->data, errb, yxmin[0], yxdiff[0], yxlen[0], edata->stride, 1, margin[1]);
 			int area[] = xywh_to_area(xywh0);
-			struct cplot_linestyle style = graph->errstyle;
+			struct kahto_linestyle style = graph->errstyle;
 			for (int i=0; i<iend-istart; i++) {
 				int line[] = {xypixels[i*2+ixcoord], errb[i], xypixels[i*2+ixcoord], xypixels[i*2+!ixcoord]};
 				if (line[0] == NOT_A_PIXEL) continue;
@@ -989,20 +989,20 @@ void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride
 	}
 }
 
-static void legend_draw_marker(struct cplot_figure *fig, struct cplot_graph *graph,
+static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
 	uint32_t *canvas, int ystride, int x0, int y0, int text_left)
 {
 	int width, height, marker;
 	width = height = topixels(graph->markerstyle.size, fig);
 	unsigned char bmap_buff[width*height];
-	unsigned char *bmap = cplot_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
+	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
 	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
 	x0 -= xywh[0];
 	y0 -= xywh[1];
-	struct cplot_axis *caxis = graph->yxaxis[2];
+	struct kahto_axis *caxis = graph->yxaxis[2];
 	if (graph->linestyle.style) {
 		short xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
-		struct _cplot_line_args args = {
+		struct _kahto_line_args args = {
 			.xypixels = xypixels,
 			.x0 = 0, .len = 2,
 			.canvas = canvas,
@@ -1033,9 +1033,9 @@ static void legend_draw_marker(struct cplot_figure *fig, struct cplot_graph *gra
 	}
 }
 
-void cplot_draw_box(uint32_t *canvas, int ystride, struct cplot_figure *fig, int *area, struct cplot_linestyle *linestyle) {
+void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *area, struct kahto_linestyle *linestyle) {
 	int linewidth = topixels(linestyle->thickness, fig);
-	struct cplot_linestyle lstyle = *linestyle;
+	struct kahto_linestyle lstyle = *linestyle;
 	lstyle.thickness = -1; // becomes 1 for all fig sizes
 
 	{
@@ -1067,35 +1067,35 @@ void cplot_draw_box(uint32_t *canvas, int ystride, struct cplot_figure *fig, int
 	}
 }
 
-void cplot_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color) {
+void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color) {
 	for (int j=area[1]; j<area[3]; j++)
 		for (int i=area[0]; i<area[2]; i++)
 			canvas[j*ystride+i] = color;
 }
 
-void cplot_draw_box_xywh(uint32_t *canvas, int ystride, struct cplot_figure *fig, int *xywh, struct cplot_linestyle *linestyle) {
+void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *xywh, struct kahto_linestyle *linestyle) {
 	int area[] = xywh_to_area(xywh);
-	cplot_draw_box(canvas, ystride, fig, area, linestyle);
+	kahto_draw_box(canvas, ystride, fig, area, linestyle);
 }
 
-void cplot_fill_box_xywh(uint32_t *canvas, int ystride, int *xywh, uint32_t color) {
+void kahto_fill_box_xywh(uint32_t *canvas, int ystride, int *xywh, uint32_t color) {
 	int area[] = xywh_to_area(xywh);
-	cplot_fill_box(canvas, ystride, area, color);
+	kahto_fill_box(canvas, ystride, area, color);
 }
 
-void cplot_legend_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
+void kahto_legend_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
 	if (!fig->legend.visible || no_room_for_legend(fig) || (fig->legend.visible < 0 && fig->legend.ro_place_err))
 		return;
 	uint32_t fillcolor = fig->background;
 	switch (fig->legend.fill) {
-		case cplot_fill_color_e:
+		case kahto_fill_color_e:
 			fillcolor = fig->legend.fillcolor;
 			/* run through */
-		case cplot_fill_bg_e:
-			cplot_fill_box_xywh(canvas, ystride, fig->legend.ro_xywh, fillcolor);
+		case kahto_fill_bg_e:
+			kahto_fill_box_xywh(canvas, ystride, fig->legend.ro_xywh, fillcolor);
 			/* run through */
-		case cplot_no_fill_e:
-			cplot_draw_box_xywh(canvas, ystride, fig, fig->legend.ro_xywh, &fig->legend.borderstyle);
+		case kahto_no_fill_e:
+			kahto_draw_box_xywh(canvas, ystride, fig, fig->legend.ro_xywh, &fig->legend.borderstyle);
 			break;
 	}
 

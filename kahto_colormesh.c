@@ -1,10 +1,10 @@
-void cplot_colormesh_render(
-		struct cplot_graph *graph, uint32_t *canvas, int ystride, struct cplot_figure *fig, long start) {
+void kahto_colormesh_render(
+		struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start) {
 	int xdatalen = graph->data.list.xdata->length;
 	int ydatalen = graph->data.list.ydata->length;
 	int xywh[4];
 	inner_without_margin(xywh, graph->yxaxis[0]->figure);
-	struct cplot_axis *caxis = graph->yxaxis[2];
+	struct kahto_axis *caxis = graph->yxaxis[2];
 	const unsigned char *cmap = caxis->cmap;
 	const int reverse_cmap = caxis->reverse_cmap;
 
@@ -85,7 +85,7 @@ void cplot_colormesh_render(
 			rowvalues[i] /= rowweight[i];
 
 		unsigned char zlevels[xpixlen];
-		struct cplot_axis *caxis = graph->yxaxis[2];
+		struct kahto_axis *caxis = graph->yxaxis[2];
 		if (my_isnan(caxis->center))
 			get_datalevels_f8(
 				0, xpixlen, rowvalues, zlevels, caxis->min, caxis->max, 255, 1);

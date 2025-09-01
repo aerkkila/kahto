@@ -1,13 +1,13 @@
 /* Plots a function given as a command line argument.
    The function should be valid c-code with x as the variable.
    For example
-   >>> cplotfun -a -20 -b 20 'x*x*x * log(x < 0 ? fabs(sin(x)) : x) * sin(x*x*x*0.2)'
+   >>> kahtofun -a -20 -b 20 'x*x*x * log(x < 0 ? fabs(sin(x)) : x) * sin(x*x*x*0.2)'
    */
 
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <cplot.h>
+#include <kahto.h>
 #include <dlfcn.h>
 #include <string.h>
 #include <err.h>
@@ -99,8 +99,8 @@ int main(int argc, char **argv) {
 		dlclose(kahva);
 	}
 
-	struct cplot_figure *figure = cplot_figure_new();
+	struct kahto_figure *figure = kahto_figure_new();
 	for (int ikäyrä=0; ikäyrä<käyriä; ikäyrä++)
-		cplot_yx(y[ikäyrä], x, n, cplot_lineargs, .figure=figure);
-	cplot_show(figure);
+		kahto_yx(y[ikäyrä], x, n, kahto_lineargs, .figure=figure);
+	kahto_show(figure);
 }

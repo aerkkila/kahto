@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <pthread.h>
 #define CPLOT_NO_VERSION_CHECK
-#include "cplot.h"
+#include "kahto.h"
 
 #define min(a,b) ((a) < (b) ? a : (b))
 #define max(a,b) ((a) > (b) ? a : (b))
@@ -25,32 +25,32 @@
 
 #define default_colormap cmh_jet_e
 
-const int __cplot_version_in_library = __cplot_version_in_program;
+const int __kahto_version_in_library = __kahto_version_in_program;
 
-unsigned cplot_colorscheme_00[] = { // color deficient semi friendly, semi dark
+unsigned kahto_colorscheme_00[] = { // color deficient semi friendly, semi dark
 	0xff000000, 0xfff20700, 0xff505eff, 0xfff781bf, 0xff108a4f, 0xff66ccff, 0xffffc73a,
 	0xffc84eff, 0xffffff33, 0xffa65628, 0xff999999, 0
 };
-unsigned cplot_colorscheme_01[] = { // color deficient friendly, semi dark
+unsigned kahto_colorscheme_01[] = { // color deficient friendly, semi dark
 	0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, 0xff56b4e9, 0xffdddd55, 0xff9f4a96, 0
 };
-unsigned cplot_colorscheme_02[] = { // picked from 12 hue values with some changes
+unsigned kahto_colorscheme_02[] = { // picked from 12 hue values with some changes
 	0xff000000, 0xffff0000, 0xff0000ff, 0xff00b300, 0xffff8000, 0xffff00ff,
 	0xff8659b3, 0xff80bfff, 0xff99004d, 0xffb3b300, 0xff4d9991,
 	0
 };
-unsigned *cplot_colorschemes[] = {
-	cplot_colorscheme_00,
-	cplot_colorscheme_01,
-	cplot_colorscheme_02,
+unsigned *kahto_colorschemes[] = {
+	kahto_colorscheme_00,
+	kahto_colorscheme_01,
+	kahto_colorscheme_02,
 };
-int cplot_ncolors[] = {
-	arrlen(cplot_colorscheme_00) - 1,
-	arrlen(cplot_colorscheme_01) - 1,
-	arrlen(cplot_colorscheme_02) - 1,
+int kahto_ncolors[] = {
+	arrlen(kahto_colorscheme_00) - 1,
+	arrlen(kahto_colorscheme_01) - 1,
+	arrlen(kahto_colorscheme_02) - 1,
 };
 
-static void cplot_fill_u4(uint32_t *canvas, uint32_t color, int w, int h, int ystride) {
+static void kahto_fill_u4(uint32_t *canvas, uint32_t color, int w, int h, int ystride) {
 	char *ptr = (void*)&color;
 	if (ptr[0] == ptr[1] && ptr[0] == ptr[2] && ptr[0] == ptr[3])
 		for (int i=0; i<h; i++)
@@ -61,7 +61,7 @@ static void cplot_fill_u4(uint32_t *canvas, uint32_t color, int w, int h, int ys
 				canvas[i*ystride+ii] = color;
 }
 
-int cplot_default_width = 1200, cplot_default_height = 1000;
+int kahto_default_width = 1200, kahto_default_height = 1000;
 
 static inline int __attribute__((const)) iround(float f) {
 	int a = f;
@@ -83,42 +83,42 @@ static inline int __attribute__((const)) iceil(float f) {
 	return a + (a != f);
 }
 
-static inline struct cplot_figure* __attribute__((pure)) get_toplevel_figure(struct cplot_figure *figure) {
+static inline struct kahto_figure* __attribute__((pure)) get_toplevel_figure(struct kahto_figure *figure) {
 	while (figure->super) figure = figure->super;
 	return figure;
 }
 
-static inline float __attribute__((pure)) _tofpixels(float size, struct cplot_figure *figure) {
+static inline float __attribute__((pure)) _tofpixels(float size, struct kahto_figure *figure) {
 	switch (figure->topixels_reference) {
 		default:
-		case cplot_total_height:
+		case kahto_total_height:
 			return size * (float)get_toplevel_figure(figure)->wh[1];
-		case cplot_this_height:
+		case kahto_this_height:
 			return size * (float)figure->wh[1];
-		case cplot_total_width:
+		case kahto_total_width:
 			return size * (float)get_toplevel_figure(figure)->wh[0];
-		case cplot_this_width:
+		case kahto_this_width:
 			return size * (float)figure->wh[0];
 	}
 }
 
-static inline float __attribute__((pure)) tofpixels(float size, struct cplot_figure *figure) {
+static inline float __attribute__((pure)) tofpixels(float size, struct kahto_figure *figure) {
 	if (size >= 1)
 		return size;
 	return figure->fracsizemul * _tofpixels(size, figure);
 }
 
-static inline int __attribute__((pure)) topixels(float size, struct cplot_figure *figure) {
+static inline int __attribute__((pure)) topixels(float size, struct kahto_figure *figure) {
 	return iroundpos(tofpixels(size, figure));
 }
 
-static int set_fontheight(struct cplot_figure *figure, float size) {
+static int set_fontheight(struct kahto_figure *figure, float size) {
 	return ttra_set_fontheight(figure->ttra, topixels(size*figure->fontheightmul, figure));
 }
 
 static inline int intsum_02(const int *a) { return a[0] + a[2]; }
 
-static int is_colormesh(struct cplot_graph *g) {
+static int is_colormesh(struct kahto_graph *g) {
 	return
 		g->data.list.zdata &&
 		g->data.list.xdata &&
@@ -126,7 +126,7 @@ static int is_colormesh(struct cplot_graph *g) {
 		g->data.list.xdata->length;
 }
 
-void inner_without_margin(int *xywh, struct cplot_figure *fig) {
+void inner_without_margin(int *xywh, struct kahto_figure *fig) {
 	int *inner = fig->ro_inner_xywh;
 	int *margin = fig->ro_inner_margin;
 	xywh[0] = inner[0] + margin[0];
@@ -137,13 +137,13 @@ void inner_without_margin(int *xywh, struct cplot_figure *fig) {
 
 #define no_room_for_legend(figure) (!!(figure)->legend.ro_place_err)
 
-void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *cols);
-void cplot_get_legend_dims_px(struct cplot_figure *figure, int *y, int *x);
-int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement);
-void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride);
-void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride);
-void legend_placement(struct cplot_figure *figure);
-void texts_placement(struct cplot_figure *figure);
+void kahto_get_legend_dims_chars(struct kahto_figure *figure, int *lines, int *cols);
+void kahto_get_legend_dims_px(struct kahto_figure *figure, int *y, int *x);
+int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement);
+void kahto_ticks_draw(struct kahto_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride);
+void kahto_axistext_draw(struct kahto_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride);
+void legend_placement(struct kahto_figure *figure);
+void texts_placement(struct kahto_figure *figure);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -175,15 +175,15 @@ static int __attribute__((unused)) mkdir_file(const char *restrict name) {
 
 #include "functions.c"
 #include "rotate.c"
-#include "cplot_rendering.c"
+#include "kahto_rendering.c"
 #include "ticker.c"
 #include "layout.c"
 
-int __attribute__((pure)) cplot_topixels(float size, struct cplot_figure *figure) {
+int __attribute__((pure)) kahto_topixels(float size, struct kahto_figure *figure) {
 	return topixels(size, figure);
 }
 
-unsigned char __attribute__((malloc))* cplot_make_cmap_from_colorscheme(const unsigned *colorscheme, int ncolors) {
+unsigned char __attribute__((malloc))* kahto_make_cmap_from_colorscheme(const unsigned *colorscheme, int ncolors) {
 	unsigned char *cmap = malloc(256*3);
 	int n = 256 / ncolors;
 	for (int i=0; i<ncolors; i++)
@@ -202,7 +202,7 @@ unsigned char __attribute__((malloc))* cplot_make_cmap_from_colorscheme(const un
 	return cmap;
 }
 
-unsigned* cplot_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *cmap, int len, int without_ends) {
+unsigned* kahto_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *cmap, int len, int without_ends) {
 	int divisor = len - !without_ends;
 	float step=1, indf=127.5;
 	if (divisor > 0) {
@@ -217,8 +217,8 @@ unsigned* cplot_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *
 	return dest;
 }
 
-struct cplot_axis* cplot_axis_void_new(struct cplot_figure *figure) {
-	struct cplot_axis *axis = calloc(1, sizeof(struct cplot_axis));
+struct kahto_axis* kahto_axis_void_new(struct kahto_figure *figure) {
+	struct kahto_axis *axis = calloc(1, sizeof(struct kahto_axis));
 	axis->figure = figure;
 	if (figure->mem_axis < figure->naxis+1)
 		figure->axis = realloc(figure->axis, (figure->mem_axis+=2) * sizeof(void*));
@@ -227,7 +227,7 @@ struct cplot_axis* cplot_axis_void_new(struct cplot_figure *figure) {
 	return axis;
 }
 
-long cplot_get_startcanvas(struct cplot_figure *fig, struct cplot_figure *dest, int ystride) {
+long kahto_get_startcanvas(struct kahto_figure *fig, struct kahto_figure *dest, int ystride) {
 	long start = 0;
 	while (fig != dest) {
 		start += fig->ro_corner[1] * ystride + fig->ro_corner[0];
@@ -236,8 +236,8 @@ long cplot_get_startcanvas(struct cplot_figure *fig, struct cplot_figure *dest, 
 	return start;
 }
 
-struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float pos) {
-	struct cplot_axis *axis = cplot_axis_void_new(figure);
+struct kahto_axis* kahto_axis_new(struct kahto_figure *figure, int x_or_y, float pos) {
+	struct kahto_axis *axis = kahto_axis_void_new(figure);
 	axis->linestyle.color = 0xff<<24;
 	axis->linestyle.thickness = 1.0 / 400;
 	axis->linestyle.style = 1;
@@ -246,12 +246,12 @@ struct cplot_axis* cplot_axis_new(struct cplot_figure *figure, int x_or_y, float
 	axis->min = 0;
 	axis->max = 1;
 	axis->direction = x_or_y != 'x';
-	axis->ticks = cplot_ticks_new((void*)axis);
+	axis->ticks = kahto_ticks_new((void*)axis);
 	return axis;
 }
 
-struct cplot_axis* cplot_coloraxis_new(struct cplot_figure *figure, int x_or_y) {
-	struct cplot_axis *caxis = cplot_axis_void_new(figure);
+struct kahto_axis* kahto_coloraxis_new(struct kahto_figure *figure, int x_or_y) {
+	struct kahto_axis *caxis = kahto_axis_void_new(figure);
 	figure->last_caxis = caxis;
 	caxis->figure = figure;
 	caxis->max = 1;
@@ -261,24 +261,24 @@ struct cplot_axis* cplot_coloraxis_new(struct cplot_figure *figure, int x_or_y) 
 	caxis->pos = 1;
 	caxis->po[0] = 1;
 	caxis->po[1] = 1.0/30;
-	caxis->ticks = cplot_ticks_new((void*)caxis);
+	caxis->ticks = kahto_ticks_new((void*)caxis);
 	caxis->center = 0./0.;
 	return caxis;
 }
 
-struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
-	struct cplot_ticks *ticks = calloc(1, sizeof(struct cplot_ticks));
+struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis) {
+	struct kahto_ticks *ticks = calloc(1, sizeof(struct kahto_ticks));
 	int ipar = axis->direction == 1;
 	ticks->axis = axis;
 	ticks->color = 0xff<<24;
-	ticks->init = cplot_init_ticker_default;
+	ticks->init = kahto_init_ticker_default;
 	ticks->length = 1.0 / 80;
 	ticks->xyalign_text[ipar] = -0.5;
 	ticks->xyalign_text[!ipar] = -1 * (axis->pos < 0.5);
 
 	ticks->linestyle.thickness = 1.0 / 1200;
 	ticks->linestyle.color = RGB(0, 0, 0);
-	ticks->linestyle.style = cplot_line_normal_e;
+	ticks->linestyle.style = kahto_line_normal_e;
 
 	ticks->gridstyle.thickness = 1.0 / 1200;
 	ticks->gridstyle.color = 0xffcccccc;
@@ -287,7 +287,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 	ticks->visible = 1;
 	ticks->have_labels = 1;
 
-	ticks->linestyle1.style = cplot_line_normal_e;
+	ticks->linestyle1.style = kahto_line_normal_e;
 	ticks->linestyle1.thickness = 1.0 / 1200;
 	ticks->linestyle1.color = 0xff666666;
 	ticks->length1 = 1.0 / 180;
@@ -295,7 +295,7 @@ struct cplot_ticks* cplot_ticks_new(struct cplot_axis *axis) {
 	return ticks;
 }
 
-struct ttra* cplot_figure_ttra_new(struct cplot_figure *figure) {
+struct ttra* kahto_figure_ttra_new(struct kahto_figure *figure) {
 	figure->ttra = calloc(1, sizeof(struct ttra));
 	figure->ttra->fonttype = ttra_sans_e;
 	figure->ttra->chop_lines = 1;
@@ -303,14 +303,14 @@ struct ttra* cplot_figure_ttra_new(struct cplot_figure *figure) {
 	return figure->ttra;
 }
 
-struct cplot_figure* cplot_figure_void(struct cplot_figure *figure) {
+struct kahto_figure* kahto_figure_void(struct kahto_figure *figure) {
 	figure->background = -1;
 
-	figure->wh[0] = cplot_default_width;
-	figure->wh[1] = cplot_default_height;
+	figure->wh[0] = kahto_default_width;
+	figure->wh[1] = kahto_default_height;
 
-	figure->topixels_reference = cplot_this_height;
-	figure->colorscheme.colors = cplot_colorschemes[0];
+	figure->topixels_reference = kahto_this_height;
+	figure->colorscheme.colors = kahto_colorschemes[0];
 	figure->title.rowheight = 0.05;
 	figure->fontheightmul = 1;
 	figure->fracsizemul = 1;
@@ -320,37 +320,37 @@ struct cplot_figure* cplot_figure_void(struct cplot_figure *figure) {
 	figure->legend.posx = 0;
 	figure->legend.posy = 1;
 	figure->legend.hvalign[1] = -1;
-	figure->legend.placement = cplot_placement_singlemaxdist;
+	figure->legend.placement = kahto_placement_singlemaxdist;
 	figure->legend.visible = 1;
 	figure->legend.borderstyle.thickness = 1.0/500;
-	figure->legend.borderstyle.style = cplot_line_normal_e;
+	figure->legend.borderstyle.style = kahto_line_normal_e;
 	figure->legend.borderstyle.color = 0xff<<24;
-	figure->legend.fill = cplot_fill_bg_e;
+	figure->legend.fill = kahto_fill_bg_e;
 	figure->legend.minscale = 0.6;
 	figure->legend.scale = 1;
 
-	figure->name = "cplotfigure";
+	figure->name = "kahtofigure";
 	return figure;
 }
 
-struct cplot_figure* cplot_figure_void_new() {
-	return cplot_figure_void(calloc(1, sizeof(struct cplot_figure)));
+struct kahto_figure* kahto_figure_void_new() {
+	return kahto_figure_void(calloc(1, sizeof(struct kahto_figure)));
 }
 
-struct cplot_figure* cplot_figure_init_axes(struct cplot_figure *figure) {
+struct kahto_figure* kahto_figure_init_axes(struct kahto_figure *figure) {
 	figure->axis = calloc((figure->mem_axis = 4) + 1, sizeof(void*));
-	figure->axis[0] = cplot_axis_new(figure, 'x', 1);
-	figure->axis[0]->ticks->gridstyle.style = cplot_line_normal_e;
-	figure->axis[1] = cplot_axis_new(figure, 'y', 0);
-	figure->axis[1]->ticks->gridstyle.style = cplot_line_normal_e;
+	figure->axis[0] = kahto_axis_new(figure, 'x', 1);
+	figure->axis[0]->ticks->gridstyle.style = kahto_line_normal_e;
+	figure->axis[1] = kahto_axis_new(figure, 'y', 0);
+	figure->axis[1]->ticks->gridstyle.style = kahto_line_normal_e;
 	return figure;
 }
 
-struct cplot_figure* cplot_figure_new() {
-	return cplot_figure_init_axes(cplot_figure_void_new());
+struct kahto_figure* kahto_figure_new() {
+	return kahto_figure_init_axes(kahto_figure_void_new());
 }
 
-struct cplot_figure* cplot_subfigures_put_rows_and_cols(struct cplot_figure *fig, int nrows, int ncols) {
+struct kahto_figure* kahto_subfigures_put_rows_and_cols(struct kahto_figure *fig, int nrows, int ncols) {
 	float height = 1.0 / nrows,
 		  width = 1.0 / ncols;
 	float x[ncols];
@@ -370,7 +370,7 @@ struct cplot_figure* cplot_subfigures_put_rows_and_cols(struct cplot_figure *fig
 	return fig;
 }
 
-static void _cplot_make_grid_1d(float (*xywh)[4], int which, int stride, int n, float *arr, float space) {
+static void _kahto_make_grid_1d(float (*xywh)[4], int which, int stride, int n, float *arr, float space) {
 	float left = 1.0;
 	int nfree = 0;
 	for (int i=0; i<n; i++) {
@@ -386,15 +386,15 @@ static void _cplot_make_grid_1d(float (*xywh)[4], int which, int stride, int n, 
 	}
 }
 
-struct cplot_gridargs {
+struct kahto_gridargs {
 	int nrows, ncols;
 	float *width, *height;
 	float spacex, spacey;
 };
 
-void cplot_make_grid(float (*xywh)[4], struct cplot_gridargs args) {
-	_cplot_make_grid_1d(xywh, 0, 1,          args.ncols, args.width,  args.spacex);
-	_cplot_make_grid_1d(xywh, 1, args.ncols, args.nrows, args.height, args.spacey);
+void kahto_make_grid(float (*xywh)[4], struct kahto_gridargs args) {
+	_kahto_make_grid_1d(xywh, 0, 1,          args.ncols, args.width,  args.spacex);
+	_kahto_make_grid_1d(xywh, 1, args.ncols, args.nrows, args.height, args.spacey);
 
 	/* repeat the xgrid to every row */
 	for (int i=1; i<args.nrows; i++)
@@ -411,7 +411,7 @@ void cplot_make_grid(float (*xywh)[4], struct cplot_gridargs args) {
 		}
 }
 
-float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...) {
+float __attribute__((malloc))* kahto_f4arr(int n, double terminator, ...) {
 	va_list args;
 	va_start(args);
 	float *list = malloc(n * sizeof(float));
@@ -426,7 +426,7 @@ float __attribute__((malloc))* cplot_f4arr(int n, double terminator, ...) {
 	return list;
 }
 
-struct cplot_figure* cplot_add_subfigures(struct cplot_figure *fig, int n) {
+struct kahto_figure* kahto_add_subfigures(struct kahto_figure *fig, int n) {
 	int nnew = fig->nsubfigures + n;
 	if (fig->memsubfigures < nnew) {
 		int nold = fig->memsubfigures;
@@ -440,25 +440,25 @@ struct cplot_figure* cplot_add_subfigures(struct cplot_figure *fig, int n) {
 	return fig;
 }
 
-struct cplot_figure* cplot_subfigures_new(int nrows, int ncols) {
-	return cplot_subfigures_put_rows_and_cols(cplot_add_subfigures(cplot_figure_void_new(), nrows*ncols), nrows, ncols);
+struct kahto_figure* kahto_subfigures_new(int nrows, int ncols) {
+	return kahto_subfigures_put_rows_and_cols(kahto_add_subfigures(kahto_figure_void_new(), nrows*ncols), nrows, ncols);
 }
 
-struct cplot_figure* cplot_subfigures_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
-	struct cplot_figure *fig = cplot_add_subfigures(cplot_figure_void_new(), nrows*ncols);
-	struct cplot_gridargs args = {
+struct kahto_figure* kahto_subfigures_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
+	struct kahto_figure *fig = kahto_add_subfigures(kahto_figure_void_new(), nrows*ncols);
+	struct kahto_gridargs args = {
 		.nrows = nrows,
 		.ncols = ncols,
 		.width = xarr,
 		.height = yarr,
 	};
-	cplot_make_grid(fig->subfigures_xywh, args);
+	kahto_make_grid(fig->subfigures_xywh, args);
 	if ((xyowner>>0) & 1) free(xarr);
 	if ((xyowner>>1) & 1) free(yarr);
 	return fig;
 }
 
-struct cplot_figure* cplot_subfigures_text_new(const char *_txt) {
+struct kahto_figure* kahto_subfigures_text_new(const char *_txt) {
 	const unsigned char *txt = (typeof(txt))_txt;
 	int nrows=0, ncols=0, ipos=0;
 	unsigned short xyxy[256][4]; // some are not used but prevent overflow from bad input
@@ -499,7 +499,7 @@ struct cplot_figure* cplot_subfigures_text_new(const char *_txt) {
 		nfig = i+1;
 	}
 
-	struct cplot_figure *fig = cplot_add_subfigures(cplot_figure_void_new(), nfig);
+	struct kahto_figure *fig = kahto_add_subfigures(kahto_figure_void_new(), nfig);
 	for (int i=0; i<nfig; i++) {
 		if (xyxy[i+'0'][0] == 0xffff)
 			continue;
@@ -514,9 +514,9 @@ struct cplot_figure* cplot_subfigures_text_new(const char *_txt) {
 	return fig;
 }
 
-int cplot_next_ifigure_from_coords(struct cplot_figure *fig0, int x, int y) {
+int kahto_next_ifigure_from_coords(struct kahto_figure *fig0, int x, int y) {
 	for (int ifig=fig0->nsubfigures-1; ifig>=0; ifig--) {
-		struct cplot_figure *fig = fig0->subfigures[ifig];
+		struct kahto_figure *fig = fig0->subfigures[ifig];
 		if (!fig)
 			continue;
 		if (x >= fig->ro_corner[0] && x < fig->ro_corner[0] + fig->wh[0] &&
@@ -526,65 +526,65 @@ int cplot_next_ifigure_from_coords(struct cplot_figure *fig0, int x, int y) {
 	return -1;
 }
 
-void cplot_check_dataminmax(struct cplot_data *data, int yxz) {
+void kahto_check_dataminmax(struct kahto_data *data, int yxz) {
 	unsigned range_isset = data->have_minmax;
 
-	switch (range_isset & (cplot_minbit|cplot_maxbit)) {
+	switch (range_isset & (kahto_minbit|kahto_maxbit)) {
 		case 0:
 			get_minmax[data->type](data->data, data->length, data->minmax, data->stride);
-			data->have_minmax |= cplot_minbit|cplot_maxbit;
+			data->have_minmax |= kahto_minbit|kahto_maxbit;
 			break;
-		case cplot_maxbit:
+		case kahto_maxbit:
 			data->minmax[0] = get_min[data->type](data->data, data->length, data->stride);
-			data->have_minmax |= cplot_minbit;
+			data->have_minmax |= kahto_minbit;
 			break;
-		case cplot_minbit:
+		case kahto_minbit:
 			data->minmax[1] = get_max[data->type](data->data, data->length, data->stride);
-			data->have_minmax |= cplot_maxbit;
+			data->have_minmax |= kahto_maxbit;
 			break;
-		case cplot_minbit|cplot_maxbit:
+		case kahto_minbit|kahto_maxbit:
 			break;
 		default:
 			__builtin_unreachable();
 	}
 }
 
-void cplot_make_range(struct cplot_figure *figure) {
-	unsigned char minmax = cplot_minbit | cplot_maxbit;
+void kahto_make_range(struct kahto_figure *figure) {
+	unsigned char minmax = kahto_minbit | kahto_maxbit;
 	for (int igraph=figure->ngraph-1; igraph>=0; igraph--) {
-		struct cplot_graph *restrict graph = figure->graph[igraph];
-		if (!cplot_visible_graph(graph))
+		struct kahto_graph *restrict graph = figure->graph[igraph];
+		if (!kahto_visible_graph(graph))
 			continue;
 
 		for (int yxz=0; yxz<arrlen(graph->data.arr); yxz++) {
-			struct cplot_data *data = graph->data.arr[yxz];
+			struct kahto_data *data = graph->data.arr[yxz];
 			if (!data)
 				continue;
-			struct cplot_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
+			struct kahto_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
 			if ((axis->range_isset & minmax) == minmax)
 				continue;
-			cplot_check_dataminmax(data, yxz);
-			if (!(axis->range_isset & cplot_minbit)) {
-				if (axis->range_isset & cplot_minbit<<4) // we use this temporarily to mark initialized minmax
+			kahto_check_dataminmax(data, yxz);
+			if (!(axis->range_isset & kahto_minbit)) {
+				if (axis->range_isset & kahto_minbit<<4) // we use this temporarily to mark initialized minmax
 					update_min(axis->min, data->minmax[0]);
 				else {
 					axis->min = data->minmax[0];
-					axis->range_isset |= cplot_minbit<<4; // we use this temporarily to mark initialized minmax
+					axis->range_isset |= kahto_minbit<<4; // we use this temporarily to mark initialized minmax
 				}
 			}
-			if (!(axis->range_isset & cplot_maxbit)) {
-				if (axis->range_isset & cplot_maxbit<<4) // we use this temporarily to mark initialized minmax
+			if (!(axis->range_isset & kahto_maxbit)) {
+				if (axis->range_isset & kahto_maxbit<<4) // we use this temporarily to mark initialized minmax
 					update_max(axis->max, data->minmax[1]);
 				else {
 					axis->max = data->minmax[1];
-					axis->range_isset |= cplot_maxbit<<4; // we use this temporarily to mark initialized minmax
+					axis->range_isset |= kahto_maxbit<<4; // we use this temporarily to mark initialized minmax
 				}
 			}
 		}
 	}
 
 	for (int i=0; i<figure->naxis; i++)
-		figure->axis[i]->range_isset = cplot_minbit | cplot_maxbit;
+		figure->axis[i]->range_isset = kahto_minbit | kahto_maxbit;
 }
 
 /* Tätä voisi nopeuttaa käymällä löydettyä kohtaa läpi eteenpäin kunnes löytyy vapaa paikka
@@ -672,7 +672,7 @@ jump_found:
 /* Return negative if does not fit to image.
    Return positive if no empty slot is available.
    Return zero on success. */
-int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum cplot_placement method) {
+int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement method) {
 	int x0 = figure->ro_inner_xywh[0],
 	y0 = figure->ro_inner_xywh[1],
 	w = figure->ro_inner_xywh[2],
@@ -689,11 +689,11 @@ int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rhei
 	height = figure->wh[1];
 	unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
 	if (!figure->ro_colors_set)
-		cplot_set_colors(figure);
+		kahto_set_colors(figure);
 	unsigned background = figure->background;
-	cplot_fill_u4((void*)image, background, width, height, width);
+	kahto_fill_u4((void*)image, background, width, height, width);
 	for (int i=0; i<figure->ngraph; i++)
-		cplot_graph_render(figure->graph[i], (void*)image, width, figure, 0);
+		kahto_graph_render(figure->graph[i], (void*)image, width, figure, 0);
 
 	/* including the pointed spot */
 	short (*spaceright)[w] = malloc(w*h * sizeof(short));
@@ -723,7 +723,7 @@ int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rhei
 
 	/* Edges */
 	switch (method) {
-		case cplot_placement_first:
+		case kahto_placement_first:
 			jpos=0;
 			for (ipos=0; ipos<=w-rwidth; ipos=nextpos)
 				if ((nextpos = rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h)) < 0)
@@ -742,7 +742,7 @@ int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rhei
 					goto found;
 			break;
 		default:
-		case cplot_placement_singlemaxdist:
+		case kahto_placement_singlemaxdist:
 			int save[4] = {-1}; // dist, i, j, which direction
 			jpos = 0; // top row
 			for (int itwice=0; itwice<2; itwice++, jpos=h-rheight/*bottom row*/)
@@ -793,11 +793,11 @@ end:
 	return retval;
 }
 
-void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
+void kahto_ticks_draw(struct kahto_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	char tickbuff[128];
 	char *tick = tickbuff;
 	struct ttra *ttra = NULL;
-	struct cplot_figure *figure = ticks->axis->figure;
+	struct kahto_figure *figure = ticks->axis->figure;
 
 	if (ticks->have_labels) {
 		ttra = figure->ttra;
@@ -869,7 +869,7 @@ void cplot_ticks_draw(struct cplot_ticks *ticks, unsigned *canvas, int figurewid
 	}
 }
 
-void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
+void kahto_axistext_draw(struct kahto_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	struct ttra *ttra = axistext->axis->figure->ttra;
 	ttra->canvas = canvas;
 	ttra->realw = ystride;
@@ -883,7 +883,7 @@ void cplot_axistext_draw(struct cplot_axistext *axistext, unsigned *canvas, int 
 	ttra->fg_default = 0xff<<24;
 }
 
-void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
+void kahto_axis_draw(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	if (!axis || axis->direction < 0)
 		return;
 	int isx = axis->direction == 0;
@@ -927,7 +927,7 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int figurewidth,
 		}
 	}
 
-	if (axis->linestyle.style != cplot_line_none_e) {
+	if (axis->linestyle.style != kahto_line_none_e) {
 		typeof(axis->ro_area[0]) area[4];
 		memcpy(area, axis->ro_area, sizeof(area));
 		if (area[isx] < 0) area[isx] = 0;
@@ -938,29 +938,29 @@ void cplot_axis_draw(struct cplot_axis *axis, unsigned *canvas, int figurewidth,
 		if (area[isx+2] > WH[isx]) area[isx+2] = WH[isx];
 
 		if (axis->linestyle.style)
-			cplot_fill_box(canvas, ystride, area, axis->linestyle.color);
+			kahto_fill_box(canvas, ystride, area, axis->linestyle.color);
 	}
 
 	if (axis->ticks)
-		cplot_ticks_draw(axis->ticks, canvas, figurewidth, figureheight, ystride);
+		kahto_ticks_draw(axis->ticks, canvas, figurewidth, figureheight, ystride);
 
 	for (int i=0; i<axis->ntexts; i++)
-		cplot_axistext_draw(axis->text[i], canvas, figurewidth, figureheight, ystride);
+		kahto_axistext_draw(axis->text[i], canvas, figurewidth, figureheight, ystride);
 }
 
-void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
+void kahto_figure_render(struct kahto_figure *figure, uint32_t *canvas, int ystride) {
 	if (figure->background)
-		cplot_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
+		kahto_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
 	if (figure->ro_cannot_draw)
 		return;
 	if (!figure->ro_colors_set)
-		cplot_set_colors(figure);
+		kahto_set_colors(figure);
 
 	for (int i=0; i<figure->naxis; i++)
-		cplot_axis_draw(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
+		kahto_axis_draw(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
 	for (int i=0; i<figure->ngraph; i++)
-		cplot_graph_render(figure->graph[i], canvas, ystride, figure, 0);
-	cplot_legend_draw(figure, canvas, ystride);
+		kahto_graph_render(figure->graph[i], canvas, ystride, figure, 0);
+	kahto_legend_draw(figure, canvas, ystride);
 
 	struct ttra *ttra = figure->ttra;
 	ttra->canvas = canvas;
@@ -970,12 +970,12 @@ void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystr
 	ttra->bg_default = -1;
 	ttra_printf(ttra, "\e[0m");
 	if (figure->title.text) {
-		struct cplot_text *text = &figure->title;
+		struct kahto_text *text = &figure->title;
 		set_fontheight(figure, text->rowheight);
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
 	for (int i=0; i<figure->ntexts; i++) {
-		struct cplot_text *text = figure->texts+i;
+		struct kahto_text *text = figure->texts+i;
 		set_fontheight(figure, text->rowheight);
 		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
 	}
@@ -984,12 +984,12 @@ void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystr
 		figure->after_drawing(figure, canvas, ystride);
 }
 
-static void set_icolor(struct cplot_graph *graph) {
-	if (graph->icolor != cplot_automatic) {
+static void set_icolor(struct kahto_graph *graph) {
+	if (graph->icolor != kahto_automatic) {
 		graph->yxaxis[0]->figure->ro_colors_set = 0;
 		return;
 	}
-	struct cplot_figure *figure = graph->yxaxis[0]->figure;
+	struct kahto_figure *figure = graph->yxaxis[0]->figure;
 	graph->icolor = figure->icolor;
 	if (graph->color)
 		return;
@@ -1001,7 +1001,7 @@ static void set_icolor(struct cplot_graph *graph) {
 		figure->icolor++;
 }
 
-void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *cols) {
+void kahto_get_legend_dims_chars(struct kahto_figure *figure, int *lines, int *cols) {
 	*lines = *cols = 0;
 	for (int i=0; i<figure->ngraph; i++)
 		if (figure->graph[i]->label) {
@@ -1012,7 +1012,7 @@ void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *c
 		}
 }
 
-void cplot_get_legend_dims_px(struct cplot_figure *figure, int *Height, int *Width) {
+void kahto_get_legend_dims_px(struct kahto_figure *figure, int *Height, int *Width) {
 	struct legend *lg = &figure->legend;
 	*Width = *Height = 0;
 	int rowh = set_fontheight(figure, lg->rowheight);
@@ -1041,7 +1041,7 @@ void cplot_get_legend_dims_px(struct cplot_figure *figure, int *Height, int *Wid
 	*Height += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
 }
 
-void legend_placement(struct cplot_figure *figure) {
+void legend_placement(struct kahto_figure *figure) {
 	if (!figure->legend.visible)
 		return;
 	float coeff = 1.f / figure->legend.scale;
@@ -1050,7 +1050,7 @@ void legend_placement(struct cplot_figure *figure) {
 	figure->legend.scale = 1;
 try:
 	int height, width;
-	cplot_get_legend_dims_px(figure, &height, &width);
+	kahto_get_legend_dims_px(figure, &height, &width);
 	if (!height || !width)
 		return;
 	figure->legend.ro_xywh[2] = width;
@@ -1064,7 +1064,7 @@ try:
 	if (!figure->legend.placement)
 		return;
 	int iplace=0, jplace=0;
-	figure->legend.ro_place_err = cplot_find_empty_rectangle(figure, width, height, &iplace, &jplace, figure->legend.placement);
+	figure->legend.ro_place_err = kahto_find_empty_rectangle(figure, width, height, &iplace, &jplace, figure->legend.placement);
 	if (no_room_for_legend(figure) && figure->legend.scale > figure->legend.minscale) {
 		float diff = figure->legend.scale - figure->legend.minscale;
 		float newscale;
@@ -1084,30 +1084,30 @@ try:
 	figure->legend.ro_xywh[1] = jplace;
 }
 
-void texts_placement(struct cplot_figure *figure) {
+void texts_placement(struct kahto_figure *figure) {
 	for (int i=figure->ntexts-1; i>=0; i--) {
 		int *area = figure->texts[i].ro_area;
-		struct cplot_text *text = figure->texts+i;
+		struct kahto_text *text = figure->texts+i;
 		area[0] = iroundpos(figure->wh[0] * text->xy[0]);
 		area[1] = iroundpos(figure->wh[1] * text->xy[1]);
 		if (text->rowheight == 0)
 			text->rowheight = figure->legend.rowheight;
-		if (text->reference == cplot_dataarea_e) {
+		if (text->reference == kahto_dataarea_e) {
 			area[0] += figure->ro_inner_xywh[0];
 			area[1] += figure->ro_inner_xywh[1];
 		}
 	}
 }
 
-static struct cplot_graph* add_graph(struct cplot_args *args) {
+static struct kahto_graph* add_graph(struct kahto_args *args) {
 	if (args->figure->mem_graph < args->figure->ngraph+1)
 		args->figure->graph = realloc(args->figure->graph,
 			(args->figure->mem_graph = args->figure->ngraph+3) * sizeof(void*));
 
-	struct cplot_graph *graph;
-	args->figure->graph[args->figure->ngraph++] = graph = malloc(sizeof(struct cplot_graph));
-	/* copy to cplot_graph the part which is shared with cplot_args */
-	memcpy(&graph->yxaxis, &args->yaxis, sizeof(struct cplot_graph) - ((char*)graph->yxaxis - (char*)graph));
+	struct kahto_graph *graph;
+	args->figure->graph[args->figure->ngraph++] = graph = malloc(sizeof(struct kahto_graph));
+	/* copy to kahto_graph the part which is shared with kahto_args */
+	memcpy(&graph->yxaxis, &args->yaxis, sizeof(struct kahto_graph) - ((char*)graph->yxaxis - (char*)graph));
 
 	/* find or create a data object for the graph */
 #define nth(ptr, n) (&(ptr) + (n))
@@ -1118,10 +1118,10 @@ static struct cplot_graph* add_graph(struct cplot_args *args) {
 			continue; }
 
 		int *type = nth(args->ytype, iyxz);
-		if (*type == cplot_notype && thedata)
+		if (*type == kahto_notype && thedata)
 			*type = args->ytype; // unspecified type equals ytype, useful with errorbars
 
-		struct cplot_data *data = NULL;
+		struct kahto_data *data = NULL;
 		long length = args->xlen * args->ylen; // only with colormesh
 		if (length == 0)
 			length = args->len;
@@ -1136,7 +1136,7 @@ static struct cplot_graph* add_graph(struct cplot_args *args) {
 					data->type == *type &&
 					data->length == length &&
 					!memcmp(data->minmax, args->minmax[iyxz], sizeof(data->minmax)) &&
-					(data->have_minmax & (cplot_minbit|cplot_maxbit)) == (cplot_minbit|cplot_maxbit)
+					(data->have_minmax & (kahto_minbit|kahto_maxbit)) == (kahto_minbit|kahto_maxbit)
 				) {
 					graph->data.arr[iyxz] = data;
 					goto found;
@@ -1165,7 +1165,7 @@ static struct cplot_graph* add_graph(struct cplot_args *args) {
 		if (data->next)
 			data->next->prev = data;
 		if (!thedata) {
-			data->have_minmax = cplot_minbit|cplot_maxbit;
+			data->have_minmax = kahto_minbit|kahto_maxbit;
 			data->minmax[1] = length-1;
 		}
 
@@ -1173,29 +1173,29 @@ found:
 		++data->n_users;
 		if (args->yxzowner[iyxz])
 			data->owner = args->yxzowner[iyxz];
-		if (args->have_minmax[iyxz] & cplot_minbit) {
+		if (args->have_minmax[iyxz] & kahto_minbit) {
 			data->minmax[0] = args->minmax[iyxz][0];
-			data->have_minmax |= cplot_minbit;
+			data->have_minmax |= kahto_minbit;
 		}
-		if (args->have_minmax[iyxz] & cplot_maxbit) {
+		if (args->have_minmax[iyxz] & kahto_maxbit) {
 			data->minmax[1] = args->minmax[iyxz][1];
-			data->have_minmax |= cplot_maxbit;
+			data->have_minmax |= kahto_maxbit;
 		}
 	}
 #undef nth
 
 	if (!graph->yxaxis[0])
-		graph->yxaxis[0] = cplot_yaxis0(args->figure);
+		graph->yxaxis[0] = kahto_yaxis0(args->figure);
 	if (!graph->yxaxis[1])
-		graph->yxaxis[1] = cplot_xaxis0(args->figure);
+		graph->yxaxis[1] = kahto_xaxis0(args->figure);
 	if (graph->data.arr[2] && !graph->yxaxis[2]) {
 		if (args->figure->last_caxis)
 			graph->yxaxis[2] = args->figure->last_caxis;
 		else
-			graph->yxaxis[2] = cplot_coloraxis_new(args->figure, 'y');
+			graph->yxaxis[2] = kahto_coloraxis_new(args->figure, 'y');
 	}
 	if (graph->yxaxis[2]) {
-		struct cplot_axis *caxis = graph->yxaxis[2];
+		struct kahto_axis *caxis = graph->yxaxis[2];
 		if (!my_isnan(args->caxis_center))
 			caxis->center = args->caxis_center;
 		if (graph->cmap)
@@ -1218,63 +1218,63 @@ found:
 	return graph;
 }
 
-struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text) {
+struct kahto_axistext* kahto_add_axistext(struct kahto_axis *axis, struct kahto_axistext *text) {
 	if (axis->ntexts >= axis->memtext)
 		axis->text = realloc(axis->text, (axis->memtext = axis->ntexts + 2) * sizeof(axis->text[0]));
 	axis->text[axis->ntexts++] = text;
 	return text;
 }
 
-struct cplot_figure* cplot_add_text(struct cplot_figure *figure, struct cplot_text *text) {
+struct kahto_figure* kahto_add_text(struct kahto_figure *figure, struct kahto_text *text) {
 	if (figure->ntexts >= figure->memtext)
 		figure->texts = realloc(figure->texts, (figure->memtext = figure->ntexts + 2) * sizeof(figure->texts[0]));
 	figure->texts[figure->ntexts++] = *text;
 	return figure;
 }
 
-struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
-	struct cplot_axistext *text = malloc(sizeof(struct cplot_axistext));
-	*text = (struct cplot_axistext) {
+struct kahto_axistext* kahto_axislabel(struct kahto_axis *axis, char *label) {
+	struct kahto_axistext *text = malloc(sizeof(struct kahto_axistext));
+	*text = (struct kahto_axistext) {
 		.text = label,
 		.pos = 0.5,
 		.hvalign = {-0.5, -1.2 * (axis->pos < 0.5)},
 		.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
 		.axis = axis,
 		.rotation_grad = 300 * (axis->direction == 1),
-		.type = cplot_axistext_label,
+		.type = kahto_axistext_label,
 	};
-	return cplot_add_axistext(axis, text);
+	return kahto_add_axistext(axis, text);
 }
 
-void cplot_ticklabels(struct cplot_axis *axis, char **names, int howmany) {
-	axis->ticks->init = cplot_init_ticker_arbitrary_datacoord_enum;
+void kahto_ticklabels(struct kahto_axis *axis, char **names, int howmany) {
+	axis->ticks->init = kahto_init_ticker_arbitrary_datacoord_enum;
 	axis->ticks->tickerdata.arb.labels = names;
 	axis->ticks->tickerdata.arb.nticks = howmany;
 	axis->ticks->rotation_grad = 300;
 }
 
-struct cplot_args* cplot_defaultargs(struct cplot_args *args) {
-	*args = (struct cplot_args) {
-		__cplot_defaultargs
+struct kahto_args* kahto_defaultargs(struct kahto_args *args) {
+	*args = (struct kahto_args) {
+		__kahto_defaultargs
 	};
 	return args;
 }
 
-struct cplot_args* cplot_default_lineargs(struct cplot_args *args) {
-	*args = (struct cplot_args) {
-		__cplot_defaultargs,
-			cplot_lineargs,
+struct kahto_args* kahto_default_lineargs(struct kahto_args *args) {
+	*args = (struct kahto_args) {
+		__kahto_defaultargs,
+			kahto_lineargs,
 	};
 	return args;
 }
 
-struct cplot_axis* cplot_remove_ticks(struct cplot_axis *axis) {
+struct kahto_axis* kahto_remove_ticks(struct kahto_axis *axis) {
 	free(axis->ticks);
 	axis->ticks = NULL;
 	return axis;
 }
 
-void cplot_destroy_axis(struct cplot_axis *axis) {
+void kahto_destroy_axis(struct kahto_axis *axis) {
 	for (int i=axis->ntexts-1; i>=0; i--) {
 		if (axis->text[i]->owner)
 			free(axis->text[i]->text);
@@ -1285,7 +1285,7 @@ void cplot_destroy_axis(struct cplot_axis *axis) {
 	free(axis);
 }
 
-void cplot_data_unlink(struct cplot_data *data) {
+void kahto_data_unlink(struct kahto_data *data) {
 	if (!data || --data->n_users)
 		return;
 	if (data->owner)
@@ -1297,9 +1297,9 @@ void cplot_data_unlink(struct cplot_data *data) {
 	free(data);
 }
 
-void cplot_destroy_graph(struct cplot_graph *graph) {
+void kahto_destroy_graph(struct kahto_graph *graph) {
 	for (int j=0; j<arrlen(graph->data.arr); j++)
-		cplot_data_unlink(graph->data.arr[j]);
+		kahto_data_unlink(graph->data.arr[j]);
 	if (graph->cmap_owner)
 		free(graph->cmap);
 	if (graph->labelowner)
@@ -1307,13 +1307,13 @@ void cplot_destroy_graph(struct cplot_graph *graph) {
 	free(graph);
 }
 
-struct cplot_figure* cplot_destroy_single(struct cplot_figure *fig) {
+struct kahto_figure* kahto_destroy_single(struct kahto_figure *fig) {
 	/* Subfigures must be destroyed already or referenced by other pointers. */
 	free(fig->subfigures);
 	free(fig->subfigures_xywh);
 
 	for (int i=0; i<fig->naxis; i++)
-		cplot_destroy_axis(fig->axis[i]);
+		kahto_destroy_axis(fig->axis[i]);
 	free(fig->axis);
 	if (fig->ttra_owner) {
 		ttra_destroy(fig->ttra);
@@ -1322,7 +1322,7 @@ struct cplot_figure* cplot_destroy_single(struct cplot_figure *fig) {
 	free(fig->legend.ro_datay);
 
 	for (int i=0; i<fig->ngraph; i++)
-		cplot_destroy_graph(fig->graph[i]);
+		kahto_destroy_graph(fig->graph[i]);
 	free(fig->graph);
 
 	if (fig->title.owner)
@@ -1340,30 +1340,30 @@ struct cplot_figure* cplot_destroy_single(struct cplot_figure *fig) {
 	return fig;
 }
 
-void cplot_destroy(struct cplot_figure *fig) {
+void kahto_destroy(struct kahto_figure *fig) {
 	if (!fig)
 		return;
 	for (int i=0; i<fig->nsubfigures; i++)
-		cplot_destroy(fig->subfigures[i]);
-	free(cplot_destroy_single(fig));
+		kahto_destroy(fig->subfigures[i]);
+	free(kahto_destroy_single(fig));
 }
 
-struct cplot_figure* cplot_clean(struct cplot_figure *fig) {
+struct kahto_figure* kahto_clean(struct kahto_figure *fig) {
 	if (!fig)
 		return fig;
 	for (int i=0; i<fig->nsubfigures; i++)
-		cplot_destroy(fig->subfigures[i]);
+		kahto_destroy(fig->subfigures[i]);
 	struct ttra *ttra = fig->ttra;
 	fig->ttra_owner = 0;
 	int ttra_owner = fig->ttra_owner;
-	cplot_destroy_single(fig); // fig not freed
-	cplot_figure_init_axes(cplot_figure_void(fig));
+	kahto_destroy_single(fig); // fig not freed
+	kahto_figure_init_axes(kahto_figure_void(fig));
 	fig->ttra = ttra;
 	fig->ttra_owner = ttra_owner;
 	return fig;
 }
 
-struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
+struct kahto_figure* kahto_plot_args(struct kahto_args *args) {
 	if (args->argsfun)
 		args->argsfun(args);
 
@@ -1377,36 +1377,36 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 		if (labels)
 			args->label = labels[0];
 
-		struct cplot_figure *figure = cplot_plot_args(args);
+		struct kahto_figure *figure = kahto_plot_args(args);
 
 		args->figure = figure;
 		args->figureptr = NULL;
 		for (int i=1; i<args->ystride; i++) {
 			if (labels)
 				args->label = labels[i];
-			args->ydata += cplot_sizes[args->ytype];
-			cplot_plot_args(args);
+			args->ydata += kahto_sizes[args->ytype];
+			kahto_plot_args(args);
 		}
 		return figure;
 	}
 
-	struct cplot_figure *figure1 = NULL;
-	struct cplot_figure **figure = args->figureptr ? args->figureptr : &figure1;
+	struct kahto_figure *figure1 = NULL;
+	struct kahto_figure **figure = args->figureptr ? args->figureptr : &figure1;
 	if (!*figure)
 		*figure =
 			args->figure ? args->figure :
 			args->yaxis ? args->yaxis->figure :
 			args->xaxis ? args->xaxis->figure :
-			cplot_figure_new();
+			kahto_figure_new();
 	args->figure = *figure;
-	struct cplot_graph *graph = add_graph(args);
+	struct kahto_graph *graph = add_graph(args);
 
 	/* copy if necessary */
 	for (int idim=0; idim<arrlen(graph->data.arr); idim++) {
-		struct cplot_data *data = graph->data.arr[idim];
+		struct kahto_data *data = graph->data.arr[idim];
 		if (!data || data->owner != -1)
 			continue;
-		size_t size = cplot_sizes[data->type] * data->length;
+		size_t size = kahto_sizes[data->type] * data->length;
 		void *old = data->data;
 		if (!(data->data = malloc(size)))
 			fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
@@ -1415,7 +1415,7 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 		else {
 			/* after copying, stride == 1 */
 			char *dt = data->data;
-			int size = cplot_sizes[data->type];
+			int size = kahto_sizes[data->type];
 			int stride = data->stride;
 			for (int i=data->length-1; i>=0; i--)
 				memcpy(dt+i*size, (char*)old+i*stride*size, size);
@@ -1432,7 +1432,7 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 	return *figure;
 }
 
-void cplot_forward_graphcolor(struct cplot_graph *graph) {
+void kahto_forward_graphcolor(struct kahto_graph *graph) {
 	if (!graph->markerstyle.color)
 		graph->markerstyle.color = graph->color;
 	if (!graph->linestyle.color)
@@ -1441,8 +1441,8 @@ void cplot_forward_graphcolor(struct cplot_graph *graph) {
 		graph->errstyle.color = graph->color;
 }
 
-void cplot_set_colors(struct cplot_figure *figure) {
-	struct cplot_colorscheme *cs = &figure->colorscheme;
+void kahto_set_colors(struct kahto_figure *figure) {
+	struct kahto_colorscheme *cs = &figure->colorscheme;
 	if (!cs->colors || cs->cmh_enum) {
 		cs->ncolors = figure->ngraph;
 		if (cs->colors && cs->owner)
@@ -1450,7 +1450,7 @@ void cplot_set_colors(struct cplot_figure *figure) {
 		cs->colors = malloc((cs->ncolors+1) * sizeof(unsigned));
 		cs->owner = 1;
 		cs->colors[cs->ncolors] = 0;
-		cplot_make_colorscheme_from_cmap(cs->colors, cmh_colormaps[Abs(cs->cmh_enum)].map, cs->ncolors, cs->without_ends);
+		kahto_make_colorscheme_from_cmap(cs->colors, cmh_colormaps[Abs(cs->cmh_enum)].map, cs->ncolors, cs->without_ends);
 		cs->cmh_enum = 0;
 	}
 	if (cs->ncolors <= 0) {
@@ -1460,12 +1460,12 @@ void cplot_set_colors(struct cplot_figure *figure) {
 	for (int i=0; i<figure->ngraph; i++) {
 		if (!figure->graph[i]->color)
 			figure->graph[i]->color = cs->colors[figure->graph[i]->icolor % cs->ncolors];
-		cplot_forward_graphcolor(figure->graph[i]);
+		kahto_forward_graphcolor(figure->graph[i]);
 	}
 	figure->ro_colors_set = 1;
 }
 
-static void subfigures_xywh_to_pixels(struct cplot_figure *fig, int islot, int px[4]) {
+static void subfigures_xywh_to_pixels(struct kahto_figure *fig, int islot, int px[4]) {
 	px[0] = iroundpos(fig->subfigures_xywh[islot][0] * fig->ro_inner_xywh[2]) + fig->ro_inner_xywh[0];
 	px[1] = iroundpos(fig->subfigures_xywh[islot][1] * fig->ro_inner_xywh[3]) + fig->ro_inner_xywh[1];
 	px[2] = iroundpos(fig->ro_inner_xywh[2] * fig->subfigures_xywh[islot][2]);
@@ -1476,7 +1476,7 @@ static void subfigures_xywh_to_pixels(struct cplot_figure *fig, int islot, int p
 		px[3] = fig->wh[1] - px[1];
 }
 
-void cplot_xywh_to_subfigures(struct cplot_figure *fig) {
+void kahto_xywh_to_subfigures(struct kahto_figure *fig) {
 	for (int isub=0; isub<fig->nsubfigures; isub++) {
 		if (!fig->subfigures[isub])
 			continue;
@@ -1490,20 +1490,20 @@ void cplot_xywh_to_subfigures(struct cplot_figure *fig) {
 	}
 }
 
-void cplot_clear_data(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
+void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride) {
 	int ystart = figure->ro_inner_xywh[1];
 	int xstart = figure->ro_inner_xywh[0];
-	cplot_fill_u4(canvas+ystride*ystart+xstart, figure->background, figure->ro_inner_xywh[2], figure->ro_inner_xywh[3], ystride);
+	kahto_fill_u4(canvas+ystride*ystart+xstart, figure->background, figure->ro_inner_xywh[2], figure->ro_inner_xywh[3], ystride);
 }
 
 /* For animation. Selectively copied from draw_ticks. */
-void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride) {
+void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride) {
 	int naxis = figure->naxis;
 	int *xywh = figure->ro_inner_xywh;
 	int inner_area[] = xywh_to_area(xywh);
 	for (int iaxis=0; iaxis<naxis; iaxis++) {
-		struct cplot_axis *axis = figure->axis[iaxis];
-		struct cplot_ticks *ticks = axis->ticks;
+		struct kahto_axis *axis = figure->axis[iaxis];
+		struct kahto_ticks *ticks = axis->ticks;
 		if (!ticks || !ticks->gridstyle.style)
 			continue;
 		int nticks = ticks->tickerdata.common.nticks;
@@ -1524,7 +1524,7 @@ void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride)
 	}
 }
 
-void cplot_connect_x(struct cplot_figure **figs, int nconnected) {
+void kahto_connect_x(struct kahto_figure **figs, int nconnected) {
 	int x0 = figs[0]->ro_inner_xywh[0];
 	int x1 = x0 + figs[0]->ro_inner_xywh[2];
 	for (int i=1; i<nconnected; i++) {
@@ -1542,34 +1542,34 @@ void cplot_connect_x(struct cplot_figure **figs, int nconnected) {
 	}
 }
 
-void cplot_layout(struct cplot_figure *fig) {
+void kahto_layout(struct kahto_figure *fig) {
 	/* this figure first because ro_inner_xywh and other things are needed in subfigures */
-	if (cplot_figure_layout(fig) && fig->fix_too_little_space) {
+	if (kahto_figure_layout(fig) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
-		cplot_figure_layout(fig);
+		kahto_figure_layout(fig);
 	}
 	/* then subfigures */
-	cplot_xywh_to_subfigures(fig);
+	kahto_xywh_to_subfigures(fig);
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((fig->subfigures[i]))
-			cplot_layout(fig->subfigures[i]);
+			kahto_layout(fig->subfigures[i]);
 	if (fig->nconnected_x)
-		cplot_connect_x(fig->connected_x, fig->nconnected_x);
+		kahto_connect_x(fig->connected_x, fig->nconnected_x);
 }
 
-void cplot_render(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
-	cplot_figure_render(fig, canvas, ystride); // before subfigures to not cover them with background color
-	struct cplot_figure *f;
+void kahto_render(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
+	kahto_figure_render(fig, canvas, ystride); // before subfigures to not cover them with background color
+	struct kahto_figure *f;
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((f = fig->subfigures[i]))
-			cplot_render(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
+			kahto_render(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
 	if (fig->revert_fixes)
 		fig->revert_fixes(fig);
 }
 
-void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride) {
-	cplot_layout(fig);
-	cplot_render(fig, canvas, ystride);
+void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
+	kahto_layout(fig);
+	kahto_render(fig, canvas, ystride);
 }
 
 static uint32_t* copy_canvas(uint32_t *dest1d, int dest_ystride, uint32_t *src1d, int src_ystride, int *wh) {
@@ -1590,7 +1590,7 @@ static int async_response = 2,
 		   async_request = 1,
 		   async_step = 3;
 
-static int async_update(struct cplot_async *async, uint32_t *canvas, int ystride) {
+static int async_update(struct kahto_async *async, uint32_t *canvas, int ystride) {
 	if (!async)
 		return 0;
 	if (async->_exit == async_request)
@@ -1607,49 +1607,49 @@ static int async_update(struct cplot_async *async, uint32_t *canvas, int ystride
 	return 1;
 }
 
-int cplot_async_lock(struct cplot_async *async) {
+int kahto_async_lock(struct kahto_async *async) {
 	async->_lock = async_request;
 	while (async->_lock != async_response) {
-		if (!cplot_async_running(async))
+		if (!kahto_async_running(async))
 			return 1;
 		usleep(10);
 	}
 	return 0;
 }
 
-void cplot_async_unlock(struct cplot_async *async) {
+void kahto_async_unlock(struct kahto_async *async) {
 	async->_lock = 0;
 }
 
-void cplot_async_unlock_step(struct cplot_async *async) {
+void kahto_async_unlock_step(struct kahto_async *async) {
 	async->_lock = async_step;
 }
 
-void cplot_async_stop(struct cplot_async *async) {
+void kahto_async_stop(struct kahto_async *async) {
 	async->_exit = async_request;
 }
 
-int cplot_async_running(struct cplot_async *async) {
+int kahto_async_running(struct kahto_async *async) {
 	return async->_exit != async_response;
 }
 
-void cplot_async_destroy(struct cplot_async *async) {
-	if (cplot_async_running(async))
-		cplot_async_stop(async);
+void kahto_async_destroy(struct kahto_async *async) {
+	if (kahto_async_running(async))
+		kahto_async_stop(async);
 	pthread_join(async->_thread, NULL);
-	cplot_destroy(async->figure);
+	kahto_destroy(async->figure);
 	free(async);
 }
 
 static void* async_show(void *vargs) {
-	struct cplot_async *h = vargs;
-	cplot_show_preserve(h->figure);
+	struct kahto_async *h = vargs;
+	kahto_show_preserve(h->figure);
 	h->_exit = async_response;
 	return NULL;
 }
 
-struct cplot_async* cplot_async_show(struct cplot_figure *fig) {
-	struct cplot_async *h = calloc(1, sizeof(*h));
+struct kahto_async* kahto_async_show(struct kahto_figure *fig) {
+	struct kahto_async *h = calloc(1, sizeof(*h));
 	h->figure = fig;
 	fig->async = h;
 	pthread_create(&h->_thread, NULL, async_show, h);
@@ -1657,15 +1657,15 @@ struct cplot_async* cplot_async_show(struct cplot_figure *fig) {
 }
 
 static void* async_write_mp4(void *vargs) {
-	struct cplot_async *h = vargs;
-	cplot_async_unlock_step(h);
-	cplot_write_mp4_preserve(h->figure, NULL, h->_fps);
+	struct kahto_async *h = vargs;
+	kahto_async_unlock_step(h);
+	kahto_write_mp4_preserve(h->figure, NULL, h->_fps);
 	h->_exit = async_response;
 	return NULL;
 }
 
-struct cplot_async* cplot_async_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
-	struct cplot_async *h = calloc(1, sizeof(*h));
+struct kahto_async* kahto_async_write_mp4(struct kahto_figure *fig, const char *name, float fps) {
+	struct kahto_async *h = calloc(1, sizeof(*h));
 	h->figure = fig;
 	h->_fps = fps;
 	if (name)
@@ -1675,15 +1675,15 @@ struct cplot_async* cplot_async_write_mp4(struct cplot_figure *fig, const char *
 	return h;
 }
 
-void cplot_async_join(struct cplot_async **async, int n) {
+void kahto_async_join(struct kahto_async **async, int n) {
 	unsigned char *mask = malloc(n);
 	memset(mask, 1, n);
 	while (1) {
 		usleep(50'000);
 		int count = 0;
 		for (int i=0; i<n; i++) {
-			if (mask[i] && !cplot_async_running(async[i])) {
-				cplot_async_destroy(async[i]);
+			if (mask[i] && !kahto_async_running(async[i])) {
+				kahto_async_destroy(async[i]);
 				mask[i] = 0;
 			}
 			count += mask[i];
@@ -1695,41 +1695,41 @@ void cplot_async_join(struct cplot_async **async, int n) {
 }
 
 #ifdef HAVE_PNG
-#include "cplot_png.c"
+#include "kahto_png.c"
 #else
-struct cplot_figure* cplot_write_png_preserve(struct cplot_figure *a, const char *b) {
-	fprintf(stderr, "cplot library was compiled without support for writing a png image.\n"
+struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *a, const char *b) {
+	fprintf(stderr, "kahto library was compiled without support for writing a png image.\n"
 		"Configure and compile again with libpng enabled.\n"
 	);
 	return a;
 }
 #endif
-void cplot_write_png(struct cplot_figure *fig, const char *name) {
-	cplot_destroy(cplot_write_png_preserve(fig, name));
+void kahto_write_png(struct kahto_figure *fig, const char *name) {
+	kahto_destroy(kahto_write_png_preserve(fig, name));
 }
 
 #ifdef HAVE_ffmpeg
-#include "cplot_video.c"
+#include "kahto_video.c"
 #else
-struct cplot_figure* cplot_write_mp4_preserve(struct cplot_figure *fig, const char *name, float fps) {
-	fprintf(stderr, "cplot library was compiled without support for \e[1m%s\e[0m\n", __func__);
+struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const char *name, float fps) {
+	fprintf(stderr, "kahto library was compiled without support for \e[1m%s\e[0m\n", __func__);
 	return fig;
 }
 #endif
-void cplot_write_mp4(struct cplot_figure *fig, const char *name, float fps) {
-	cplot_destroy(cplot_write_mp4_preserve(fig, name, fps));
+void kahto_write_mp4(struct kahto_figure *fig, const char *name, float fps) {
+	kahto_destroy(kahto_write_mp4_preserve(fig, name, fps));
 }
 
 #ifdef HAVE_wlh
-#include "cplot_wayland.c"
+#include "kahto_wayland.c"
 #else
-struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) {
-	fprintf(stderr, "cplot was compiled without support for creating a window\n"
+struct kahto_figure* kahto_show_preserve_(struct kahto_figure *fig, char *name) {
+	fprintf(stderr, "kahto was compiled without support for creating a window\n"
 		"Configure and compile again with libwaylandhelper enabled.\n"
 	);
 	return fig;
 }
 #endif
-void cplot_show_(struct cplot_figure *fig, char *name) {
-	cplot_destroy(cplot_show_preserve_(fig, name));
+void kahto_show_(struct kahto_figure *fig, char *name) {
+	kahto_destroy(kahto_show_preserve_(fig, name));
 }

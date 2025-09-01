@@ -1,4 +1,4 @@
-LDLIBS += -lcplot -lm
+LDLIBS += -lkahto -lm
 CFLAGS += -gdwarf-2 -g3
 
 clean:

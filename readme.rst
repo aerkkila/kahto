@@ -25,10 +25,10 @@ Other make commands
 Dependencies
 ------------
 - libpng (optional)
-	- for cplot_write_png
+	- for kahto_write_png
 
 - ffmpeg (optional) (libavcodec, libavformat, libavutil)
-	- for cplot_write_mp4 to create a video
+	- for kahto_write_mp4 to create a video
 
 If not installed, these will by default be downloaded and linked statically.
 
@@ -39,4 +39,4 @@ If not installed, these will by default be downloaded and linked statically.
 	- Very small, header-only library
 
 - libwaylandhelper (optional) (https://codeberg.org/aerkkila/waylandhelper)
-	- for cplot_show to show the figure on the screen (Wayland is needed)
+	- for kahto_show to show the figure on the screen (Wayland is needed)

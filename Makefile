@@ -5,7 +5,7 @@ CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
 OBJECTS =
-cplot_sources = cplot.h cplot_rendering.c rotate.c functions.c ticker.c layout.c cplot_png.c cplot_draw_line.c cplot_draw_triangle.c cplot_colormesh.c Makefile
+kahto_sources = kahto.h kahto_rendering.c rotate.c functions.c ticker.c layout.c kahto_png.c kahto_draw_line.c kahto_draw_triangle.c kahto_colormesh.c Makefile
 dep_dir = dependencies
 dep_get =
 
@@ -21,7 +21,7 @@ endif
 ifeq ($(use_cmh_colormaps), 1)
 else # mandatory
 	dep_get += $(dep_dir)/colormap-headers
-	cplot_sources += $(dep_dir)/colormap-headers/cmh_colormaps.h
+	kahto_sources += $(dep_dir)/colormap-headers/cmh_colormaps.h
 	CFLAGS += -I$(dep_dir)/colormap-headers
 endif
 
@@ -35,28 +35,28 @@ else ifeq ($(use_libwaylandhelper), 2)
 	CFLAGS += -I$(dep_dir)/waylandhelper -DHAVE_wlh
 endif
 ifneq ($(use_libwaylandhelper), 0)
-	cplot_sources += cplot_wayland.c
+	kahto_sources += kahto_wayland.c
 endif
 
 ifeq ($(use_ffmpeg), 1)
 	LDLIBS += -lavcodec -lavutil -lavformat
 	CFLAGS += -DHAVE_ffmpeg
-	cplot_sources += cplot_video.c
+	kahto_sources += kahto_video.c
 endif
 
-all: libcplot.so
+all: libkahto.so
 
 tulosta:
 	@echo dep_get: $(dep_get)
 	@echo LDLIBS: $(LDLIBS)
 
-testi.out: testi.c cplot.o $(OBJECTS)
+testi.out: testi.c kahto.o $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-cplot.o: cplot.c $(cplot_sources) config.mk
+kahto.o: kahto.c $(kahto_sources) config.mk
 	$(CC) $(CFLAGS_OBJ) -o $@ $<
 
-libcplot.so: cplot.c $(cplot_sources) $(OBJECTS) config.mk
+libkahto.so: kahto.c $(kahto_sources) $(OBJECTS) config.mk
 	$(CC) $(CFLAGS_LIB) -o $@ $< $(OBJECTS) $(LDLIBS)
 
 functions.c: make_functions.pl functions.in.c
@@ -99,12 +99,13 @@ clean: _clean
 dist-clean: _clean
 	rm -rf $(dep_dir) config.mk
 
-install: libcplot.so
+install: libkahto.so
 	mkdir -p $(prefix)/include $(prefix)/lib
-	cp cplot.h $(prefix)/include
-	cp libcplot.so $(prefix)/lib
+	cp kahto.h $(prefix)/include
+	cp libkahto.so $(prefix)/lib
 
 uninstall:
+	rm -rf $(prefix)/include/kahto.h $(prefix)/lib/libkahto.so
 	rm -rf $(prefix)/include/cplot.h $(prefix)/lib/libcplot.so
-	if [ -d $(prefix)/include ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/include fi
-	if [ -d $(prefix)/lib ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/lib fi
+	if [ -d $(prefix)/include ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/include; fi
+	if [ -d $(prefix)/lib ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/lib; fi

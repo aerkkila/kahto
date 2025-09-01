@@ -1,10 +1,10 @@
 #ifndef CPLOT_NO_VERSION_CHECK
 #define CPLOT_NO_VERSION_CHECK
 #endif
-#include "cplot.h"
+#include "kahto.h"
 #include <ttra.h>
 
-static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *tk, int ipar, int *edges_figpx) {
+static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *tk, int ipar, int *edges_figpx) {
 	int nlabels = tk->tickerdata.common.nticks, area[4];
 	char labelbuff[128];
 	char *label = labelbuff;
@@ -38,7 +38,7 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct cplot_ticks *t
 	}
 }
 
-static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
+static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
 	const int *xywh = axis->figure->ro_inner_xywh;
 	int ipar = axis->direction == 1;
 	axis->ro_line[ipar] = axis->ro_area[ipar] = xywh[ipar];
@@ -52,8 +52,8 @@ static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
 			axis->text[i]->ro_area[ipar+2] += move;
 		}
 
-	struct cplot_figure *fig = axis->figure;
-	struct cplot_ticks *tk = axis->ticks;
+	struct kahto_figure *fig = axis->figure;
+	struct kahto_ticks *tk = axis->ticks;
 	if (!tk || !tk->visible)
 		return;
 	int edges_figpx[] = {xywh[2+ipar], -xywh[2+ipar]};
@@ -62,10 +62,10 @@ static void axis_set_parallel_sizes(struct cplot_axis *axis, int firsttime) {
 	tk->ro_labelarea[ipar+2] = edges_figpx[1];
 }
 
-static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
+static void get_parallel_limits(struct kahto_axis *axis, int *limits) {
 	int iort = axis->direction == 0;
 	int ipar = !iort;
-	struct cplot_figure *fig = axis->figure;
+	struct kahto_figure *fig = axis->figure;
 	int side = axis->pos >= 0.5;
 	if (!axis->ticks || !axis->ticks->visible) {
 		limits[0] = limits[1] = 0;
@@ -77,10 +77,10 @@ static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
 		update_max(limits[0], fig->title.ro_area[3]);
 
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
-		struct cplot_axis *ax1 = fig->axis[iaxis];
+		struct kahto_axis *ax1 = fig->axis[iaxis];
 		if (ax1->direction == axis->direction)
 			continue;
-		struct cplot_ticks *tk1 = ax1->ticks;
+		struct kahto_ticks *tk1 = ax1->ticks;
 		if (!tk1)
 			continue;
 		if (side) {
@@ -100,7 +100,7 @@ static void get_parallel_limits(struct cplot_axis *axis, int *limits) {
 	}
 }
 
-void limits_to_conflicts(struct cplot_axis *axis, int *limits) {
+void limits_to_conflicts(struct kahto_axis *axis, int *limits) {
 	/* Limits was the pixels in which the room ends (exclusive?).
 	   This converts it to conflict in pixels units. */
 	if (!axis->ticks) {
@@ -116,7 +116,7 @@ void limits_to_conflicts(struct cplot_axis *axis, int *limits) {
 
 struct layout_ort_args {
 	int *imargin_xyxy, iort, iouter, iinner, iside;
-	struct cplot_figure *fig;
+	struct kahto_figure *fig;
 };
 
 #define unpack_args(a)\
@@ -126,9 +126,9 @@ struct layout_ort_args {
 	iinner = a->iinner, \
 	iside = a->iside
 
-static void _axis_line_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
+static void _axis_line_orthogonal(struct kahto_axis *axis, struct layout_ort_args *args) {
 	float fw;
-	if (axis->linestyle.style == cplot_line_none_e) {
+	if (axis->linestyle.style == kahto_line_none_e) {
 		if (!axis->po[1])
 			return;
 		fw = axis->po[1]; // coloraxis
@@ -150,8 +150,8 @@ static void _axis_line_orthogonal(struct cplot_axis *axis, struct layout_ort_arg
 	axis->ro_line[iort] = axis->ro_line[iort+2] = axis->ro_area[iinner];
 }
 
-static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
-	struct cplot_ticks *tk = axis->ticks;
+static void _axis_tick_lines_orthogonal(struct kahto_axis *axis, struct layout_ort_args *args) {
+	struct kahto_ticks *tk = axis->ticks;
 	if (!tk || !tk->visible || !tk->init)
 		return;
 	unpack_args(args);
@@ -172,8 +172,8 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct layout_o
 	imargin_xyxy[iouter] += length;
 }
 
-static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
-	struct cplot_ticks *tk = axis->ticks;
+static void _axis_ticklabels_orthogonal(struct kahto_axis *axis, struct layout_ort_args *args) {
+	struct kahto_ticks *tk = axis->ticks;
 	if (!tk || !tk->visible || !tk->have_labels)
 		return;
 	unpack_args(args);
@@ -203,14 +203,14 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 	imargin_xyxy[iouter] += reserved;
 }
 
-static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
+static void _axis_texts_orthogonal(struct kahto_axis *axis, struct layout_ort_args *args) {
 	int imaxtext = 0;
 	unpack_args(args);
 	int sizes[axis->ntexts];
 	for (int itext=0; itext<axis->ntexts; itext++) {
 		if (!axis->text[itext])
 			continue;
-		struct cplot_axistext *axistext = axis->text[itext];
+		struct kahto_axistext *axistext = axis->text[itext];
 		set_fontheight(args->fig, axistext->rowheight);
 		int area[4];
 		put_text(axis->figure->ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
@@ -239,7 +239,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 	imargin_xyxy[iouter] += imaxtext;
 }
 
-void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
+void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
 	if (axis->direction < 0)
 		return;
 	int isx = axis->direction == 0;
@@ -262,17 +262,17 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 }
 
 /* add room for markers whose value is in the axis area but which are clipped partially */
-void cplot_make_inner_margin(struct cplot_figure *fig) {
+void kahto_make_inner_margin(struct kahto_figure *fig) {
 	for (int i=0; i<fig->ngraph; i++) {
-		struct cplot_graph *graph = fig->graph[i];
-		float size_marker = graph->markerstyle.size * !!cplot_visible_marker(graph->markerstyle.marker);
-		float size_line = graph->linestyle.thickness * (graph->linestyle.style != cplot_line_none_e);
+		struct kahto_graph *graph = fig->graph[i];
+		float size_marker = graph->markerstyle.size * !!kahto_visible_marker(graph->markerstyle.marker);
+		float size_line = graph->linestyle.thickness * (graph->linestyle.style != kahto_line_none_e);
 		float size = max(size_marker, size_line);
 		if (size <= 0)
 			continue;
 		for (int iaxis=0; iaxis<2; iaxis++) {
-			struct cplot_axis *axis = graph->yxaxis[iaxis];
-			struct cplot_data *data = graph->data.arr[iaxis];
+			struct kahto_axis *axis = graph->yxaxis[iaxis];
+			struct kahto_data *data = graph->data.arr[iaxis];
 			double axisrange = axis->max - axis->min;
 			int axislen = fig->ro_inner_xywh[2+axis->direction];
 			/* This was derived using pen and paper. Reading this code might be challenging. */
@@ -310,9 +310,9 @@ static void adjust_addmargin(const int *area, int iort, int side, int *testarea,
 		update_max(addmargin[addmargincoord(ipar, 1)], area[ipar+2]-testarea[ipar]);
 }
 
-static void set_addmargin_based_on_texts(struct cplot_axis *axis, int *addmargin) {
-	struct cplot_figure *fig = axis->figure;
-	struct cplot_ticks *tk = axis->ticks;
+static void set_addmargin_based_on_texts(struct kahto_axis *axis, int *addmargin) {
+	struct kahto_figure *fig = axis->figure;
+	struct kahto_ticks *tk = axis->ticks;
 	if (!tk || !tk->visible || !tk->have_labels)
 		return;
 	const int *area = tk->ro_labelarea,
@@ -325,7 +325,7 @@ static void set_addmargin_based_on_texts(struct cplot_axis *axis, int *addmargin
 		adjust_addmargin(area, iort, side, fig->title.ro_area, addmargin);
 
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
-		struct cplot_axis *ax1 = fig->axis[iaxis];
+		struct kahto_axis *ax1 = fig->axis[iaxis];
 		if (ax1->direction == axis->direction)
 			continue;
 		for (int i=0; i<ax1->ntexts; i++)
@@ -333,11 +333,11 @@ static void set_addmargin_based_on_texts(struct cplot_axis *axis, int *addmargin
 	}
 }
 
-static void fit_to_figure(struct cplot_axis **axis_xyxy, int limits[4][2], int *addmargin) {
+static void fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2], int *addmargin) {
 	for (int iaxis=0; iaxis<4; iaxis++) {
 		if (!axis_xyxy[iaxis])
 			continue;
-		struct cplot_ticks *tk = axis_xyxy[iaxis]->ticks;
+		struct kahto_ticks *tk = axis_xyxy[iaxis]->ticks;
 		if (!tk || !tk->visible)
 			continue;
 		int try = limits[iaxis][0] - tk->ro_labelarea[iaxis%2 + 0];
@@ -350,13 +350,13 @@ static void fit_to_figure(struct cplot_axis **axis_xyxy, int limits[4][2], int *
 /* This will make people freak out. */
 #define return return fig->ro_cannot_draw =
 
-int cplot_figure_layout(struct cplot_figure *fig) {
+int kahto_figure_layout(struct kahto_figure *fig) {
 	int imargin_xyxy[4];
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	memset(fig->ro_inner_margin, 0, sizeof(fig->ro_inner_margin));
 	if (!fig->ttra) {
-		struct cplot_figure *super = fig;
+		struct kahto_figure *super = fig;
 		while (super->super) {
 			super = super->super;
 			if (super->ttra) {
@@ -364,7 +364,7 @@ int cplot_figure_layout(struct cplot_figure *fig) {
 				goto break0;
 			}
 		}
-		cplot_figure_ttra_new(fig);
+		kahto_figure_ttra_new(fig);
 break0:
 	}
 	if (!fig->ttra->text_initialized)
@@ -375,11 +375,11 @@ break0:
 		imargin_xyxy[1] += fig->title.ro_area[3];
 	}
 
-	cplot_make_range(fig);
+	kahto_make_range(fig);
 
 	/* tick initialization */
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
-		struct cplot_axis *axis = fig->axis[iaxis];
+		struct kahto_axis *axis = fig->axis[iaxis];
 		if (axis->ticks && axis->ticks->init)
 			axis->ticks->init(axis->ticks, axis->min, axis->max);
 	}
@@ -387,9 +387,9 @@ break0:
 	/* orthogonal axis size */
 	for (int outside=1; outside>=0; outside--)
 		for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
-			struct cplot_axis *axis = fig->axis[iaxis];
+			struct kahto_axis *axis = fig->axis[iaxis];
 			if (axis->pos == (int)axis->pos && axis->outside == outside)
-				cplot_axis_get_orthogonal(axis, imargin_xyxy);
+				kahto_axis_get_orthogonal(axis, imargin_xyxy);
 		}
 
 	if (fig->wh[0] <= imargin_xyxy[0]+imargin_xyxy[2] ||
@@ -407,7 +407,7 @@ break0:
 	if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0 || axis_xywh[0] >= fig->wh[0] || axis_xywh[1] >= fig->wh[1])
 		return 1;
 
-	struct cplot_axis *axis_xyxy[4] = {0};
+	struct kahto_axis *axis_xyxy[4] = {0};
 	for (int i=0; i<fig->naxis; i++) {
 		int ipos = fig->axis[i]->pos != 0;
 		if (!fig->axis[i]->outside && ipos == fig->axis[i]->pos)
@@ -421,7 +421,7 @@ break0:
 		topixels(fig->margin[3], fig),
 	};
 
-	cplot_make_inner_margin(fig);
+	kahto_make_inner_margin(fig);
 
 	/* while (1) but avoid halting in certain situations */
 	for (int iloop=0; iloop<30; iloop++) {

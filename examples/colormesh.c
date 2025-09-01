@@ -1,4 +1,4 @@
-#include <cplot.h>
+#include <kahto.h>
 #include <math.h>
 
 #define xlen 9
@@ -10,6 +10,6 @@ int main() {
 		for (int ii=0; ii<xlen; ii++)
 			zdata[i][ii] = cos(i * 2*pi / ylen) + cos(ii * 3*pi / xlen);
 
-	cplot_show(
-		cplot_colormesh(zdata[0], ylen, xlen));
+	kahto_show(
+		kahto_colormesh(zdata[0], ylen, xlen));
 }

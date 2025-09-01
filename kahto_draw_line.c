@@ -1,4 +1,4 @@
-static void cplot_draw_straight_line(
+static void kahto_draw_straight_line(
 	uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness,
 	int xmin, int xmax, int ymin, int ymax)
 {
@@ -24,7 +24,7 @@ static void cplot_draw_straight_line(
 	return;
 }
 
-static void _cplot_draw_line_sort(const float corners[4][2], unsigned char *ind, int idim) {
+static void _kahto_draw_line_sort(const float corners[4][2], unsigned char *ind, int idim) {
 	ind[0] = ind[3] = 0;
 	for (int i=1; i<4; i++) {
 		if (corners[i][idim] < corners[ind[0]][idim])
@@ -46,16 +46,16 @@ static void _cplot_draw_line_sort(const float corners[4][2], unsigned char *ind,
 
 static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uint32_t color);
 
-#include "cplot_draw_triangle.c"
+#include "kahto_draw_triangle.c"
 
-static void draw_line_cplot(
+static void draw_line_kahto(
 	uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness,
 	int xmin, int xmax, int ymin, int ymax)
 {
 	int dx = xy[2] - xy[0],
 		dy = xy[3] - xy[1];
 	if (!dy || !dx)
-		return cplot_draw_straight_line(canvas, ystride, xy, color, thickness, xmin, xmax, ymin, ymax);
+		return kahto_draw_straight_line(canvas, ystride, xy, color, thickness, xmin, xmax, ymin, ymax);
 
 	int steep = Abs(xy[3] - xy[1]) >= Abs(xy[2] - xy[0]);
 	float m_per_n = steep ? (float)dy / dx : (float)dx / dy; // m,n = (steep ? y,x : x,y)
@@ -93,7 +93,7 @@ static void draw_line_cplot(
 
 	/* draw the line without the end tringles */
 	unsigned char ind[4];
-	_cplot_draw_line_sort(corners, ind, steep);
+	_kahto_draw_line_sort(corners, ind, steep);
 	float m0 = corners[ind[1]][steep];
 	float m1 = corners[ind[2]][steep];
 	float na = corners[ind[1]][!steep];

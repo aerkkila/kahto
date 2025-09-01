@@ -26,9 +26,9 @@ static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *
 	for (long i=0; i<len; i++) {
 		long iout = i * strideout;
 		long iin = i * stridein;
-#if cplot_@dtype >= cplot_f4 // any floating point
+#if kahto_@dtype >= kahto_f4 // any floating point
 		if (
-#if cplot_@dtype == cplot_f4
+#if kahto_@dtype == kahto_f4
 			my_isnan_float(data[iin])
 #else
 			my_isnan_double(data[iin])
@@ -51,9 +51,9 @@ static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, sho
 	for (long i=0; i<len; i++) {
 		long iout = i * strideout;
 		long iin = i * stridein;
-#if cplot_@dtype >= cplot_f4 // any floating point
+#if kahto_@dtype >= kahto_f4 // any floating point
 		if (
-#if cplot_@dtype == cplot_f4
+#if kahto_@dtype == kahto_f4
 			my_isnan_float(data[iin])
 #else
 			my_isnan_double(data[iin])

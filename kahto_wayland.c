@@ -1,26 +1,26 @@
 #include <waylandhelper.h>
 #include <xkbcommon/xkbcommon.h>
 
-enum cplot_show_mode {typing_none, typing_savename};
+enum kahto_show_mode {typing_none, typing_savename};
 
 struct highlight {
-	struct cplot_figure *fig;
+	struct kahto_figure *fig;
 	int igraph;
 	char update;
 	uint32_t *canvascopy;
 	int id_canvascopy, canvascopy_start;
-	struct cplot_figure *fig_canvascopy;
+	struct kahto_figure *fig_canvascopy;
 };
 
-struct cplot_show_cookie {
-	struct cplot_figure *fig;
+struct kahto_show_cookie {
+	struct kahto_figure *fig;
 	char input[256];
 	int len_input;
-	enum cplot_show_mode mode;
+	enum kahto_show_mode mode;
 	struct highlight highlight;
 	char pause;
 };
-#define cookie_t struct cplot_show_cookie
+#define cookie_t struct kahto_show_cookie
 
 static int omit_utf8(const char *str, int len) {
 	if ((signed char)str[len-1] >= 0)
@@ -41,7 +41,7 @@ static int omit_utf8(const char *str, int len) {
 void end_typingmode(cookie_t* cookie) {
 	switch (cookie->mode) {
 		case typing_savename:
-			cplot_write_png_preserve(cookie->fig, cookie->input);
+			kahto_write_png_preserve(cookie->fig, cookie->input);
 			break;
 		case typing_none: break;
 	}
@@ -97,7 +97,7 @@ static void keycallback(struct waylandhelper *wlh) {
 		switch (syms[isym]) {
 			case XKB_KEY_s:
 				if (wlh->last_keymods & WLR_MODIFIER_CTRL)
-					cplot_write_png_preserve(cookie->fig, NULL);
+					kahto_write_png_preserve(cookie->fig, NULL);
 				else {
 					printf("filename: \e[s"), fflush(stdout);
 					cookie->mode = typing_savename;
@@ -115,12 +115,12 @@ static void keycallback(struct waylandhelper *wlh) {
 
 static void motioncallback(struct waylandhelper *wlh, int xmove, int ymove) {
 	cookie_t *cookie = wlh->userdata;
-	struct cplot_figure *fig = cookie->fig;
+	struct kahto_figure *fig = cookie->fig;
 	int ifig, x = wlh->mousex, y = wlh->mousey;
 	struct highlight *hi = &cookie->highlight;
 
 	goto fig_test;
-	while ((ifig = cplot_next_ifigure_from_coords(fig, x, y)) >= 0) {
+	while ((ifig = kahto_next_ifigure_from_coords(fig, x, y)) >= 0) {
 		if (!(fig = fig->subfigures[ifig]))
 			continue;
 		/* convert coordinates to child coordinates */
@@ -178,23 +178,23 @@ void highlight_data(struct waylandhelper *wlh) {
 
 	if (!hl->canvascopy) {
 new_copy:
-		hl->canvascopy_start = cplot_get_startcanvas(hl->fig, cookie->fig, wlh->xres);
+		hl->canvascopy_start = kahto_get_startcanvas(hl->fig, cookie->fig, wlh->xres);
 		hl->canvascopy = duplicate_canvas(wlh->data + hl->canvascopy_start, wlh->xres, hl->fig->wh);
 		hl->fig_canvascopy = hl->fig;
 		hl->id_canvascopy = hl->fig->draw_counter;
 	}
 
 	/* highlight the data */
-	struct cplot_graph *graph = hl->fig->graph[hl->igraph];
-	struct cplot_graph copy = *graph;
+	struct kahto_graph *graph = hl->fig->graph[hl->igraph];
+	struct kahto_graph copy = *graph;
 	copy.linestyle.thickness *= 3;
 	copy.markerstyle.size *= 3;
 	copy.errstyle.thickness *= 3;
-	uint32_t *canvas = wlh->data + hl->canvascopy_start;//cplot_get_startcanvas(hl->fig, cookie->fig, wlh->xres);
-	cplot_graph_render(&copy, canvas, wlh->xres, hl->fig, 0);
+	uint32_t *canvas = wlh->data + hl->canvascopy_start;//kahto_get_startcanvas(hl->fig, cookie->fig, wlh->xres);
+	kahto_graph_render(&copy, canvas, wlh->xres, hl->fig, 0);
 }
 
-struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) {
+struct kahto_figure* kahto_show_preserve_(struct kahto_figure *fig, char *name) {
 	struct waylandhelper wlh = fig->wlh ? *fig->wlh : (struct waylandhelper){
 		.xresmin = 20,
 		.yresmin = 20,
@@ -225,7 +225,7 @@ struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) 
 		fig->wh[1] = wlh.yres;
 		int should_commit = 0;
 		if (wlh.redraw) {
-			cplot_draw(fig, wlh.data, fig->wh[0]);
+			kahto_draw(fig, wlh.data, fig->wh[0]);
 			should_commit++;
 		}
 		if (!cookie.pause && fig->update) {

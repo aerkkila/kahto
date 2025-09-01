@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 
-const char *cplot_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
+const char *kahto_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
 static inline long ifloor_ticker(double a) {
 	a += 1e-7;
@@ -15,13 +15,13 @@ static inline long iceil_ticker(double a) {
 	return r + (r < a);
 }
 
-void cplot__sprint_supernum(char *out, int sizeout, int num) {
+void kahto__sprint_supernum(char *out, int sizeout, int num) {
 	char buff[20];
 	int len;
 	sprintf(buff, "%i%n", num, &len);
 	int slen = 0;
 	for (int i=0; i<len; i++) {
-		const char *str = (buff[i] == '-' ? "⁻" : cplot_supernum[buff[i] - '0']);
+		const char *str = (buff[i] == '-' ? "⁻" : kahto_supernum[buff[i] - '0']);
 		int slen1 = strlen(str);
 		if (slen+slen1+1 >= sizeout)
 			break;
@@ -30,7 +30,7 @@ void cplot__sprint_supernum(char *out, int sizeout, int num) {
 	}
 }
 
-double cplot_get_tick_linear(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
+double kahto_get_tick_linear(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
 	double step = this->tickerdata.lin.step,
 		   base = this->tickerdata.lin.base,
 		   min = this->tickerdata.lin.min;
@@ -45,7 +45,7 @@ double cplot_get_tick_linear(struct cplot_ticks *this, int ind, char **label, in
 		int nprinted = snprintf(*label, sizelabel, form, val/base, base);
 		if (!this->tickerdata.lin.omit_coef) {
 			nprinted += snprintf(*label+nprinted, sizelabel-nprinted, "\n10");
-			cplot__sprint_supernum(*label+nprinted, sizelabel-nprinted, this->tickerdata.lin.baseten);
+			kahto__sprint_supernum(*label+nprinted, sizelabel-nprinted, this->tickerdata.lin.baseten);
 		}
 		else
 			this->tickerdata.lin.out_omitted_coef = 1;
@@ -72,11 +72,11 @@ double cplot_get_tick_linear(struct cplot_ticks *this, int ind, char **label, in
 	return val;
 }
 
-int cplot_get_maxn_subticks_linear(struct cplot_ticks *this) {
+int kahto_get_maxn_subticks_linear(struct kahto_ticks *this) {
 	return this->tickerdata.lin.nsubticks * (this->tickerdata.lin.nticks + 1);
 }
 
-int cplot_get_subticks_linear(struct cplot_ticks *this, float *pos) {
+int kahto_get_subticks_linear(struct kahto_ticks *this, float *pos) {
 	double min = this->tickerdata.lin.min,
 		   step = this->tickerdata.lin.step;
 	int nsub = this->tickerdata.lin.nsubticks,
@@ -96,7 +96,7 @@ int cplot_get_subticks_linear(struct cplot_ticks *this, float *pos) {
 	return itick;
 }
 
-double cplot_get_tick_datetime_annual(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
+double kahto_get_tick_datetime_annual(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
 	int step = this->tickerdata.datetime.step;
 	time_t min = this->tickerdata.datetime.min;
 	struct tm tm = *gmtime(&min);
@@ -111,7 +111,7 @@ double cplot_get_tick_datetime_annual(struct cplot_ticks *this, int ind, char **
 	return val;
 }
 
-double cplot_get_tick_datetime_monthly(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
+double kahto_get_tick_datetime_monthly(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
 	int step = this->tickerdata.datetime.step;
 	time_t min = this->tickerdata.datetime.min;
 	struct tm tm = *gmtime(&min);
@@ -126,7 +126,7 @@ double cplot_get_tick_datetime_monthly(struct cplot_ticks *this, int ind, char *
 	return val;
 }
 
-double cplot_get_tick_datetime_daily(struct cplot_ticks *this, int ind, char **label, int sizelabel) {
+double kahto_get_tick_datetime_daily(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
 	int step = this->tickerdata.datetime.step;
 	time_t min = this->tickerdata.datetime.min;
 	struct tm tm = *gmtime(&min);
@@ -139,17 +139,17 @@ double cplot_get_tick_datetime_daily(struct cplot_ticks *this, int ind, char **l
 	return val;
 }
 
-double cplot_get_tick_arbitrary_datacoord(struct cplot_ticks *this, int ind, char **label, int _) {
+double kahto_get_tick_arbitrary_datacoord(struct kahto_ticks *this, int ind, char **label, int _) {
 	*label = this->tickerdata.arb.labels[ind];
 	return this->tickerdata.arb.ticks[ind];
 }
 
-double cplot_get_tick_arbitrary_datacoord_enum(struct cplot_ticks *this, int ind, char **label, int _) {
+double kahto_get_tick_arbitrary_datacoord_enum(struct kahto_ticks *this, int ind, char **label, int _) {
 	*label = this->tickerdata.arb.labels[ind];
 	return ind;
 }
 
-double cplot_get_tick_arbitrary_relcoord(struct cplot_ticks *this, int ind, char **label, int _) {
+double kahto_get_tick_arbitrary_relcoord(struct kahto_ticks *this, int ind, char **label, int _) {
 	*label = this->tickerdata.arb.labels[ind];
 	double min = this->tickerdata.arb.min,
 		   max = this->tickerdata.arb.max;
@@ -185,9 +185,9 @@ static double get_linticker_base(double max, int *maxpower_out) {
 	return base;
 }
 
-void cplot_init_ticker_simple(struct cplot_ticks *this, double min, double max) {
-	this->species = cplot_ticker_linear;
-	this->get_tick = cplot_get_tick_linear;
+void kahto_init_ticker_simple(struct kahto_ticks *this, double min, double max) {
+	this->species = kahto_ticker_linear;
+	this->get_tick = kahto_get_tick_linear;
 	double target_nticks0 = this->tickerdata.lin.target_nticks;
 	double target_nticks = target_nticks0 ? target_nticks0 : default_linear_target_nticks;
 	int maxpower;
@@ -199,28 +199,28 @@ void cplot_init_ticker_simple(struct cplot_ticks *this, double min, double max) 
 	this->tickerdata.lin.baseten = maxpower;
 }
 
-void cplot_init_ticker_arbitrary_datacoord(struct cplot_ticks *this, double min, double max) {
-	this->species = cplot_ticker_arbitrary;
-	this->get_tick = cplot_get_tick_arbitrary_datacoord;
+void kahto_init_ticker_arbitrary_datacoord(struct kahto_ticks *this, double min, double max) {
+	this->species = kahto_ticker_arbitrary;
+	this->get_tick = kahto_get_tick_arbitrary_datacoord;
 	this->tickerdata.arb.min = min;
 	this->tickerdata.arb.max = max;
 }
 
-void cplot_init_ticker_arbitrary_datacoord_enum(struct cplot_ticks *this, double min, double max) {
-	this->species = cplot_ticker_arbitrary;
-	this->get_tick = cplot_get_tick_arbitrary_datacoord_enum;
+void kahto_init_ticker_arbitrary_datacoord_enum(struct kahto_ticks *this, double min, double max) {
+	this->species = kahto_ticker_arbitrary;
+	this->get_tick = kahto_get_tick_arbitrary_datacoord_enum;
 	this->tickerdata.arb.min = min;
 	this->tickerdata.arb.max = max;
 }
 
-void cplot_init_ticker_arbitrary_relcoord(struct cplot_ticks *this, double min, double max) {
-	this->species = cplot_ticker_arbitrary;
-	this->get_tick = cplot_get_tick_arbitrary_relcoord;
+void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, double max) {
+	this->species = kahto_ticker_arbitrary;
+	this->get_tick = kahto_get_tick_arbitrary_relcoord;
 	this->tickerdata.arb.min = min;
 	this->tickerdata.arb.max = max;
 }
 
-void cplot_init_ticker_default(struct cplot_ticks *this, double min, double max) {
+void kahto_init_ticker_default(struct kahto_ticks *this, double min, double max) {
 	double step_opts0[] = {1, 1.5, 2, 2.5, 5};
 	int subticks_mul0[] = {4, 3, 4, 5, 5};
 	int nstep_opt0 = arrlen(step_opts0);
@@ -296,10 +296,10 @@ void cplot_init_ticker_default(struct cplot_ticks *this, double min, double max)
 			};
 	}
 
-	this->species = cplot_ticker_linear;
-	this->get_tick = cplot_get_tick_linear;
-	this->get_maxn_subticks = cplot_get_maxn_subticks_linear;
-	this->get_subticks = cplot_get_subticks_linear;
+	this->species = kahto_ticker_linear;
+	this->get_tick = kahto_get_tick_linear;
+	this->get_maxn_subticks = kahto_get_maxn_subticks_linear;
+	this->get_subticks = kahto_get_subticks_linear;
 	this->tickerdata.lin.nticks = best.n;
 	this->tickerdata.lin.step = step_opts[best.iopt] * (best.which ? base1 : base0);
 	this->tickerdata.lin.min = best.min;
@@ -309,7 +309,7 @@ void cplot_init_ticker_default(struct cplot_ticks *this, double min, double max)
 	this->tickerdata.lin.nsubticks = subticks_mul[best.iopt];
 }
 
-void cplot_init_ticker_datetime(struct cplot_ticks *this, double min, double max) {
+void kahto_init_ticker_datetime(struct kahto_ticks *this, double min, double max) {
 	time_t time = min;
 	struct tm tm0 = *gmtime(&time);
 	time = max;
@@ -357,7 +357,7 @@ void cplot_init_ticker_datetime(struct cplot_ticks *this, double min, double max
 	int nticks, add, mod;
 	switch (datetype) {
 		case 0:
-			this->get_tick = cplot_get_tick_datetime_daily;
+			this->get_tick = kahto_get_tick_datetime_daily;
 			add = !!(tm0.tm_sec + tm0.tm_min + tm0.tm_hour);
 			tm0.tm_sec = tm0.tm_min = tm0.tm_hour = 0;
 			tm0.tm_mday += add;
@@ -367,7 +367,7 @@ void cplot_init_ticker_datetime(struct cplot_ticks *this, double min, double max
 			nticks = (max - firsttick) / 86400;
 			break;
 		case 1:
-			this->get_tick = cplot_get_tick_datetime_monthly;
+			this->get_tick = kahto_get_tick_datetime_monthly;
 			add = !!(tm0.tm_sec + tm0.tm_min + tm0.tm_hour + tm0.tm_mday-1);
 			tm0.tm_sec = tm0.tm_min = tm0.tm_hour = 0;
 			tm0.tm_mday = 1;
@@ -379,7 +379,7 @@ void cplot_init_ticker_datetime(struct cplot_ticks *this, double min, double max
 			nticks = nmonths / step + 1;
 			break;
 		case 2:
-			this->get_tick = cplot_get_tick_datetime_annual;
+			this->get_tick = kahto_get_tick_datetime_annual;
 			struct tm year0tm = {.tm_year = tm0.tm_year, .tm_mday = 1};
 			time_t year0_time = timegm(&year0tm);
 			int year0 = tm0.tm_year + (year0_time != min);
@@ -393,7 +393,7 @@ void cplot_init_ticker_datetime(struct cplot_ticks *this, double min, double max
 		default: __builtin_unreachable();
 	}
 
-	struct cplot_tickerdata_datetime *dt = &this->tickerdata.datetime;
+	struct kahto_tickerdata_datetime *dt = &this->tickerdata.datetime;
 	dt->nticks = nticks;
 	dt->step = step;
 	dt->min = firsttick;

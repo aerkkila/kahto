@@ -1,4 +1,4 @@
-#include <cplot.h>
+#include <kahto.h>
 #include <math.h>
 #define len 200
 
@@ -14,46 +14,46 @@ int main(int argc, char **argv) {
 	}
 
 	/* Drawing multiple graphs to same figure. */
-	struct cplot_figure *fig0 = cplot_figure_new();
-	cplot_yx(f4a, i2a, len, .figure=fig0, .label="10 log(i+1)");       // data type is automatically recognized
-	cplot_yx(f4b, i2b, len, .figure=fig0, .label="\e$10 (i+1)^-0.3$"); // data type is automatically recognized
-	cplot_axislabel(cplot_yaxis0(fig0), "real");
-	cplot_axislabel(cplot_xaxis0(fig0), "integer");
+	struct kahto_figure *fig0 = kahto_figure_new();
+	kahto_yx(f4a, i2a, len, .figure=fig0, .label="10 log(i+1)");       // data type is automatically recognized
+	kahto_yx(f4b, i2b, len, .figure=fig0, .label="\e$10 (i+1)^-0.3$"); // data type is automatically recognized
+	kahto_axislabel(kahto_yaxis0(fig0), "real");
+	kahto_axislabel(kahto_xaxis0(fig0), "integer");
 	fig0->legend.rowheight = 1.0 / 25; // defined as the fraction of figure height
 
 	/* The figure can also be obtained from the plotting function
-	   instead of explicitely calling cplot_figure_new().
+	   instead of explicitely calling kahto_figure_new().
 	   In that case, the figure-argument is omitted. */
-	struct cplot_figure *fig1 = cplot_y(f4a, len);
-	cplot_y(i2a, len, .figure=fig1);
-	cplot_y(f8a, len, .figure=fig1, cplot_lineargs);
+	struct kahto_figure *fig1 = kahto_y(f4a, len);
+	kahto_y(i2a, len, .figure=fig1);
+	kahto_y(f8a, len, .figure=fig1, kahto_lineargs);
 	fig1->title.text = "10 log(i+1)";
 
 	/* Usually the methods above are sufficient but sometimes the following syntax is useful. */
-	struct cplot_figure *fig2 = NULL;
-	cplot_y(f4b, len, .figureptr=&fig2, .label="real");
-	cplot_y(i2b, len, .figureptr=&fig2, .label="integer", .markerstyle.marker="4");
+	struct kahto_figure *fig2 = NULL;
+	kahto_y(f4b, len, .figureptr=&fig2, .label="real");
+	kahto_y(i2b, len, .figureptr=&fig2, .label="integer", .markerstyle.marker="4");
 	fig2->title.text = "\e$10 (i+1)^-0.3$";
 
 	/* We can show any figure individually. */
 	if (argc == 1)
-		cplot_write_png_preserve(fig2, "01a.png");
+		kahto_write_png_preserve(fig2, "01a.png");
 	else
-		cplot_show_preserve(fig2); // shows the figure and halts the program until the window is closed
+		kahto_show_preserve(fig2); // shows the figure and halts the program until the window is closed
 
-	/* The functions cplot_show and cplot_write_png destroy the figure in the end.
+	/* The functions kahto_show and kahto_write_png destroy the figure in the end.
 	   To be able to use it again, we used functions *_preserve which don't destroy the figure. */
 
 	/* We can also use the figures as subfigures in a larger figure. */
-	struct cplot_figure *fig = cplot_subfigures_new(2, 2);
+	struct kahto_figure *fig = kahto_subfigures_new(2, 2);
 	fig->subfigures[0] = fig0;
 	fig->subfigures[1] = fig1;
 	fig->subfigures[3] = fig2;
 
 	if (argc == 1)
-		cplot_write_png(fig, "01b.png");
+		kahto_write_png(fig, "01b.png");
 	else
-		cplot_show(fig);
+		kahto_show(fig);
 
 	/* The two functions above destroy the figures in the end and thus, all memory is freed now. */
 }
