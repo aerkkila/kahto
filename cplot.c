@@ -32,7 +32,7 @@ unsigned cplot_colorscheme_00[] = { // color deficient semi friendly, semi dark
 	0xffc84eff, 0xffffff33, 0xffa65628, 0xff999999, 0
 };
 unsigned cplot_colorscheme_01[] = { // color deficient friendly, semi dark
-	0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, /*0xff9f4a96, */0xff56b4e9, 0
+	0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, 0xff56b4e9, 0xffdddd55, 0xff9f4a96, 0
 };
 unsigned cplot_colorscheme_02[] = { // picked from 12 hue values with some changes
 	0xff000000, 0xffff0000, 0xff0000ff, 0xff00b300, 0xffff8000, 0xffff00ff,
