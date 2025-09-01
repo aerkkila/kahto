@@ -172,7 +172,7 @@ static void _axis_tick_lines_orthogonal(struct cplot_axis *axis, struct layout_o
 	imargin_xyxy[iouter] += length;
 }
 
-static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args, struct ttra *ttra) {
+static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
 	struct cplot_ticks *tk = axis->ticks;
 	if (!tk || !tk->visible || !tk->have_labels)
 		return;
@@ -184,7 +184,7 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 	set_fontheight(args->fig, tk->rowheight);
 	for (int i=0; i<nlabels; i++) {
 		tk->get_tick(tk, i, &label, 128);
-		put_text(ttra, label, 0, 0, tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
+		put_text(axis->figure->ttra, label, 0, 0, tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
 		if (-area[iort] > max01[0])
 			max01[0] = -area[iort];
 		if (area[iort+2] > max01[1])
@@ -203,7 +203,7 @@ static void _axis_ticklabels_orthogonal(struct cplot_axis *axis, struct layout_o
 	imargin_xyxy[iouter] += reserved;
 }
 
-static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args, struct ttra *ttra) {
+static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_args *args) {
 	int imaxtext = 0;
 	unpack_args(args);
 	int sizes[axis->ntexts];
@@ -213,7 +213,7 @@ static void _axis_texts_orthogonal(struct cplot_axis *axis, struct layout_ort_ar
 		struct cplot_axistext *axistext = axis->text[itext];
 		set_fontheight(args->fig, axistext->rowheight);
 		int area[4];
-		put_text(ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
+		put_text(axis->figure->ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
 		sizes[itext] = iside ? area[iort+2] : -area[iort];
 		update_max(imaxtext, sizes[itext]);
 		axistext->ro_area[!iort] = area[!iort];
@@ -243,8 +243,6 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 		return;
 	int isx = axis->direction == 0;
 	int iort = isx;
-	struct ttra *ttra = axis->figure->ttra;
-	ttra_set_fontheight(ttra, 30);
 
 	struct layout_ort_args args = {
 		.imargin_xyxy = imargin_xyxy,
@@ -256,8 +254,8 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 	};
 
 	/* From outside in. These change imargin_xyxy and the object.*/
-	_axis_texts_orthogonal(axis, &args, ttra);
-	_axis_ticklabels_orthogonal(axis, &args, ttra);
+	_axis_texts_orthogonal(axis, &args);
+	_axis_ticklabels_orthogonal(axis, &args);
 	_axis_tick_lines_orthogonal(axis, &args);
 	_axis_line_orthogonal(axis, &args);
 }
@@ -375,7 +373,6 @@ break0:
 		imargin_xyxy[1] += fig->title.ro_area[3];
 	}
 
-	ttra_set_fontheight(fig->ttra, 30);
 	cplot_make_range(fig);
 
 	/* tick initialization */
