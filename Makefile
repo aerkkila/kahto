@@ -106,6 +106,5 @@ install: libkahto.so
 
 uninstall:
 	rm -rf $(prefix)/include/kahto.h $(prefix)/lib/libkahto.so
-	rm -rf $(prefix)/include/cplot.h $(prefix)/lib/libcplot.so
 	if [ -d $(prefix)/include ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/include; fi
 	if [ -d $(prefix)/lib ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/lib; fi
