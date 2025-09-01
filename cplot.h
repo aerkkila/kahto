@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 34
+#define __cplot_version_in_program 35
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -209,7 +209,7 @@ struct cplot_text {
 	int ro_area[4];
 };
 
-struct cplot_data_container {
+struct cplot_data {
 	void *data;
 	int type;
 	long length;
@@ -217,15 +217,15 @@ struct cplot_data_container {
 	char have_minmax, owner;
 	double minmax[2];
 	int n_users;
-	struct cplot_data_container *prev, *next;
+	struct cplot_data *prev, *next;
 };
 
 struct cplot_graph {
 	union {
 		struct {
-			struct cplot_data_container *ydata, *xdata, *zdata, *e0data, *e1data;
+			struct cplot_data *ydata, *xdata, *zdata, *e0data, *e1data;
 		} list;
-		struct cplot_data_container *arr[5];
+		struct cplot_data *arr[5];
 	} data;
 	/* the rest must match with cplot_args */
 	struct cplot_axis *yxaxis[3];
@@ -285,7 +285,7 @@ struct cplot_figure {
 	float margin[4];
 	struct cplot_graph **graph;
 	int ngraph, mem_graph, icolor;
-	struct cplot_data_container containers;
+	struct cplot_data data;
 	struct cplot_colorscheme colorscheme;
 	struct cplot_text title;
 	struct cplot_text *texts; // These do not affect the layout. Use cplot_[add_]text to modify.

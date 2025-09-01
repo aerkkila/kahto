@@ -272,7 +272,7 @@ void cplot_make_inner_margin(struct cplot_figure *fig) {
 			continue;
 		for (int iaxis=0; iaxis<2; iaxis++) {
 			struct cplot_axis *axis = graph->yxaxis[iaxis];
-			struct cplot_data_container *data = graph->data.arr[iaxis];
+			struct cplot_data *data = graph->data.arr[iaxis];
 			double axisrange = axis->max - axis->min;
 			int axislen = fig->ro_inner_xywh[2+axis->direction];
 			/* This was derived using pen and paper. Reading this code might be challenging. */

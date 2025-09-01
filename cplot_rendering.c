@@ -556,7 +556,7 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	if (area_out[0] < 0 || area_out[1] < 0)
 		return -1;
 
-	if ((int)rot % 400) {
+	if (iround(rot*100'000) % (400*100'000)) {
 		uint32_t *canvas = ttra->canvas;
 		int width0 = ttra->realw;
 		int height0 = ttra->realh;
@@ -771,7 +771,7 @@ static void draw_data_xyc_list(struct draw_data_args *restrict ar, const uint32_
 }
 
 static void make_datapx(short *xypixels, int stride, long istart, long iend,
-	double xpix_per_unit, double axis_x0, int addthis, struct cplot_data_container *xdata)
+	double xpix_per_unit, double axis_x0, int addthis, struct cplot_data *xdata)
 {
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
 	double x0 = xdata->minmax[0] - axis_x0;
@@ -908,7 +908,7 @@ void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride
 	linepen_dataargs.mapw = linepen_width;
 	linepen_dataargs.maph = linepen_height;
 
-	struct cplot_data_container
+	struct cplot_data
 		*xdata = graph->data.list.xdata,
 		*ydata = graph->data.list.ydata,
 		*zdata = graph->data.list.zdata;
@@ -960,7 +960,7 @@ void cplot_graph_render(struct cplot_graph *graph, uint32_t *canvas, int ystride
 
 		/* error bars */
 		for (int icoord=0; icoord<2; icoord++) {
-			struct cplot_data_container *edata = graph->data.arr[arrlen(graph->data.arr)-2+icoord];
+			struct cplot_data *edata = graph->data.arr[arrlen(graph->data.arr)-2+icoord];
 			if (!edata)
 				continue;
 			const int ixcoord = 0;

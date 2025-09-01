@@ -524,7 +524,7 @@ int cplot_next_ifigure_from_coords(struct cplot_figure *fig0, int x, int y) {
 	return -1;
 }
 
-void cplot_check_dataminmax(struct cplot_data_container *data, int yxz) {
+void cplot_check_dataminmax(struct cplot_data *data, int yxz) {
 	unsigned range_isset = data->have_minmax;
 
 	switch (range_isset & (cplot_minbit|cplot_maxbit)) {
@@ -555,7 +555,7 @@ void cplot_make_range(struct cplot_figure *figure) {
 			continue;
 
 		for (int yxz=0; yxz<arrlen(graph->data.arr); yxz++) {
-			struct cplot_data_container *data = graph->data.arr[yxz];
+			struct cplot_data *data = graph->data.arr[yxz];
 			if (!data)
 				continue;
 			struct cplot_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
@@ -1087,7 +1087,7 @@ static struct cplot_graph* add_graph(struct cplot_args *args) {
 	/* copy to cplot_graph the part which is shared with cplot_args */
 	memcpy(&graph->yxaxis, &args->yaxis, sizeof(struct cplot_graph) - ((char*)graph->yxaxis - (char*)graph));
 
-	/* find or create a data_container for the graph */
+	/* find or create a data object for the graph */
 #define nth(ptr, n) (&(ptr) + (n))
 	for (int iyxz=0; iyxz<arrlen(graph->data.arr); iyxz++) {
 		void *thedata = *nth(args->ydata, iyxz);
@@ -1099,7 +1099,7 @@ static struct cplot_graph* add_graph(struct cplot_args *args) {
 		if (*type == cplot_notype && thedata)
 			*type = args->ytype; // unspecified type equals ytype, useful with errorbars
 
-		struct cplot_data_container *con = NULL;
+		struct cplot_data *data = NULL;
 		long length = args->xlen * args->ylen; // only with colormesh
 		if (length == 0)
 			length = args->len;
@@ -1109,55 +1109,55 @@ static struct cplot_graph* add_graph(struct cplot_args *args) {
 			length = args->ylen;
 
 		if (!thedata) {
-			for (con=args->figure->containers.next; con; con=con->next)
-				if (con->data == thedata &&
-					con->type == *type &&
-					con->length == length &&
-					!memcmp(con->minmax, args->minmax[iyxz], sizeof(con->minmax)) &&
-					(con->have_minmax & (cplot_minbit|cplot_maxbit)) == (cplot_minbit|cplot_maxbit)
+			for (data=args->figure->data.next; data; data=data->next)
+				if (data->data == thedata &&
+					data->type == *type &&
+					data->length == length &&
+					!memcmp(data->minmax, args->minmax[iyxz], sizeof(data->minmax)) &&
+					(data->have_minmax & (cplot_minbit|cplot_maxbit)) == (cplot_minbit|cplot_maxbit)
 				) {
-					graph->data.arr[iyxz] = con;
+					graph->data.arr[iyxz] = data;
 					goto found;
 				}
 		}
 		else if (args->yxzowner[iyxz] != -1)
-			for (con=args->figure->containers.next; con; con=con->next) {
-				if (con->data == thedata &&
-					con->type == *type &&
-					con->length == length &&
-					con->stride == *nth(args->ystride, iyxz)
+			for (data=args->figure->data.next; data; data=data->next) {
+				if (data->data == thedata &&
+					data->type == *type &&
+					data->length == length &&
+					data->stride == *nth(args->ystride, iyxz)
 				) {
-					graph->data.arr[iyxz] = con;
+					graph->data.arr[iyxz] = data;
 					goto found; }
 			}
 
-		/* add a new container */
-		con = graph->data.arr[iyxz] = calloc(1, sizeof(*con));
-		con->data = thedata;
-		con->type = *nth(args->ytype, iyxz);
-		con->length = length;
-		con->stride = *nth(args->ystride, iyxz);
-		con->prev = &args->figure->containers;
-		con->next = con->prev->next;
-		con->prev->next = con;
-		if (con->next)
-			con->next->prev = con;
+		/* add a new data */
+		data = graph->data.arr[iyxz] = calloc(1, sizeof(*data));
+		data->data = thedata;
+		data->type = *nth(args->ytype, iyxz);
+		data->length = length;
+		data->stride = *nth(args->ystride, iyxz);
+		data->prev = &args->figure->data;
+		data->next = data->prev->next;
+		data->prev->next = data;
+		if (data->next)
+			data->next->prev = data;
 		if (!thedata) {
-			con->have_minmax = cplot_minbit|cplot_maxbit;
-			con->minmax[1] = length-1;
+			data->have_minmax = cplot_minbit|cplot_maxbit;
+			data->minmax[1] = length-1;
 		}
 
 found:
-		++con->n_users;
+		++data->n_users;
 		if (args->yxzowner[iyxz])
-			con->owner = args->yxzowner[iyxz];
+			data->owner = args->yxzowner[iyxz];
 		if (args->have_minmax[iyxz] & cplot_minbit) {
-			con->minmax[0] = args->minmax[iyxz][0];
-			con->have_minmax |= cplot_minbit;
+			data->minmax[0] = args->minmax[iyxz][0];
+			data->have_minmax |= cplot_minbit;
 		}
 		if (args->have_minmax[iyxz] & cplot_maxbit) {
-			con->minmax[1] = args->minmax[iyxz][1];
-			con->have_minmax |= cplot_maxbit;
+			data->minmax[1] = args->minmax[iyxz][1];
+			data->have_minmax |= cplot_maxbit;
 		}
 	}
 #undef nth
@@ -1172,8 +1172,8 @@ found:
 		else
 			graph->yxaxis[2] = cplot_coloraxis_new(args->figure, 'y');
 	}
-	struct cplot_axis *caxis = graph->yxaxis[2];
 	if (graph->yxaxis[2]) {
+		struct cplot_axis *caxis = graph->yxaxis[2];
 		if (!my_isnan(args->caxis_center))
 			caxis->center = args->caxis_center;
 		if (graph->cmap)
@@ -1263,7 +1263,7 @@ void cplot_destroy_axis(struct cplot_axis *axis) {
 	free(axis);
 }
 
-void cplot_data_container_unlink(struct cplot_data_container *data) {
+void cplot_data_unlink(struct cplot_data *data) {
 	if (!data || --data->n_users)
 		return;
 	if (data->owner)
@@ -1277,7 +1277,7 @@ void cplot_data_container_unlink(struct cplot_data_container *data) {
 
 void cplot_destroy_graph(struct cplot_graph *graph) {
 	for (int j=0; j<arrlen(graph->data.arr); j++)
-		cplot_data_container_unlink(graph->data.arr[j]);
+		cplot_data_unlink(graph->data.arr[j]);
 	if (graph->cmap_owner)
 		free(graph->cmap);
 	if (graph->labelowner)
@@ -1381,25 +1381,25 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 
 	/* copy if necessary */
 	for (int idim=0; idim<arrlen(graph->data.arr); idim++) {
-		struct cplot_data_container *con = graph->data.arr[idim];
-		if (!con || con->owner != -1)
+		struct cplot_data *data = graph->data.arr[idim];
+		if (!data || data->owner != -1)
 			continue;
-		size_t size = cplot_sizes[con->type] * con->length;
-		void *old = con->data;
-		if (!(con->data = malloc(size)))
+		size_t size = cplot_sizes[data->type] * data->length;
+		void *old = data->data;
+		if (!(data->data = malloc(size)))
 			fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
-		if (con->stride == 1)
-			memcpy(con->data, old, size);
+		if (data->stride == 1)
+			memcpy(data->data, old, size);
 		else {
 			/* after copying, stride == 1 */
-			char *dt = con->data;
-			int size = cplot_sizes[con->type];
-			int stride = con->stride;
-			for (int i=con->length-1; i>=0; i--)
+			char *dt = data->data;
+			int size = cplot_sizes[data->type];
+			int stride = data->stride;
+			for (int i=data->length-1; i>=0; i--)
 				memcpy(dt+i*size, (char*)old+i*stride*size, size);
-			con->stride = 1;
+			data->stride = 1;
 		}
-		con->owner = 1;
+		data->owner = 1;
 	}
 
 	if (graph->labelowner < 0) {
