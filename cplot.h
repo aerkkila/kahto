@@ -39,7 +39,7 @@ extern const unsigned char cplot_sizes[];
 
 #define cplot_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __cplot_version_in_program 36
+#define __cplot_version_in_program 37
 extern const int __cplot_version_in_library;
 #ifndef CPLOT_NO_VERSION_CHECK
 static void __attribute__((constructor)) cplot_check_version() {
@@ -318,9 +318,9 @@ struct cplot_args {
 	int ytype, xtype, ztype, e0type, e1type; // unspecified is assumed equal to ytype
 	long len, ylen, xlen; // xlen and ylen are for colormesh
 	short ystride, xstride, zstride, e0stride, e1stride;
-	double minmax[3][2];
-	char have_minmax[3], // bits: cplot_minbit, cplot_maxbit
-		 yxzowner[3]; // eowner?
+	double minmax[5][2];
+	char have_minmax[5], // bits: cplot_minbit, cplot_maxbit
+		 yxzowner[5];
 	/* below must match with cplot_graph */
 	struct cplot_axis *yaxis, *xaxis, *caxis; // yaxis must stay first
 	char cmap_owner;
