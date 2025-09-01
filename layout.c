@@ -1,5 +1,5 @@
-#ifndef CPLOT_NO_VERSION_CHECK
-#define CPLOT_NO_VERSION_CHECK
+#ifndef KAHTO_NO_VERSION_CHECK
+#define KAHTO_NO_VERSION_CHECK
 #endif
 #include "kahto.h"
 #include <ttra.h>

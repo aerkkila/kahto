@@ -41,7 +41,7 @@ extern const unsigned char kahto_sizes[];
 
 #define __kahto_version_in_program 38
 extern const int __kahto_version_in_library;
-#ifndef CPLOT_NO_VERSION_CHECK
+#ifndef KAHTO_NO_VERSION_CHECK
 static void __attribute__((constructor)) kahto_check_version() {
 	if (__kahto_version_in_library != __kahto_version_in_program)
 		goto fail;
@@ -230,7 +230,6 @@ struct kahto_graph {
 	/* the rest must match with kahto_args */
 	struct kahto_axis *yxaxis[3];
 	char cmap_owner;
-	double yxz0[3], yxzstep[3];
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order
 	/* style */
@@ -317,7 +316,7 @@ struct kahto_args {
 
 	void *ydata, *xdata, *zdata, *edata0, *edata1;
 	int ytype, xtype, ztype, e0type, e1type; // unspecified is assumed equal to ytype
-	long len, ylen, xlen; // xlen and ylen are for colormesh
+	long kahto_len, kahto_ylen, kahto_xlen; // xlen and ylen are for colormesh
 	short ystride, xstride, zstride, e0stride, e1stride;
 	double minmax[5][2];
 	char have_minmax[5], // bits: kahto_minbit, kahto_maxbit
@@ -325,7 +324,6 @@ struct kahto_args {
 	/* below must match with kahto_graph */
 	struct kahto_axis *yaxis, *xaxis, *caxis; // yaxis must stay first
 	char cmap_owner;
-	double y0, x0, z0, ystep, xstep, zstep;
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order; Copied, if owner = -1.
 
@@ -366,9 +364,6 @@ struct kahto_args {
 	.zstride = 1,							\
 	.e0stride = 1,							\
 	.e1stride = 1,							\
-	.ystep = 1,								\
-	.xstep = 1,								\
-	.zstep = 1,								\
 	.linestyle.thickness = 1./600,			\
 	.errstyle.style = kahto_line_normal_e,	\
 	.icolor = kahto_automatic,				\
@@ -380,13 +375,11 @@ struct kahto_args {
 	.linestyle.style = kahto_line_normal_e,	\
 	.markerstyle.marker = NULL
 
-/* in all of these, variadic arguments begin at the len field */
 #define kahto_y(y, ...) kahto_plot_inl((struct kahto_args){	\
 	__kahto_defaultargs,		\
 	.ydata=(y),					\
 	.ytype=kahto_type(*(y)),	\
-	.e1type=0,					\
-	__VA_ARGS__					\
+	.kahto_len=__VA_ARGS__		\
 	})
 #define kahto_yx(y, x, ...) kahto_plot_inl((struct kahto_args){	\
 	__kahto_defaultargs,		\
@@ -394,8 +387,7 @@ struct kahto_args {
 	.xdata=(x),					\
 	.ytype=kahto_type(*(y)),	\
 	.xtype=kahto_type(*(x)),	\
-	.e1type=0,					\
-	__VA_ARGS__					\
+	.kahto_len=__VA_ARGS__		\
 	})
 #define kahto_yz(y, z, ...) kahto_plot_inl((struct kahto_args){	\
 	__kahto_defaultargs,		\
@@ -403,8 +395,7 @@ struct kahto_args {
 	.zdata=(z),					\
 	.ytype=kahto_type(*(y)),	\
 	.ztype=kahto_type(*(z)),	\
-	.e1type=0,                  \
-	__VA_ARGS__					\
+	.kahto_len=__VA_ARGS__		\
 	})
 #define kahto_yxz(y, x, z, ...) kahto_plot_inl((struct kahto_args){	\
 	__kahto_defaultargs,		\
@@ -414,18 +405,15 @@ struct kahto_args {
 	.ytype=kahto_type(*(y)),	\
 	.xtype=kahto_type(*(x)),	\
 	.ztype=kahto_type(*(z)),	\
-	.e1type=0,                  \
-	__VA_ARGS__					\
+	.kahto_len=__VA_ARGS__		\
 	})
-/* variadic arguments begin at the ylen field */
 #define kahto_colormesh(z, ...) kahto_plot_inl((struct kahto_args){ \
-	__kahto_defaultargs,     \
-	.zdata=(z),              \
-	.ztype=kahto_type(*(z)), \
-	.equal_xy=1,             \
-	.exact=1,                \
-	.len=-1,                 \
-	__VA_ARGS__              \
+	__kahto_defaultargs,        \
+	.zdata=(z),                 \
+	.ztype=kahto_type(*(z)),    \
+	.equal_xy=1,                \
+	.exact=1,                   \
+	.kahto_ylen=__VA_ARGS__	    \
 	})
 
 /* Manual call is needed, if parameters in ttra such as ttra->fonttype are modified before calling
@@ -514,7 +502,7 @@ static inline struct kahto_figure* kahto_line_inl(float y0, float x0, float y1, 
 	args.ydata = ydata;
 	args.xtype = kahto_type(xdata[0]);
 	args.ytype = kahto_type(ydata[0]);
-	args.len = 2;
+	args.kahto_len = 2;
 	args.yxzowner[0] = 1;
 	return kahto_plot_args(&args);
 }

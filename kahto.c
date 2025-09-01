@@ -10,7 +10,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <pthread.h>
-#define CPLOT_NO_VERSION_CHECK
+#define KAHTO_NO_VERSION_CHECK
 #include "kahto.h"
 
 #define min(a,b) ((a) < (b) ? a : (b))
@@ -1105,7 +1105,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 			(args->figure->mem_graph = args->figure->ngraph+3) * sizeof(void*));
 
 	struct kahto_graph *graph;
-	args->figure->graph[args->figure->ngraph++] = graph = malloc(sizeof(struct kahto_graph));
+	args->figure->graph[args->figure->ngraph++] = graph = calloc(1, sizeof(struct kahto_graph));
 	/* copy to kahto_graph the part which is shared with kahto_args */
 	memcpy(&graph->yxaxis, &args->yaxis, sizeof(struct kahto_graph) - ((char*)graph->yxaxis - (char*)graph));
 
@@ -1113,22 +1113,21 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 #define nth(ptr, n) (&(ptr) + (n))
 	for (int iyxz=0; iyxz<arrlen(graph->data.arr); iyxz++) {
 		void *thedata = *nth(args->ydata, iyxz);
-		if (!thedata && iyxz >= 2) {
-			graph->data.arr[iyxz] = NULL;
-			continue; }
+		if (!thedata && iyxz >= 2)
+			continue;
 
 		int *type = nth(args->ytype, iyxz);
 		if (*type == kahto_notype && thedata)
 			*type = args->ytype; // unspecified type equals ytype, useful with errorbars
 
 		struct kahto_data *data = NULL;
-		long length = args->xlen * args->ylen; // only with colormesh
+		long length = args->kahto_xlen * args->kahto_ylen; // only with colormesh
 		if (length == 0)
-			length = args->len;
+			length = args->kahto_len;
 		else if (iyxz == 1)
-			length = args->xlen;
+			length = args->kahto_xlen;
 		else if (iyxz == 0)
-			length = args->ylen;
+			length = args->kahto_ylen;
 
 		if (!thedata) {
 			for (data=args->figure->data.next; data; data=data->next)
@@ -1139,8 +1138,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 					(data->have_minmax & (kahto_minbit|kahto_maxbit)) == (kahto_minbit|kahto_maxbit)
 				) {
 					graph->data.arr[iyxz] = data;
-					goto found;
-				}
+					goto found; }
 		}
 		else if (args->yxzowner[iyxz] != -1)
 			for (data=args->figure->data.next; data; data=data->next) {
@@ -1367,8 +1365,8 @@ struct kahto_figure* kahto_plot_args(struct kahto_args *args) {
 	if (args->argsfun)
 		args->argsfun(args);
 
-	if (args->len < 0)
-		args->len = args->xlen * args->ylen;
+	if (args->kahto_len < 0)
+		args->kahto_len = args->kahto_xlen * args->kahto_ylen;
 
 	if (args->plot_interlazed_y || args->labels) {
 		const char **labels = args->labels;

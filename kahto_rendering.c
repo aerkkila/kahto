@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <ttra.h>
 #include <err.h>
-#ifndef CPLOT_NO_VERSION_CHECK
-#define CPLOT_NO_VERSION_CHECK
+#ifndef KAHTO_NO_VERSION_CHECK
+#define KAHTO_NO_VERSION_CHECK
 #endif
 #include "kahto.h"
 #include "definitions.h"
@@ -921,7 +921,8 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 			get_datapx[xdata->type](istart, iend, xdata->data, xypixels+0,
 				yxmin[1], yxdiff[1], yxlen[1], xdata->stride, 2, margin[0]);
 		else {
-			double xpix_per_unit = yxlen[1] / yxdiff[1] * graph->yxzstep[1];
+			double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
+			double xpix_per_unit = yxlen[1] / yxdiff[1] * xstep;
 			make_datapx(xypixels+0, 2, istart, iend, xpix_per_unit, yxmin[1], margin[0], xdata);
 		}
 		if (zdata) {
