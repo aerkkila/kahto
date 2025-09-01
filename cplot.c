@@ -88,7 +88,7 @@ static inline struct cplot_figure* __attribute__((pure)) get_toplevel_figure(str
 	return figure;
 }
 
-static inline float __attribute__((pure)) tofpixels(float size, struct cplot_figure *figure) {
+static inline float __attribute__((pure)) _tofpixels(float size, struct cplot_figure *figure) {
 	switch (figure->topixels_reference) {
 		default:
 		case cplot_total_height:
@@ -100,6 +100,12 @@ static inline float __attribute__((pure)) tofpixels(float size, struct cplot_fig
 		case cplot_this_width:
 			return size * (float)figure->wh[0];
 	}
+}
+
+static inline float __attribute__((pure)) tofpixels(float size, struct cplot_figure *figure) {
+	if (size >= 1)
+		return size;
+	return figure->fracsizemul * _tofpixels(size, figure);
 }
 
 static inline int __attribute__((pure)) topixels(float size, struct cplot_figure *figure) {
@@ -290,6 +296,7 @@ struct cplot_figure* cplot_figure_void(struct cplot_figure *figure) {
 	figure->colorscheme.colors = cplot_colorschemes[0];
 	figure->title.rowheight = 0.05;
 	figure->fontheightmul = 1;
+	figure->fracsizemul = 1;
 
 	figure->legend.rowheight = 1.0 / 35;
 	figure->legend.symbolspace_per_rowheight = 1.25;

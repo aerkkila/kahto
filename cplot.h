@@ -297,6 +297,7 @@ struct cplot_figure {
 	void (*fix_too_little_space)(struct cplot_figure*);
 	void (*revert_fixes)(struct cplot_figure*);
 	float fontheightmul; // multiply all fontheights (rowheight) with this number
+	float fracsizemul; // multiply all fractional sizes with this number
 
 	struct legend {
 		float rowheight, symbolspace_per_rowheight;
