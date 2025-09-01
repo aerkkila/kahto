@@ -37,7 +37,7 @@ int main() {
 	float y2[] = {1, 1.5, -0.5, 3};
 	float y2low[] = {0.8, 1.1, -0.6, 2.9}; // lower error bars
 	float y2high[] = {1.1, 1.75, -0.3, 3.1}; // higher error bars
-	struct cplot_figure *fig2 = cplot_y(y2, sizeof(y2)/sizeof(y2[0]), .err.list={y2low, y2high});
+	struct cplot_figure *fig2 = cplot_y(y2, sizeof(y2)/sizeof(y2[0]), .edata0=y2low, .edata1=y2high);
 
 	ticks = cplot_xaxis0(fig2)->ticks;
 	char *labels2[] = {

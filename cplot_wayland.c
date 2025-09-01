@@ -5,7 +5,7 @@ enum cplot_show_mode {typing_none, typing_savename};
 
 struct highlight {
 	struct cplot_figure *fig;
-	int idata;
+	int igraph;
 	char update;
 	uint32_t *canvascopy;
 	int id_canvascopy, canvascopy_start;
@@ -135,14 +135,14 @@ fig_test:
 	goto turn_off_highlight;
 
 fig_found:
-	for (int idata=0; idata<fig->ndata; idata++)
-		if (fig->legend.ro_xywh[1] + fig->legend.ro_datay[idata+1] > y &&
-			fig->legend.ro_xywh[1] + fig->legend.ro_datay[idata] <= y)
+	for (int igraph=0; igraph<fig->ngraph; igraph++)
+		if (fig->legend.ro_xywh[1] + fig->legend.ro_datay[igraph+1] > y &&
+			fig->legend.ro_xywh[1] + fig->legend.ro_datay[igraph] <= y)
 		{
-			if (hi->fig == fig && hi->idata == idata)
+			if (hi->fig == fig && hi->igraph == igraph)
 				return; // nothing changed
 			hi->fig = fig;
-			hi->idata = idata;
+			hi->igraph = igraph;
 			hi->update = 1;
 			return;
 		}
@@ -185,13 +185,13 @@ new_copy:
 	}
 
 	/* highlight the data */
-	struct cplot_data *data = hl->fig->data[hl->idata];
-	struct cplot_data copy = *data;
+	struct cplot_graph *graph = hl->fig->graph[hl->igraph];
+	struct cplot_graph copy = *graph;
 	copy.linestyle.thickness *= 3;
 	copy.markerstyle.size *= 3;
 	copy.errstyle.thickness *= 3;
 	uint32_t *canvas = wlh->data + hl->canvascopy_start;//cplot_get_startcanvas(hl->fig, cookie->fig, wlh->xres);
-	cplot_data_render(&copy, canvas, wlh->xres, hl->fig, 0);
+	cplot_graph_render(&copy, canvas, wlh->xres, hl->fig, 0);
 }
 
 struct cplot_figure* cplot_show_preserve_(struct cplot_figure *fig, char *name) {

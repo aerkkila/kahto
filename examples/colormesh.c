@@ -1,8 +1,8 @@
 #include <cplot.h>
 #include <math.h>
 
-#define xlen 90
-#define ylen 60
+#define xlen 9
+#define ylen 6
 #define pi 3.14159265358979
 int main() {
 	float zdata[ylen][xlen];

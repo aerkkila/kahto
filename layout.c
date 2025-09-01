@@ -263,22 +263,21 @@ void cplot_axis_get_orthogonal(struct cplot_axis *axis, int *imargin_xyxy) {
 
 /* add room for markers whose value is in the axis area but which are clipped partially */
 void cplot_make_inner_margin(struct cplot_figure *fig) {
-	for (int i=0; i<fig->ndata; i++) {
-		struct cplot_data *data = fig->data[i];
-		float size_marker = data->markerstyle.size * !!cplot_visible_marker(data->markerstyle.marker);
-		float size_line = data->linestyle.thickness * (data->linestyle.style != cplot_line_none_e);
+	for (int i=0; i<fig->ngraph; i++) {
+		struct cplot_graph *graph = fig->graph[i];
+		float size_marker = graph->markerstyle.size * !!cplot_visible_marker(graph->markerstyle.marker);
+		float size_line = graph->linestyle.thickness * (graph->linestyle.style != cplot_line_none_e);
 		float size = max(size_marker, size_line);
 		if (size <= 0)
 			continue;
 		for (int iaxis=0; iaxis<2; iaxis++) {
-			struct cplot_axis *axis = data->yxaxis[iaxis];
-			if (!axis)
-				continue;
+			struct cplot_axis *axis = graph->yxaxis[iaxis];
+			struct cplot_data_container *data = graph->data.arr[iaxis];
 			double axisrange = axis->max - axis->min;
 			int axislen = fig->ro_inner_xywh[2+axis->direction];
 			/* This was derived using pen and paper. Reading this code might be challenging. */
-			float s0 = (max(axis->min, data->minmax[iaxis][0]) - axis->min) / axisrange;
-			float s1 = (min(axis->max, data->minmax[iaxis][1]) - axis->min) / axisrange;
+			float s0 = (max(axis->min, data->minmax[0]) - axis->min) / axisrange;
+			float s1 = (min(axis->max, data->minmax[1]) - axis->min) / axisrange;
 			float size05_axis = tofpixels(size, fig)*0.5 / axislen;
 			float innerfraction = (1 - 2 * size05_axis) / (s1 - s0);
 			float m0_axis = size05_axis - innerfraction * s0;

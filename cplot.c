@@ -118,6 +118,23 @@ static int set_fontheight(struct cplot_figure *figure, float size) {
 
 static inline int intsum_02(const int *a) { return a[0] + a[2]; }
 
+static int is_colormesh(struct cplot_graph *g) {
+	return
+		g->data.list.zdata &&
+		g->data.list.xdata &&
+		g->data.list.zdata->length >
+		g->data.list.xdata->length;
+}
+
+void inner_without_margin(int *xywh, struct cplot_figure *fig) {
+	int *inner = fig->ro_inner_xywh;
+	int *margin = fig->ro_inner_margin;
+	xywh[0] = inner[0] + margin[0];
+	xywh[1] = inner[1] + margin[1];
+	xywh[2] = inner[2] - margin[0] - margin[2];
+	xywh[3] = inner[3] - margin[1] - margin[3];
+}
+
 #define no_room_for_legend(figure) ((figure)->legend.ro_place_err < 0)
 
 void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *cols);
@@ -507,137 +524,23 @@ int cplot_next_ifigure_from_coords(struct cplot_figure *fig0, int x, int y) {
 	return -1;
 }
 
-static void get_min_for_data(struct cplot_data *data, int yxz) {
-	int yxz_other = yxz == 2 ? 1 : !yxz;
-	void *dt = data->yxzdata[yxz];
-	if (yxz < 2 && data->err.yx[yxz])
-		dt = data->err.yx[yxz]; // lower side of errorbar
-	switch (data->yxztype[yxz_other]) {
-		case cplot_f4:
-			data->minmax[yxz][0] = get_min_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
-				data->yxzstride[yxz], data->yxzstride[yxz_other]);
-			break;
-		case cplot_f8:
-			data->minmax[yxz][0] = get_min_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
-				data->yxzstride[yxz], data->yxzstride[yxz_other]);
-			break;
-		default:
-			data->minmax[yxz][0] = get_min[data->yxztype[yxz]] (dt, data->length, data->yxzstride[yxz]);
-			break;
-	}
-}
+void cplot_check_dataminmax(struct cplot_data_container *data, int yxz) {
+	unsigned range_isset = data->have_minmax;
 
-static void get_max_for_data(struct cplot_data *data, int yxz) {
-	int yxz_other = yxz == 2 ? 1 : !yxz;
-	void *dt = data->yxzdata[yxz];
-	if (yxz < 2 && data->err.yx[yxz+1])
-		dt = data->err.yx[yxz+1]; // higher side of errorbar
-	switch (data->yxztype[yxz_other]) {
-		case cplot_f4:
-			data->minmax[yxz][1] = get_max_with_float[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
-				data->yxzstride[yxz], data->yxzstride[yxz_other]);
-			break;
-		case cplot_f8:
-			data->minmax[yxz][1] = get_max_with_double[data->yxztype[yxz]] (dt, data->length, data->yxzdata[yxz_other],
-				data->yxzstride[yxz], data->yxzstride[yxz_other]);
-			break;
-		default:
-			data->minmax[yxz][1] = get_max[data->yxztype[yxz]] (dt, data->length, data->yxzstride[yxz]);
-			break;
-	}
-}
-
-static void get_minmax_for_data(struct cplot_data *data, int yxz) {
-	int yxz_other = yxz == 2 ? 1 : !yxz;
-	/* errorbars are handled in the other functions */
-	if (yxz < 2 && (data->err.yx[yxz*2] || data->err.yx[yxz*2+1])) {
-		get_min_for_data(data, yxz);
-		get_max_for_data(data, yxz);
-		return;
-	}
-	switch (data->yxztype[yxz_other]) {
-		case cplot_f4:
-			get_minmax_with_float[data->yxztype[yxz]](
-				data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other],
-				data->yxzstride[yxz], data->yxzstride[yxz_other]);
-			break;
-		case cplot_f8:
-			get_minmax_with_double[data->yxztype[yxz]](
-				data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzdata[yxz_other],
-				data->yxzstride[yxz], data->yxzstride[yxz_other]);
-			break;
-		default:
-			get_minmax[data->yxztype[yxz]](data->yxzdata[yxz], data->length, data->minmax[yxz], data->yxzstride[yxz]);
-			break;
-	}
-}
-
-static long get_last_for_data(struct cplot_data *data, int yxz) {
-	int yxz_other = yxz == 2 ? 1 : !yxz;
-	long i = data->length - 1;
-	int stride_oth = data->yxzstride[yxz_other];
-	switch (data->yxztype[yxz_other]) {
-		case cplot_f4:
-			float *dt4 = data->yxzdata[yxz_other];
-			for (; i>=0; i--)
-				if (!my_isnan_float(dt4[i*stride_oth]))
-					return i;
-			return i;
-		case cplot_f8:
-			double *dt8 = data->yxzdata[yxz_other];
-			for (; i>=0; i--)
-				if (!my_isnan_double(dt8[i*stride_oth]))
-					return i;
-			return i;
-		default:
-			return i;
-	}
-}
-
-static long get_first_for_data(struct cplot_data *data, int yxz) {
-	int yxz_other = yxz == 2 ? 1 : !yxz;
-	long i = 0;
-	int stride_oth = data->yxzstride[yxz_other];
-	switch (data->yxztype[yxz_other]) {
-		case cplot_f4:
-			float *dt4 = data->yxzdata[yxz_other];
-			for (; i<data->length; i++)
-				if (!my_isnan_float(dt4[i*stride_oth]))
-					return i;
-			return i;
-		case cplot_f8:
-			double *dt8 = data->yxzdata[yxz_other];
-			for (; i<data->length; i++)
-				if (!my_isnan_double(dt8[i*stride_oth]))
-					return i;
-			return i;
-		default:
-			return i;
-	}
-}
-
-void cplot_check_dataminmax(struct cplot_data *data, int yxz) {
-	unsigned range_isset = data->have_minmax[yxz];
-	if (data->yxztype[yxz] == cplot_notype) {
-		if (!(range_isset & cplot_minbit))
-			data->minmax[yxz][0] = data->yxz0[yxz] + get_first_for_data(data, yxz) * data->yxzstep[yxz];
-		if (!(range_isset & cplot_maxbit))
-			data->minmax[yxz][1] = data->yxz0[yxz] + get_last_for_data(data, yxz) * data->yxzstep[yxz];
-		return;
-	}
 	switch (range_isset & (cplot_minbit|cplot_maxbit)) {
 		case 0:
-			get_minmax_for_data(data, yxz);
-			data->have_minmax[yxz] |= cplot_minbit|cplot_maxbit;
+			get_minmax[data->type](data->data, data->length, data->minmax, data->stride);
+			data->have_minmax |= cplot_minbit|cplot_maxbit;
 			break;
 		case cplot_maxbit:
-			/* data minimum not known yet and axis minimum is not fixed */
-			get_min_for_data(data, yxz);
-			data->have_minmax[yxz] |= cplot_minbit;
+			data->minmax[0] = get_min[data->type](data->data, data->length, data->stride);
+			data->have_minmax |= cplot_minbit;
 			break;
 		case cplot_minbit:
-			get_max_for_data(data, yxz);
-			data->have_minmax[yxz] |= cplot_maxbit;
+			data->minmax[1] = get_max[data->type](data->data, data->length, data->stride);
+			data->have_minmax |= cplot_maxbit;
+			break;
+		case cplot_minbit|cplot_maxbit:
 			break;
 		default:
 			__builtin_unreachable();
@@ -645,30 +548,34 @@ void cplot_check_dataminmax(struct cplot_data *data, int yxz) {
 }
 
 void cplot_make_range(struct cplot_figure *figure) {
-	for (int idata=figure->ndata-1; idata>=0; idata--) {
-		struct cplot_data *restrict data = figure->data[idata];
-		if (!cplot_visible_data(data))
+	unsigned char minmax = cplot_minbit | cplot_maxbit;
+	for (int igraph=figure->ngraph-1; igraph>=0; igraph--) {
+		struct cplot_graph *restrict graph = figure->graph[igraph];
+		if (!cplot_visible_graph(graph))
 			continue;
 
-		for (int yxz=0; yxz<3; yxz++) {
-			struct cplot_axis *axis = yxz < 2 ? data->yxaxis[yxz] : data->caxis;
-			if (!axis)
+		for (int yxz=0; yxz<arrlen(graph->data.arr); yxz++) {
+			struct cplot_data_container *data = graph->data.arr[yxz];
+			if (!data)
+				continue;
+			struct cplot_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
+			if ((axis->range_isset & minmax) == minmax)
 				continue;
 			cplot_check_dataminmax(data, yxz);
 			if (!(axis->range_isset & cplot_minbit)) {
 				if (axis->range_isset & cplot_minbit<<4) // we use this temporarily to mark initialized minmax
-					update_min(axis->min, data->minmax[yxz][0]);
+					update_min(axis->min, data->minmax[0]);
 				else {
-					axis->min = data->minmax[yxz][0];
-					axis->range_isset |= cplot_minbit<<4;
+					axis->min = data->minmax[0];
+					axis->range_isset |= cplot_minbit<<4; // we use this temporarily to mark initialized minmax
 				}
 			}
 			if (!(axis->range_isset & cplot_maxbit)) {
 				if (axis->range_isset & cplot_maxbit<<4) // we use this temporarily to mark initialized minmax
-					update_max(axis->max, data->minmax[yxz][1]);
+					update_max(axis->max, data->minmax[1]);
 				else {
-					axis->max = data->minmax[yxz][1];
-					axis->range_isset |= cplot_maxbit<<4;
+					axis->max = data->minmax[1];
+					axis->range_isset |= cplot_maxbit<<4; // we use this temporarily to mark initialized minmax
 				}
 			}
 		}
@@ -783,8 +690,8 @@ int cplot_find_empty_rectangle(struct cplot_figure *figure, int rwidth, int rhei
 		cplot_set_colors(figure);
 	unsigned background = figure->background;
 	cplot_fill_u4((void*)image, background, width, height, width);
-	for (int i=0; i<figure->ndata; i++)
-		cplot_data_render(figure->data[i], (void*)image, width, figure, 0);
+	for (int i=0; i<figure->ngraph; i++)
+		cplot_graph_render(figure->graph[i], (void*)image, width, figure, 0);
 
 	/* including the pointed spot */
 	short (*spaceright)[w] = malloc(w*h * sizeof(short));
@@ -1049,8 +956,8 @@ void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystr
 
 	for (int i=0; i<figure->naxis; i++)
 		cplot_axis_draw(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
-	for (int i=0; i<figure->ndata; i++)
-		cplot_data_render(figure->data[i], canvas, ystride, figure, 0);
+	for (int i=0; i<figure->ngraph; i++)
+		cplot_graph_render(figure->graph[i], canvas, ystride, figure, 0);
 	cplot_legend_draw(figure, canvas, ystride);
 
 	struct ttra *ttra = figure->ttra;
@@ -1075,29 +982,29 @@ void cplot_figure_render(struct cplot_figure *figure, uint32_t *canvas, int ystr
 		figure->after_drawing(figure, canvas, ystride);
 }
 
-static void set_icolor(struct cplot_data *data) {
-	if (data->icolor != cplot_automatic) {
-		data->yxaxis[0]->figure->ro_colors_set = 0;
+static void set_icolor(struct cplot_graph *graph) {
+	if (graph->icolor != cplot_automatic) {
+		graph->yxaxis[0]->figure->ro_colors_set = 0;
 		return;
 	}
-	struct cplot_figure *figure = data->yxaxis[0]->figure;
-	data->icolor = figure->icolor;
-	if (data->color)
+	struct cplot_figure *figure = graph->yxaxis[0]->figure;
+	graph->icolor = figure->icolor;
+	if (graph->color)
 		return;
-	if (!data->markerstyle.color && data->markerstyle.marker && data->markerstyle.marker[0] && !data->yxzdata[2])
+	if (!graph->markerstyle.color && graph->markerstyle.marker && graph->markerstyle.marker[0] && !graph->data.list.zdata)
 		figure->icolor++;
-	else if (!data->linestyle.color && data->linestyle.style)
+	else if (!graph->linestyle.color && graph->linestyle.style)
 		figure->icolor++;
-	else if (!data->errstyle.color && data->errstyle.style && (data->err.list.y0 || data->err.list.x0))
+	else if (!graph->errstyle.color && graph->errstyle.style && (graph->data.list.e0data || graph->data.list.e1data))
 		figure->icolor++;
 }
 
 void cplot_get_legend_dims_chars(struct cplot_figure *figure, int *lines, int *cols) {
 	*lines = *cols = 0;
-	for (int i=0; i<figure->ndata; i++)
-		if (figure->data[i]->label) {
+	for (int i=0; i<figure->ngraph; i++)
+		if (figure->graph[i]->label) {
 			int w, h;
-			ttra_get_textdims_chars(figure->data[i]->label, &w, &h);
+			ttra_get_textdims_chars(figure->graph[i]->label, &w, &h);
 			*lines += h;
 			*cols = max(*cols, w);
 		}
@@ -1107,16 +1014,16 @@ void cplot_get_legend_dims_px(struct cplot_figure *figure, int *Height, int *Wid
 	struct legend *lg = &figure->legend;
 	*Width = *Height = 0;
 	int rowh = set_fontheight(figure, lg->rowheight);
-	if (lg->ro_datay_len <= figure->ndata) {
+	if (lg->ro_datay_len <= figure->ngraph) {
 		free(lg->ro_datay);
-		lg->ro_datay = malloc((lg->ro_datay_len = figure->ndata+1) * sizeof(lg->ro_datay[0]));
+		lg->ro_datay = malloc((lg->ro_datay_len = figure->ngraph+1) * sizeof(lg->ro_datay[0]));
 	}
 	lg->ro_datay[0] = 0;
-	for (int i=0; i<figure->ndata; i++) {
+	for (int i=0; i<figure->ngraph; i++) {
 		lg->ro_datay[i+1] = lg->ro_datay[i];
-		if (figure->data[i]->label) {
+		if (figure->graph[i]->label) {
 			int w, h;
-			ttra_get_textdims_pixels(figure->ttra, figure->data[i]->label, &w, &h);
+			ttra_get_textdims_pixels(figure->ttra, figure->graph[i]->label, &w, &h);
 			lg->ro_datay[i+1] = *Height += h;
 			*Width = max(*Width, w);
 		}
@@ -1170,51 +1077,75 @@ void texts_placement(struct cplot_figure *figure) {
 	}
 }
 
-static struct cplot_data* add_data(struct cplot_args *args) {
-	if (args->figure->mem_data < args->figure->ndata+1)
-		args->figure->data = realloc(args->figure->data,
-			(args->figure->mem_data = args->figure->ndata+3) * sizeof(void*));
+static struct cplot_graph* add_graph(struct cplot_args *args) {
+	if (args->figure->mem_graph < args->figure->ngraph+1)
+		args->figure->graph = realloc(args->figure->graph,
+			(args->figure->mem_graph = args->figure->ngraph+3) * sizeof(void*));
 
-	struct cplot_data *data;
-	args->figure->data[args->figure->ndata++] = data = malloc(sizeof(struct cplot_data));
-	/* copy to cplot_data the part which is shared with cplot_args */
-	memcpy(&data->yxaxis, &args->yaxis, sizeof(struct cplot_data) - (&data->yxaxis - data));
+	struct cplot_graph *graph;
+	args->figure->graph[args->figure->ngraph++] = graph = malloc(sizeof(struct cplot_graph));
+	/* copy to cplot_graph the part which is shared with cplot_args */
+	memcpy(&graph->yxaxis, &args->yaxis, sizeof(struct cplot_graph) - ((char*)graph->yxaxis - (char*)graph));
 
-	/* find or create a data_container for the data */
+	/* find or create a data_container for the graph */
 #define nth(ptr, n) (&(ptr) + (n))
-	for (int iyxz=0; iyxz<arrlen(data->data.arr); iyxz++) {
+	for (int iyxz=0; iyxz<arrlen(graph->data.arr); iyxz++) {
 		void *thedata = *nth(args->ydata, iyxz);
-		if (!thedata) {
-			data->data.arr[iyxz] = NULL;
+		if (!thedata && iyxz >= 2) {
+			graph->data.arr[iyxz] = NULL;
 			continue; }
 
 		int *type = nth(args->ytype, iyxz);
-		if (*type == cplot_notype)
+		if (*type == cplot_notype && thedata)
 			*type = args->ytype; // unspecified type equals ytype, useful with errorbars
 
 		struct cplot_data_container *con = NULL;
-		if (args->yxzowner[iyxz] != -1)
+		long length = args->xlen * args->ylen; // only with colormesh
+		if (length == 0)
+			length = args->len;
+		else if (iyxz == 1)
+			length = args->xlen;
+		else if (iyxz == 0)
+			length = args->ylen;
+
+		if (!thedata) {
+			for (con=args->figure->containers.next; con; con=con->next)
+				if (con->data == thedata &&
+					con->type == *type &&
+					con->length == length &&
+					!memcmp(con->minmax, args->minmax[iyxz], sizeof(con->minmax)) &&
+					(con->have_minmax & (cplot_minbit|cplot_maxbit)) == (cplot_minbit|cplot_maxbit)
+				) {
+					graph->data.arr[iyxz] = con;
+					goto found;
+				}
+		}
+		else if (args->yxzowner[iyxz] != -1)
 			for (con=args->figure->containers.next; con; con=con->next) {
 				if (con->data == thedata &&
 					con->type == *type &&
-					con->length == args->len &&
+					con->length == length &&
 					con->stride == *nth(args->ystride, iyxz)
 				) {
-					data->yxzdata[iyxz] = con;
+					graph->data.arr[iyxz] = con;
 					goto found; }
 			}
 
 		/* add a new container */
-		con = data->yxzdata[iyxz] = calloc(1, sizeof(*con));
+		con = graph->data.arr[iyxz] = calloc(1, sizeof(*con));
 		con->data = thedata;
 		con->type = *nth(args->ytype, iyxz);
-		con->length = args->len;
+		con->length = length;
 		con->stride = *nth(args->ystride, iyxz);
 		con->prev = &args->figure->containers;
 		con->next = con->prev->next;
 		con->prev->next = con;
 		if (con->next)
 			con->next->prev = con;
+		if (!thedata) {
+			con->have_minmax = cplot_minbit|cplot_maxbit;
+			con->minmax[1] = length-1;
+		}
 
 found:
 		++con->n_users;
@@ -1231,37 +1162,38 @@ found:
 	}
 #undef nth
 
-	if (!data->yxaxis[0])
-		data->yxaxis[0] = cplot_yaxis0(args->figure);
-	if (!data->yxaxis[1])
-		data->yxaxis[1] = cplot_xaxis0(args->figure);
-	if (data->yxzdata[2] && !data->caxis) {
+	if (!graph->yxaxis[0])
+		graph->yxaxis[0] = cplot_yaxis0(args->figure);
+	if (!graph->yxaxis[1])
+		graph->yxaxis[1] = cplot_xaxis0(args->figure);
+	if (graph->data.arr[2] && !graph->yxaxis[2]) {
 		if (args->figure->last_caxis)
-			data->caxis = args->figure->last_caxis;
+			graph->yxaxis[2] = args->figure->last_caxis;
 		else
-			data->caxis = cplot_coloraxis_new(args->figure, 'y');
-		data->caxis->range_isset = 0;
+			graph->yxaxis[2] = cplot_coloraxis_new(args->figure, 'y');
 	}
-	if (data->caxis) {
+	struct cplot_axis *caxis = graph->yxaxis[2];
+	if (graph->yxaxis[2]) {
 		if (!my_isnan(args->caxis_center))
-			data->caxis->center = args->caxis_center;
-		if (data->cmap)
-			data->caxis->cmap = data->cmap;
-		else if (data->cmh_enum) {
-			if (data->cmh_enum < 0)
-				data->caxis->cmap = cmh_colormaps[-data->cmh_enum].map;
+			caxis->center = args->caxis_center;
+		if (graph->cmap)
+			caxis->cmap = graph->cmap;
+		else if (graph->cmh_enum) {
+			if (graph->cmh_enum < 0)
+				caxis->cmap = cmh_colormaps[-graph->cmh_enum].map;
 			else
-				data->caxis->cmap = cmh_colormaps[data->cmh_enum].map;
+				caxis->cmap = cmh_colormaps[graph->cmh_enum].map;
 		}
-		if (data->cmh_enum < 0)
-			data->caxis->reverse_cmap = 1;
+		if (graph->cmh_enum < 0 && graph->yxaxis[2])
+			graph->yxaxis[2]->reverse_cmap = 1;
 	}
-	if (!data->yxzdata[1])
-		data->yxaxis[1]->ticks->integers_only = 1; // Väärin. Akselilla voi olla muutakin dataa.
-	data->yxaxis[0]->range_isset = 0;
-	data->yxaxis[1]->range_isset = 0;
-	set_icolor(data);
-	return data;
+	if (!graph->data.arr[1])
+		graph->yxaxis[1]->ticks->integers_only = 1; // Väärin. Akselilla voi olla muutakin dataa.
+	for (int i=0; i<arrlen(graph->yxaxis); i++)
+		if (graph->yxaxis[i])
+			graph->yxaxis[i]->range_isset = 0;
+	set_icolor(graph);
+	return graph;
 }
 
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text) {
@@ -1282,12 +1214,12 @@ struct cplot_axistext* cplot_axislabel(struct cplot_axis *axis, char *label) {
 	struct cplot_axistext *text = malloc(sizeof(struct cplot_axistext));
 	*text = (struct cplot_axistext) {
 		.text = label,
-			.pos = 0.5,
-			.hvalign = {-0.5, -1.2 * (axis->pos < 0.5)},
-			.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
-			.axis = axis,
-			.rotation_grad = 300 * (axis->direction == 1),
-			.type = cplot_axistext_label,
+		.pos = 0.5,
+		.hvalign = {-0.5, -1.2 * (axis->pos < 0.5)},
+		.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
+		.axis = axis,
+		.rotation_grad = 300 * (axis->direction == 1),
+		.type = cplot_axistext_label,
 	};
 	return cplot_add_axistext(axis, text);
 }
@@ -1332,7 +1264,7 @@ void cplot_destroy_axis(struct cplot_axis *axis) {
 }
 
 void cplot_data_container_unlink(struct cplot_data_container *data) {
-	if (--data->n_users)
+	if (!data || --data->n_users)
 		return;
 	if (data->owner)
 		free(data->data);
@@ -1343,14 +1275,14 @@ void cplot_data_container_unlink(struct cplot_data_container *data) {
 	free(data);
 }
 
-void cplot_destroy_data(struct cplot_data *data) {
-	for (int j=0; j<arrlen(data->data.arr); j++)
-		cplot_data_container_unlink(data->data.arr[j]);
-	if (data->cmap_owner)
-		free(data->cmap);
-	if (data->labelowner)
-		free((void*)(intptr_t)data->label);
-	free(data);
+void cplot_destroy_graph(struct cplot_graph *graph) {
+	for (int j=0; j<arrlen(graph->data.arr); j++)
+		cplot_data_container_unlink(graph->data.arr[j]);
+	if (graph->cmap_owner)
+		free(graph->cmap);
+	if (graph->labelowner)
+		free((void*)(intptr_t)graph->label);
+	free(graph);
 }
 
 struct cplot_figure* cplot_destroy_single(struct cplot_figure *fig) {
@@ -1367,9 +1299,9 @@ struct cplot_figure* cplot_destroy_single(struct cplot_figure *fig) {
 	}
 	free(fig->legend.ro_datay);
 
-	for (int i=0; i<fig->ndata; i++)
-		cplot_destroy_data(fig->data[i]);
-	free(fig->data);
+	for (int i=0; i<fig->ngraph; i++)
+		cplot_destroy_graph(fig->graph[i]);
+	free(fig->graph);
 
 	if (fig->title.owner)
 		free((void*)(intptr_t)fig->title.text);
@@ -1424,21 +1356,6 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 			args->label = labels[0];
 
 		struct cplot_figure *figure = cplot_plot_args(args);
-		/* Save time by using the same minmax for all interlaced data.
-		   This is fine because data->minmax is only a tool for getting axis->minmax. */
-		struct cplot_data *data = figure->data[figure->ndata-1];
-		struct cplot_data copy = *data;
-		copy.length *= copy.yxzstride[0];
-		copy.yxzstride[0] = 1;
-		for (int yxz=0; yxz<3; yxz++) {
-			struct cplot_axis *axis = yxz == 2 ? data->caxis : data->yxaxis[yxz];
-			if (!axis)
-				continue;
-			cplot_check_dataminmax(data, yxz);
-			data->have_minmax[yxz] = args->have_minmax[yxz] = copy.have_minmax[yxz];
-			memcpy(data->minmax[yxz], copy.minmax[yxz], sizeof(copy.minmax[yxz]));
-			memcpy(args->minmax[yxz], copy.minmax[yxz], sizeof(copy.minmax[yxz]));
-		}
 
 		args->figure = figure;
 		args->figureptr = NULL;
@@ -1460,11 +1377,11 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 			args->xaxis ? args->xaxis->figure :
 			cplot_figure_new();
 	args->figure = *figure;
-	struct cplot_data *data = add_data(args);
+	struct cplot_graph *graph = add_graph(args);
 
 	/* copy if necessary */
-	for (int idim=0; idim<arrlen(data->data.arr); idim++) {
-		struct cplot_data_container *con = data->data.arr[idim];
+	for (int idim=0; idim<arrlen(graph->data.arr); idim++) {
+		struct cplot_data_container *con = graph->data.arr[idim];
 		if (!con || con->owner != -1)
 			continue;
 		size_t size = cplot_sizes[con->type] * con->length;
@@ -1476,36 +1393,36 @@ struct cplot_figure* cplot_plot_args(struct cplot_args *args) {
 		else {
 			/* after copying, stride == 1 */
 			char *dt = con->data;
-			size = cplot_sizes[con->type],
-			stride = con->stride;
-			for (int i=data->length-1; i>=0; i--)
+			int size = cplot_sizes[con->type];
+			int stride = con->stride;
+			for (int i=con->length-1; i>=0; i--)
 				memcpy(dt+i*size, (char*)old+i*stride*size, size);
 			con->stride = 1;
 		}
 		con->owner = 1;
 	}
 
-	if (data->labelowner < 0) {
-		data->label = strdup(data->label);
-		data->labelowner = 1;
+	if (graph->labelowner < 0) {
+		graph->label = strdup(graph->label);
+		graph->labelowner = 1;
 	}
 
 	return *figure;
 }
 
-void cplot_forward_datacolor(struct cplot_data *data) {
-	if (!data->markerstyle.color)
-		data->markerstyle.color = data->color;
-	if (!data->linestyle.color)
-		data->linestyle.color = data->color;
-	if (!data->errstyle.color)
-		data->errstyle.color = data->color;
+void cplot_forward_graphcolor(struct cplot_graph *graph) {
+	if (!graph->markerstyle.color)
+		graph->markerstyle.color = graph->color;
+	if (!graph->linestyle.color)
+		graph->linestyle.color = graph->color;
+	if (!graph->errstyle.color)
+		graph->errstyle.color = graph->color;
 }
 
 void cplot_set_colors(struct cplot_figure *figure) {
 	struct cplot_colorscheme *cs = &figure->colorscheme;
 	if (!cs->colors || cs->cmh_enum) {
-		cs->ncolors = figure->ndata;
+		cs->ncolors = figure->ngraph;
 		if (cs->colors && cs->owner)
 			free(cs->colors);
 		cs->colors = malloc((cs->ncolors+1) * sizeof(unsigned));
@@ -1518,10 +1435,10 @@ void cplot_set_colors(struct cplot_figure *figure) {
 		cs->ncolors = 0;
 		while (cs->colors[cs->ncolors++]); // count the number of colors
 	}
-	for (int i=0; i<figure->ndata; i++) {
-		if (!figure->data[i]->color)
-			figure->data[i]->color = cs->colors[figure->data[i]->icolor % cs->ncolors];
-		cplot_forward_datacolor(figure->data[i]);
+	for (int i=0; i<figure->ngraph; i++) {
+		if (!figure->graph[i]->color)
+			figure->graph[i]->color = cs->colors[figure->graph[i]->icolor % cs->ncolors];
+		cplot_forward_graphcolor(figure->graph[i]);
 	}
 	figure->ro_colors_set = 1;
 }

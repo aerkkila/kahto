@@ -56,7 +56,7 @@ int update(struct cplot_figure *fig, uint32_t *canvas, int ystride, long count, 
 
 	/* Update the height of the object */
 	float height = get_new_height(state, elapsed);
-	float *data = fig->data[0]->yxzdata[0];
+	float *data = fig->graph[0]->data.list.ydata->data;
 	data[0] = height;
 
 	/* Adjust the y-axis range if necessary */
@@ -88,7 +88,8 @@ int main(int argc, char **argv) {
 	struct cplot_figure *fig =
 		cplot_y(&state.height, 1, // plot the object
 			/* using the error bars to draw a line that represents the spring */
-			.err.list={&state.neutral_height, &state.neutral_height},
+			.edata0=&state.neutral_height,
+			.edata1=&state.neutral_height,
 			.markerstyle.size=1./40);
 
 	/* Range has to be set manually, since there is only 1 datum.

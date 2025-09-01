@@ -74,9 +74,6 @@ extern unsigned *cplot_colorschemes[];
 extern int cplot_ncolors[];
 extern int cplot_default_width, cplot_default_height;
 
-struct cplot_axis;
-struct cplot_data;
-
 enum cplot_linestyle_e {
 	cplot_line_none_e, cplot_line_normal_e, cplot_line_dashed_e,
 	cplot_line_bresenham_xiaolin_e, cplot_line_circle_e,
@@ -223,7 +220,7 @@ struct cplot_data_container {
 	struct cplot_data_container *prev, *next;
 };
 
-struct cplot_data {
+struct cplot_graph {
 	union {
 		struct {
 			struct cplot_data_container *ydata, *xdata, *zdata, *e0data, *e1data;
@@ -231,7 +228,7 @@ struct cplot_data {
 		struct cplot_data_container *arr[5];
 	} data;
 	/* the rest must match with cplot_args */
-	struct cplot_axis *yxaxis[2], *caxis;
+	struct cplot_axis *yxaxis[3];
 	char cmap_owner;
 	double yxz0[3], yxzstep[3];
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
@@ -286,8 +283,8 @@ struct cplot_figure {
 	char ttra_owner;
 	int ro_inner_xywh[4], ro_inner_margin[4], ro_corner[2];
 	float margin[4];
-	struct cplot_data **data;
-	int ndata, mem_data, icolor;
+	struct cplot_graph **graph;
+	int ngraph, mem_graph, icolor;
 	struct cplot_data_container containers;
 	struct cplot_colorscheme colorscheme;
 	struct cplot_text title;
@@ -324,7 +321,7 @@ struct cplot_args {
 	double minmax[3][2];
 	char have_minmax[3], // bits: cplot_minbit, cplot_maxbit
 		 yxzowner[3]; // eowner?
-	/* below must match with cplot_data */
+	/* below must match with cplot_graph */
 	struct cplot_axis *yaxis, *xaxis, *caxis; // yaxis must stay first
 	char cmap_owner;
 	double y0, x0, z0, ystep, xstep, zstep;
@@ -340,7 +337,7 @@ struct cplot_args {
 	int cmh_enum, icolor;
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1; // only needed with colormesh
-	/* above must match with cplot_data */
+	/* above must match with cplot_graph */
 
 	double caxis_center; // datavalue that evaluates to center color of cmap
 
@@ -524,7 +521,7 @@ void cplot_ticklabels(struct cplot_axis *axis, char **labels, int howmany);
 struct cplot_axis* cplot_remove_ticks(struct cplot_axis *axis);
 void cplot_destroy(struct cplot_figure *figure);
 void cplot_destroy_axis(struct cplot_axis *axis);
-void cplot_destroy_data(struct cplot_data *data);
+void cplot_destroy_graph(struct cplot_graph*);
 struct cplot_axistext* cplot_add_axistext(struct cplot_axis *axis, struct cplot_axistext *text);
 
 /* Available only if compiled with waylandhelper */
@@ -621,7 +618,7 @@ void cplot_render(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 void cplot_layout(struct cplot_figure *figure);
 void cplot_set_colors(struct cplot_figure*);
 void cplot_legend_draw(struct cplot_figure*, uint32_t *canvas, int ystride);
-void cplot_data_render(struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_figure *figure, long start);
+void cplot_graph_render(struct cplot_graph *data, uint32_t *canvas, int ystride, struct cplot_figure *figure, long start);
 void cplot_clear_data(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 void cplot_draw_grid(struct cplot_figure *figure, uint32_t *canvas, int ystride);
 void cplot_draw(struct cplot_figure *fig, uint32_t *canvas, int ystride);

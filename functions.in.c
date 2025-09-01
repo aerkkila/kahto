@@ -113,56 +113,12 @@ static double get_min_@dtype(const void *vdata, long length, int stride) {
 	return min;
 }
 
-static double get_min_with_float_@dtype(const void *vdata, long length, float *other, int stride, int stride_oth) {
-	const $dtype *data = vdata;
-	double min = DBL_MAX;
-	for (long i=0; i<length; i++) {
-		$dtype val = data[i*stride];
-		if (!my_isnan(val) && val < min && !my_isnan_float(other[i*stride_oth]))
-			min = val;
-	}
-	return min;
-}
-
-static double get_min_with_double_@dtype(const void *vdata, long length, double *other, int stride, int stride_oth) {
-	const $dtype *data = vdata;
-	double min = DBL_MAX;
-	for (long i=0; i<length; i++) {
-		$dtype val = data[i*stride];
-		if (!my_isnan(val) && val < min && !my_isnan_double(other[i*stride_oth]))
-			min = val;
-	}
-	return min;
-}
-
 static double get_max_@dtype(const void *vdata, long length, int stride) {
 	const $dtype *data = vdata;
 	double max = -DBL_MAX;
 	for (long i=0; i<length; i++) {
 		$dtype val = data[i*stride];
 		if (!my_isnan(val) && val > max)
-			max = val;
-	}
-	return max;
-}
-
-static double get_max_with_float_@dtype(const void *vdata, long length, float *other, int stride, int stride_oth) {
-	const $dtype *data = vdata;
-	double max = -DBL_MAX;
-	for (long i=0; i<length; i++) {
-		$dtype val = data[i*stride];
-		if (!my_isnan(val) && val > max && !my_isnan_float(other[i*stride_oth]))
-			max = val;
-	}
-	return max;
-}
-
-static double get_max_with_double_@dtype(const void *vdata, long length, double *other, int stride, int stride_oth) {
-	const $dtype *data = vdata;
-	double max = -DBL_MAX;
-	for (long i=0; i<length; i++) {
-		$dtype val = data[i*stride];
-		if (!my_isnan(val) && val > max && !my_isnan_double(other[i*stride_oth]))
 			max = val;
 	}
 	return max;
@@ -179,38 +135,6 @@ static void get_minmax_@dtype(const void *vdata, long length, double *minmax, in
 		if (data[ind] < minmax[0])
 			minmax[0] = data[ind];
 		if (data[ind] > minmax[1])
-			minmax[1] = data[ind];
-	}
-}
-
-static void get_minmax_with_double_@dtype(const void *vdata, long length, double *minmax, double *other, int stride, int stride_oth) {
-	const $dtype *data = vdata;
-	minmax[0] = DBL_MAX;
-	minmax[1] = -DBL_MAX;
-	for (long i=0; i<length; i++) {
-		long ind = i*stride,
-			 ind_oth = i*stride_oth;
-		if (my_isnan(data[ind]))
-			continue;
-		if (data[ind] < minmax[0] && !my_isnan_double(other[ind_oth]))
-			minmax[0] = data[ind];
-		if (data[ind] > minmax[1] && !my_isnan_double(other[ind_oth]))
-			minmax[1] = data[ind];
-	}
-}
-
-static void get_minmax_with_float_@dtype(const void *vdata, long length, double *minmax, float *other, int stride, int stride_oth) {
-	const $dtype *data = vdata;
-	minmax[0] = DBL_MAX;
-	minmax[1] = -DBL_MAX;
-	for (long i=0; i<length; i++) {
-		long ind = i*stride,
-			 ind_oth = i*stride_oth;
-		if (my_isnan(data[ind]))
-			continue;
-		if (data[ind] < minmax[0] && !my_isnan_float(other[ind_oth]))
-			minmax[0] = data[ind];
-		if (data[ind] > minmax[1] && !my_isnan_float(other[ind_oth]))
 			minmax[1] = data[ind];
 	}
 }

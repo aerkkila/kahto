@@ -1,21 +1,23 @@
 void cplot_colormesh_render(
-		struct cplot_data *data, uint32_t *canvas, int ystride, struct cplot_figure *fig, long start) {
-	int xdatalen = data->xlength;
-	int ydatalen = data->ylength ? data->ylength : xdatalen;
-	const int *xywh = data->yxaxis[0]->figure->ro_inner_xywh;
-	const unsigned char *cmap = data->caxis->cmap;
-	const int reverse_cmap = data->caxis->reverse_cmap;
+		struct cplot_graph *graph, uint32_t *canvas, int ystride, struct cplot_figure *fig, long start) {
+	int xdatalen = graph->data.list.xdata->length;
+	int ydatalen = graph->data.list.ydata->length;
+	int xywh[4];
+	inner_without_margin(xywh, graph->yxaxis[0]->figure);
+	struct cplot_axis *caxis = graph->yxaxis[2];
+	const unsigned char *cmap = caxis->cmap;
+	const int reverse_cmap = caxis->reverse_cmap;
 
 	float data_per_pixel[] = {
 		(float)xdatalen / xywh[2],
 		(float)ydatalen / xywh[3],
 	};
 	/* akseli piirretään väärin, koska kokoa muokataan vain täällä */
-	if (data->equal_xy) {
+	if (graph->equal_xy) {
 		data_per_pixel[0] = max(data_per_pixel[0], data_per_pixel[1]);
 		data_per_pixel[1] = data_per_pixel[0];
 	}
-	if (data->exact)
+	if (graph->exact)
 		for (int i=0; i<2; i++)
 			data_per_pixel[i] = data_per_pixel[i] >= 1 ? ceil(data_per_pixel[i]) :
 				1.0 / floor(1.0/data_per_pixel[i]);
@@ -65,7 +67,7 @@ void cplot_colormesh_render(
 				int ixpix0 = iceil(xpix0 - epsilon);
 				int ixpix1 = xpix1 + epsilon;
 				double weight = (ixpix0 - xpix0) * yweight;
-				double val = get_floating[data->yxztype[2]](data->yxzdata[2], idata+ix);
+				double val = get_floating[graph->data.list.zdata->type](graph->data.list.zdata->data, idata+ix);
 				rowvalues[ixpix0-1] += weight * val;
 				rowweight[ixpix0-1] += weight;
 				for (int i=ixpix0; i<ixpix1; i++) {
@@ -83,12 +85,13 @@ void cplot_colormesh_render(
 			rowvalues[i] /= rowweight[i];
 
 		unsigned char zlevels[xpixlen];
-		if (my_isnan(data->caxis->center))
+		struct cplot_axis *caxis = graph->yxaxis[2];
+		if (my_isnan(caxis->center))
 			get_datalevels_f8(
-				0, xpixlen, rowvalues, zlevels, data->caxis->min, data->caxis->max, 255, 1);
+				0, xpixlen, rowvalues, zlevels, caxis->min, caxis->max, 255, 1);
 		else
 			get_datalevels_with_center_f8(
-				0, xpixlen, rowvalues, zlevels, data->caxis->min, data->caxis->center, data->caxis->max, 255, 1);
+				0, xpixlen, rowvalues, zlevels, caxis->min, caxis->center, caxis->max, 255, 1);
 
 		if (reverse_cmap)
 			for (int i=0; i<xpixlen; i++)
