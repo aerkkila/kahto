@@ -39,9 +39,13 @@ void* käännä(const char *sisälmys) {
 	sprintf(nimi_so, "/tmp/funktio_%i.so", rand());
 
 	/* kääntäjä */
-	int len = snprintf(NULL, 0, "cc %s -fpic -shared -o %s -x c -", getenv("CFLAGS"), nimi_so);
+	const char *ldlibs = getenv("LDLIBS");
+	const char *cflags = getenv("CFLAGS");
+	cflags=cflags?cflags:"";
+	ldlibs=ldlibs?ldlibs:"";
+	int len = snprintf(NULL, 0, "cc %s -fpic -shared -o %s -x c - %s", cflags, nimi_so, ldlibs);
 	char *cmd = malloc(len+1);
-	snprintf(cmd, len+1, "cc %s -fpic -shared -o %s -x c -", getenv("CFLAGS"), nimi_so);
+	snprintf(cmd, len+1, "cc %s -fpic -shared -o %s -x c - %s", cflags, nimi_so, ldlibs);
 	FILE *prog = popen(cmd, "w");
 	if (!prog)
 		err(1, "popen %s", cmd);
