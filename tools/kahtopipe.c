@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
 		}
 
 	char *format = separator ? "%lf %*c" : "%lf ";
-	int len = 2000;
+	long len = 2000;
 	double *data = malloc(len*sizeof(double));
 	double *ptr = data - 1;
 	double *end = data + len;
@@ -19,7 +19,9 @@ int main(int argc, char **argv) {
 			if (scanf(format, ptr) != 1)
 				goto done;
 		len *= 1.5;
+		long pos = ptr - data;
 		data = realloc(data, len*sizeof(double));
+		ptr = data + pos;
 		end = data + len;
 	}
 done:
