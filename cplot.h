@@ -219,24 +219,24 @@ union cplot_errorbars {
 	void *yx[4];
 };
 
-/* If changed, cplot_args must be changed similarily. */
+struct cplot_data_container {
+	void *data;
+	int type;
+	long length;
+	short stride;
+	char have_minmax, owner;
+	double minmax[2];
+	int n_users;
+};
+
 struct cplot_data {
-	/* fixed order below */
-	void *yxzdata[3];
-	int yxztype[3];
-	long length,
-		 ylength, xlength; // used only with colormesh
-	/* fixed order above */
-	short yxzstride[3];
+	struct cplot_data_container *yxzdata[3];
 	struct cplot_axis *yxaxis[2], *caxis;
-	double minmax[3][2];
-	char have_minmax[3]; // bits: cplot_minbit, cplot_maxbit
-	char owner[3], cmap_owner;
+	char cmap_owner;
 	double yxz0[3], yxzstep[3];
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order
 	union cplot_errorbars err;
-	char err_owner[4];
 	/* style */
 	struct cplot_markerstyle markerstyle;	// fixed order
 	struct cplot_linestyle linestyle, errstyle;	// fixed order
@@ -317,7 +317,6 @@ struct cplot_args {
 	struct cplot_figure *figure;
 	struct cplot_figure **figureptr;
 
-	/* struct cplot_data inlined. ydata must stay first */
 	void *ydata, *xdata, *zdata;
 	int ytype, xtype, ztype;
 	long len, ylen, xlen; // xlen and ylen are for colormesh
@@ -341,7 +340,6 @@ struct cplot_args {
 	int cmh_enum, icolor;
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1; // only needed with colormesh
-	/* end struct cplot_data */
 
 	double caxis_center; // datavalue that evaluates to center color of cmap
 
