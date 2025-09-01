@@ -56,7 +56,7 @@ printf "prefix = %s\n" "$prefix" >> $file
 printf "CC = %s\n" "$CC" >> $file
 
 compiler_flag_works() {
-	echo "" |$CC $1 -E -x c - >/dev/null 2>&1
+	echo "" |$CC -Werror $1 -E -x c - >/dev/null 2>&1
 }
 
 found=
