@@ -16,6 +16,7 @@
 const char fun_alku[] =
 "#include <math.h>\n"
 "#include <stdlib.h>\n" // at least rand() might be wanted
+"const double pi = 3.14159265358979L;\n"
 "double funktio(double x) {\n"
 "	return ";
 
