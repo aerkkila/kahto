@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
 #include <ttra.h>
 #include <float.h>
 #include <cmh_colormaps.h>
@@ -564,8 +565,19 @@ void kahto_check_dataminmax(struct kahto_data *data, int yxz) {
 	}
 }
 
+int find_axis_ind(struct kahto_axis *axis) {
+	struct kahto_axis **list = axis->figure->axis;
+	int n = axis->figure->naxis;
+	for (int i=0; i<n; i++)
+		if (list[i] == axis)
+			return i;
+	return -1;
+}
+
 void kahto_make_range(struct kahto_figure *figure) {
 	unsigned char minmax = kahto_minbit | kahto_maxbit;
+	char used_axis[figure->naxis];
+	memset(used_axis, 0, sizeof(used_axis));
 	for (int igraph=figure->ngraph-1; igraph>=0; igraph--) {
 		struct kahto_graph *restrict graph = figure->graph[igraph];
 		if (!kahto_visible_graph(graph))
@@ -576,6 +588,8 @@ void kahto_make_range(struct kahto_figure *figure) {
 			if (!data)
 				continue;
 			struct kahto_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
+			used_axis[find_axis_ind(axis)] = 1;
+			// errordata uses yaxis
 			if ((axis->range_isset & minmax) == minmax)
 				continue;
 			kahto_check_dataminmax(data, yxz);
@@ -598,8 +612,10 @@ void kahto_make_range(struct kahto_figure *figure) {
 		}
 	}
 
+	/* some axis may not be straightly linked to any data, for example countaxis */
 	for (int i=0; i<figure->naxis; i++)
-		figure->axis[i]->range_isset = kahto_minbit | kahto_maxbit;
+		if (used_axis[i])
+			figure->axis[i]->range_isset = kahto_minbit | kahto_maxbit;
 }
 
 /* Tätä voisi nopeuttaa käymällä löydettyä kohtaa läpi eteenpäin kunnes löytyy vapaa paikka
@@ -1114,6 +1130,20 @@ void texts_placement(struct kahto_figure *figure) {
 	}
 }
 
+/* These are probably unnecessary in the graph object */
+static void graph_cmap_to_axis(struct kahto_graph *graph, struct kahto_axis *caxis) {
+	if (graph->cmap)
+		caxis->cmap = graph->cmap;
+	else if (graph->cmh_enum) {
+		if (graph->cmh_enum < 0)
+			caxis->cmap = cmh_colormaps[-graph->cmh_enum].map;
+		else
+			caxis->cmap = cmh_colormaps[graph->cmh_enum].map;
+	}
+	if (graph->cmh_enum < 0 && graph->yxaxis[2])
+		graph->yxaxis[2]->reverse_cmap = 1;
+}
+
 static struct kahto_graph* add_graph(struct kahto_args *args) {
 	if (args->figure->mem_graph < args->figure->ngraph+1)
 		args->figure->graph = realloc(args->figure->graph,
@@ -1209,27 +1239,27 @@ found:
 		graph->yxaxis[2] = kahto_featureaxis_new(args->figure, 'y', args->zfeature);
 found1:
 	}
+
 	if (graph->yxaxis[2]) {
-		struct kahto_axis *caxis = graph->yxaxis[2];
 		if (!my_isnan(args->caxis_center))
-			caxis->center = args->caxis_center;
-		if (graph->cmap)
-			caxis->cmap = graph->cmap;
-		else if (graph->cmh_enum) {
-			if (graph->cmh_enum < 0)
-				caxis->cmap = cmh_colormaps[-graph->cmh_enum].map;
-			else
-				caxis->cmap = cmh_colormaps[graph->cmh_enum].map;
-		}
-		if (graph->cmh_enum < 0 && graph->yxaxis[2])
-			graph->yxaxis[2]->reverse_cmap = 1;
+			graph->yxaxis[2]->center = args->caxis_center;
+		graph_cmap_to_axis(graph, graph->yxaxis[2]);
 	}
+
+	if (graph->markerstyle.count) {
+		if (!graph->countaxis)
+			graph->countaxis = kahto_featureaxis_new(args->figure, 'y', kahto_color_e);
+		if (!my_isnan(args->caxis_center))
+			graph->countaxis->center = args->caxis_center;
+		graph_cmap_to_axis(graph, graph->countaxis);
+	}
+
 	if (!graph->data.arr[1])
 		graph->yxaxis[1]->ticks->integers_only = 1; // Väärin. Akselilla voi olla muutakin dataa.
 	for (int i=0; i<arrlen(graph->yxaxis); i++)
 		if (graph->yxaxis[i])
 			graph->yxaxis[i]->range_isset = 0;
-	set_icolor(graph);
+	set_icolor(graph); // tämä pitäisi ohittaa, jos käytetään väriakselia
 	return graph;
 }
 

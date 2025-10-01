@@ -1,5 +1,4 @@
 #include <math.h>
-#include <stdio.h>
 #include <ttra.h>
 #include <err.h>
 #ifndef KAHTO_NO_VERSION_CHECK
@@ -481,7 +480,8 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 
 	unsigned (*count)[xywh0[2]] = (void*)data_args.canvascount;
 	float min, max;
-	if (!caxis || caxis->range_isset != kahto_range_isset) {
+	struct kahto_axis *countaxis = graph->countaxis;
+	if (!countaxis || countaxis->range_isset != kahto_range_isset) {
 		min = max = count[0][0];
 		for (int j=0; j<xywh0[3]; j++)
 			for (int i=0; i<xywh0[2]; i++)
@@ -489,23 +489,27 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 					max = count[j][i];
 				else if (count[j][i] < min)
 					min = count[j][i];
-		if (caxis) {
-			caxis->min = min;
-			caxis->max = max;
+		min /= 255;
+		max /= 255;
+		if (countaxis) {
+			countaxis->min = min;
+			countaxis->max = max;
 		}
+		fprintf(stderr, "Warning: countaxis range must be given by user\n");
+		fprintf(stderr, "current range is [%f, %f]\n", min, max);
 	}
 	else
-		min = caxis->min,
-			max = caxis->max;
+		min = countaxis->min,
+			max = countaxis->max;
 	float range = max - min;
 
-	const unsigned char *cmap = caxis ? caxis->cmap : cmh_colormaps[default_colormap].map;
+	const unsigned char *cmap = countaxis ? countaxis->cmap : cmh_colormaps[default_colormap].map;
 	uint32_t (*canvasview)[ystride] = (void*)(canvas + xywh0[1]*ystride + xywh0[0]);
 	for (int j=0; j<xywh0[3]; j++)
 		for (int i=0; i<xywh0[2]; i++) {
 			if (!count[j][i])
 				continue;
-			float level = (count[j][i] - min) / range;
+			float level = (count[j][i]/255 - min) / range;
 			if (level < 0)
 				level = 0;
 			else if (level > 1)

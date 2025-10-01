@@ -39,7 +39,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 39
+#define __kahto_version_in_program 40
 extern const int __kahto_version_in_library;
 #ifndef KAHTO_NO_VERSION_CHECK
 static void __attribute__((constructor)) kahto_check_version() {
@@ -231,7 +231,7 @@ struct kahto_graph {
 		struct kahto_data *arr[5];
 	} data;
 	/* the rest must match with kahto_args */
-	struct kahto_axis *yxaxis[3];
+	struct kahto_axis *yxaxis[3], *countaxis;
 	char cmap_owner;
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order
@@ -326,7 +326,7 @@ struct kahto_args {
 		 yxzowner[5];
 	enum kahto_feature zfeature; // = color
 	/* below must match with kahto_graph */
-	struct kahto_axis *yaxis, *xaxis, *caxis; // yaxis must stay first
+	struct kahto_axis *yaxis, *xaxis, *caxis, *countaxis; // yaxis must stay first
 	char cmap_owner;
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order; Copied, if owner = -1.
