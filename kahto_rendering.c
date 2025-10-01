@@ -191,18 +191,22 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	return 0;
 }
 
-void init_literal(unsigned char *bmap, int w, int h, struct kahto_graph *graph) {
-	memset(bmap, 0, w*h);
+static unsigned char* init_literal(unsigned char *bmap, int *w, int *h, struct kahto_graph *graph) {
 	struct ttra *ttra = graph->yxaxis[0]->figure->ttra;
 	struct ttra memttra = *ttra;
 	ttra_set_xy0(ttra, 0, 0);
-	ttra_set_fontheight(ttra, h);
+	ttra_set_fontheight(ttra, *h);
+	ttra_get_textdims_pixels(ttra, graph->markerstyle.marker, w, h);
+	bmap = calloc(*w**h, 4);
 	ttra->canvas = (void*)bmap;
-	ttra->ystride = ttra->x1 = w;
-	ttra->y1 = h;
+	ttra->ystride = ttra->x1 = *w;
+	ttra->y1 = *h;
 	ttra->alphamode = 1;
 	ttra_print(ttra, graph->markerstyle.marker);
+	/*for (int i=1; i<*w**h*4; i+=4)
+		bmap[i/4] = 0xff-bmap[i];*/
 	*ttra = memttra;
+	return bmap;
 }
 
 static void draw_data_xy(struct draw_data_args *restrict ar) {
@@ -286,8 +290,8 @@ static int kahto_visible_graph(struct kahto_graph *graph) {
 	return kahto_visible_marker(graph->markerstyle.marker) || graph->linestyle.style || graph->errstyle.style;
 }
 
-/* width and height wouldn't have to be pointers */
-static unsigned char* kahto_data_marker_bmap(struct kahto_graph *graph, unsigned char *bmap, int *has_marker, int *width, int *height) {
+static unsigned char* kahto_data_marker_bmap
+(struct kahto_graph *graph, unsigned char *bmap, int *has_marker, int *width, int *height) {
 	if (!graph->markerstyle.marker) {
 		*has_marker = 0;
 		return NULL;
@@ -307,7 +311,7 @@ static unsigned char* kahto_data_marker_bmap(struct kahto_graph *graph, unsigned
 			default: break;
 		}
 
-	initfun(bmap, *width, *height, graph);
+	bmap = initfun(bmap, width, height, graph);
 
 	if (graph->markerstyle.nofill) {
 		int W = *width, H = *height;
@@ -315,11 +319,13 @@ static unsigned char* kahto_data_marker_bmap(struct kahto_graph *graph, unsigned
 			h = *height * graph->markerstyle.nofill;
 		int x0 = (W - w) / 2,
 			y0 = (H - h) / 2;
-		unsigned char *bmap1 = malloc(w * h);
-		initfun(bmap1, w, h, graph);
+		unsigned char *bmap2 = malloc(w * h);
+		unsigned char *bmap1 = initfun(bmap2, &w, &h, graph);
 		for (int j=0; j<h; j++)
 			for (int i=0; i<w; i++)
 				bmap[(j+y0)*W + i+x0] -= bmap1[j*w+i];
+		if (bmap2 != bmap1)
+			free(bmap2);
 		free(bmap1);
 	}
 	return bmap;
@@ -524,6 +530,9 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 				canvasview[j][i] = from_cmap(cmap+ilevel*3);
 		}
 	free(data_args.canvascount);
+
+	if (bmap != bmap_buff)
+		free(bmap);
 }
 
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,

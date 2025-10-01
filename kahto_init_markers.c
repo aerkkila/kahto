@@ -1,4 +1,5 @@
-static void init_plus(unsigned char *to, int tow, int toh) {
+static unsigned char* init_plus(unsigned char *to, int *_tow, int *_toh) {
+	int tow = *_tow, toh = *_toh;
 	float rside = min(tow, toh) / 15.0;
 	float x0 = tow*0.5 - rside,
 		  x1 = tow*0.5 + rside;
@@ -16,9 +17,11 @@ static void init_plus(unsigned char *to, int tow, int toh) {
 			to[j*tow+i] = frac*255 * (frac >= 0);
 		}
 	}
+	return to;
 }
 
-static void init_triangle(unsigned char *to, int tow, int toh) {
+static unsigned char* init_triangle(unsigned char *to, int *_tow, int *_toh) {
+	int tow = *_tow, toh = *_toh;
 	int odd_tow = tow - (tow % 2 == 0);
 	int side = min(odd_tow, toh);
 	int rectheight = sin(3.14159265/3) * side;
@@ -42,9 +45,11 @@ static void init_triangle(unsigned char *to, int tow, int toh) {
 		memset(to + j*tow + imid - iint, 255, iint*2+1);
 		ifloat += addw;
 	}
+	return to;
 }
 
-static void init_circle(unsigned char *to, int tow, int toh) {
+static unsigned char* init_circle(unsigned char *to, int *_tow, int *_toh) {
+	int tow = *_tow, toh = *_toh;
 	const int size = min(tow, toh);
 	const int size16 = size * 16;
 	const int r = size16 / 2;
@@ -85,10 +90,12 @@ static void init_circle(unsigned char *to, int tow, int toh) {
 		for (int i=0; i<size16; i++)
 			to[j/16*tow+i/16] += to16[j][i] && (j%16 || i%16);
 	free(to16);
+	return to;
 }
 
 /* Only lines commented as 'different' differ from the init_circle function above */
-static void init_4star(unsigned char *to, int tow, int toh) {
+static unsigned char* init_4star(unsigned char *to, int *_tow, int *_toh) {
+	int tow = *_tow, toh = *_toh;
 	const int size = min(tow, toh);
 	const int size16 = size * 16;
 	const int r = size16 / 2;
@@ -129,4 +136,5 @@ static void init_4star(unsigned char *to, int tow, int toh) {
 		for (int i=0; i<size16; i++)
 			to[j/16*tow+i/16] += to16[j][i] && (j%16 || i%16);
 	free(to16);
+	return to;
 }
