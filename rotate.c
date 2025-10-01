@@ -89,19 +89,19 @@ static void laita(unsigned *to, int length, int tw, float y, float x, unsigned c
 }
 
 void rotate(
-	unsigned *to, int tox, int toy, int tw, int th,
+	unsigned *to, int ystride, int tox, int toy, int tw, int th,
 	const unsigned *from, int fw, int fh,
 	float rot_grad)
 {
-	to += toy*tw + tox;
+	to += toy*ystride + tox; // move the corner
 	int irot = rot_grad;
 	if (irot == rot_grad) {
 		if (irot < 0)
 			irot += 400 * (-irot/400 + !!(irot%400));
 		else if (irot >= 400)
 			irot -= irot/400 * 400;
-		if (irot == 100) return rotate100(to, tw, tw-tox, th-toy, from, fw, fh);
-		if (irot == 300) return rotate300(to, tw, tw-tox, th-toy, from, fw, fh);
+		if (irot == 100) return rotate100(to, ystride, tw, th, from, fw, fh);
+		if (irot == 300) return rotate300(to, ystride, tw, th, from, fw, fh);
 	}
 
 	float si = sinf(rot_grad * 3.14159265358979 / 200);
@@ -113,7 +113,7 @@ void rotate(
 	int new_h = area[3] - area[1] + 2;
 	int apulen = new_w * new_h;
 	unsigned *apu = malloc(apulen * sizeof(unsigned));
-	memset(apu, -1, apulen * sizeof(unsigned));
+	memset(apu, -1, apulen * sizeof(unsigned)); // XXX -1 is wrong
 	int xshift = round(-area[0]);
 	int yshift = round(-area[1]);
 	/*int shift = round(-area[0]) + round(-area[1])*new_w; // tärkeä pyöristää erikseen
@@ -125,15 +125,13 @@ void rotate(
 			laita(apu, apulen, new_w, y1+yshift, x1+xshift, from[y0*fw + x0]);
 		}
 	}
-	//apu -= shift;
 
 	int cpw = min(tw, new_w),
 		cph = min(th, new_h);
 	for (int j=0; j<cph; j++)
 		for (int i=0; i<cpw; i++)
 			if (apu[j*new_w+i] != -1)
-				to[j*tw+i] = apu[j*new_w+i];
-	//memcpy(to + j*tw, apu+j*new_w, cpw*sizeof(to[0]));
+				to[j*ystride+i] = apu[j*new_w+i];
 
 	free(apu);
 }

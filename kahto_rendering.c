@@ -137,12 +137,14 @@ static inline void draw_datum_cmap(struct draw_data_args *restrict ar) {
 #include "kahto_draw_line.c" // future default method
 #include "kahto_draw_line_more.c" // other methods
 
-static int put_text(struct ttra *ttra, const char *text, int x, int y, float xalignment, float yalignment, float rot, int area_out[4], int area_only) {
+static int put_text(struct ttra *ttra, const char *text, int x, int y, float xalignment, float yalignment,
+	float rot, int area_out[4], int area_only)
+{
 	int wh[2];
 	float farea[4], fw, fh;
 
-	ttra_get_textdims_pixels(ttra, text, wh+0, wh+1);
-	get_rotated_area(wh[0], wh[1], farea, rot);
+	ttra_get_textdims_pixels(ttra, text, wh+0, wh+1); // almost unnecessary when not rotated
+	get_rotated_area(wh[0], wh[1], farea, rot); // almost unnecessary when not rotated
 	fw = farea[2] - farea[0];
 	fh = farea[3] - farea[1];
 
@@ -158,25 +160,28 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 		return -1;
 
 	if (iround(rot*100'000) % (400*100'000)) {
-		uint32_t *canvas = ttra->canvas;
-		int width0 = ttra->realw;
-		int height0 = ttra->realh;
+		uint32_t *canvas0 = ttra->canvas;
+		int ystride0 = ttra->ystride,
+			x10 = ttra->x1,
+			y10 = ttra->y1;
 
 		if (!(ttra->canvas = malloc(wh[0]*wh[1] * sizeof(uint32_t)))) {
 			warn("malloc %i * %i * %zu epäonnistui", wh[0], wh[1], sizeof(uint32_t));
 			return 1;
 		}
-		ttra->realw = wh[0];
-		ttra->realh = wh[1];
-		ttra->clean_line = 1;
 		ttra_set_xy0(ttra, 0, 0);
+		ttra->ystride = ttra->x1 = wh[0];
+		ttra->y1 = wh[1];
+		ttra->clean_line = 1;
 		ttra_print(ttra, text);
-		rotate(canvas, area_out[0], area_out[1], width0, height0, ttra->canvas, wh[0], wh[1], rot);
+
+		rotate(canvas0, ystride0, area_out[0], area_out[1], x10-area_out[0], y10-area_out[1], ttra->canvas, wh[0], wh[1], rot);
 
 		free(ttra->canvas);
-		ttra->canvas = canvas;
-		ttra->realw = width0;
-		ttra->realh = height0;
+		ttra->canvas = canvas0;
+		ttra->ystride = ystride0;
+		ttra->x1 = x10;
+		ttra->y1 = y10;
 		ttra->clean_line = 0;
 		return 0;
 	}
@@ -187,20 +192,17 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 }
 
 void init_literal(unsigned char *bmap, int w, int h, struct kahto_graph *graph) {
-	struct ttra *ttra = graph->yxaxis[0]->figure->ttra;
-	/* bitmap is probably smaller than fontheight */
-	int bw, bh;
-	unsigned char *bm;
-	ttra_set_fontheight(ttra, 50);
-	ttra_get_bitmap(ttra, graph->markerstyle.marker, &bw, &bh);
-	ttra_set_fontheight(ttra, h * ttra->fontheight / (float)bh);
-
-	bm = ttra_get_bitmap(ttra, graph->markerstyle.marker, &bw, &bh);
 	memset(bmap, 0, w*h);
-	int minw = bw < w ? bw : w;
-	int minh = bh < h ? bh : h;
-	for (int j=0; j<minh; j++)
-		memcpy(bmap + j*w, bm + j*bw, minw);
+	struct ttra *ttra = graph->yxaxis[0]->figure->ttra;
+	struct ttra memttra = *ttra;
+	ttra_set_xy0(ttra, 0, 0);
+	ttra_set_fontheight(ttra, h);
+	ttra->canvas = (void*)bmap;
+	ttra->ystride = ttra->x1 = w;
+	ttra->y1 = h;
+	ttra->alphamode = 1;
+	ttra_print(ttra, graph->markerstyle.marker);
+	*ttra = memttra;
 }
 
 static void draw_data_xy(struct draw_data_args *restrict ar) {
@@ -284,6 +286,7 @@ static int kahto_visible_graph(struct kahto_graph *graph) {
 	return kahto_visible_marker(graph->markerstyle.marker) || graph->linestyle.style || graph->errstyle.style;
 }
 
+/* width and height wouldn't have to be pointers */
 static unsigned char* kahto_data_marker_bmap(struct kahto_graph *graph, unsigned char *bmap, int *has_marker, int *width, int *height) {
 	if (!graph->markerstyle.marker) {
 		*has_marker = 0;
@@ -344,7 +347,7 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 	width = height = topixels(graph->markerstyle.size, fig);
 	unsigned char bmap_buff[width*height];
 	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
-	/* bmap points to bmap_buff or is NULL */
+	/* bmap points to bmap_buff or is NULL or a malloced pointer */
 
 	unsigned char *linepen_bmap = NULL;
 	int linepen_width, linepen_height, helper;
@@ -566,6 +569,9 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 		else
 			draw_datum(&args);
 	}
+
+	if (bmap != bmap_buff)
+		free(bmap);
 }
 
 void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *area, struct kahto_linestyle *linestyle) {

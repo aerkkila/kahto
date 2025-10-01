@@ -821,8 +821,9 @@ void kahto_ticks_draw(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 	if (ticks->have_labels) {
 		ttra = figure->ttra;
 		ttra->canvas = canvas;
-		ttra->realw = ystride;
-		ttra->realh = figureheight;
+		ttra->ystride = ystride;
+		ttra->x1 = figurewidth;
+		ttra->y1 = figureheight;
 		ttra->fg_default = ticks->color;
 		ttra->bg_default = -1;
 		ttra_print(ttra, "\033[0m");
@@ -891,8 +892,9 @@ void kahto_ticks_draw(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 void kahto_axistext_draw(struct kahto_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	struct ttra *ttra = axistext->axis->figure->ttra;
 	ttra->canvas = canvas;
-	ttra->realw = ystride;
-	ttra->realh = figureheight;
+	ttra->ystride = ystride;
+	ttra->x1 = figurewidth;
+	ttra->y1 = figureheight;
 	ttra->fg_default = axistext->axis->linestyle.color;
 	ttra->bg_default = -1;
 	ttra_print(ttra, "\033[0m");
@@ -983,8 +985,9 @@ void kahto_figure_render(struct kahto_figure *figure, uint32_t *canvas, int ystr
 
 	struct ttra *ttra = figure->ttra;
 	ttra->canvas = canvas;
-	ttra->realw = ystride;
-	ttra->realh = figure->wh[1];
+	ttra->ystride = ystride;
+	ttra->x1 = figure->wh[0];
+	ttra->y1 = figure->wh[1];
 	ttra->fg_default = 0xff<<24;
 	ttra->bg_default = -1;
 	ttra_printf(ttra, "\e[0m");
