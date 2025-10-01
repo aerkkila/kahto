@@ -268,7 +268,7 @@ struct kahto_figure {
 	void *userdata;
 	/* This allows user to draw arbitrary things to the figure.
 	   This is called as the last thing in the drawing function. */
-    void (*after_drawing)(struct kahto_figure*, uint32_t *canvas, int ystride);
+	void (*after_drawing)(struct kahto_figure*, uint32_t *canvas, int ystride);
 	struct kahto_figure *super;
 	char ro_cannot_draw : 1, ro_colors_set : 1;
 
@@ -464,17 +464,19 @@ struct kahto_figure* kahto_subfigures_grid_new(int nrows, int ncols, float *ysiz
 		(static float[]){kahto_expand xarr, [xlen]=0}, 0)
 
 /*
-   This creates a subplot grid, where each figure has the same position with the corresponding number in txt.
-   For example:
-   *  "1100000\n"
-   *  "11--222\n"
-   To add space, use '-' or any letter below 0x30. Spaces and empty lines are ignored.
-   This allows expressing the same with a raw string literal, even when it is indented:
-   R"(
-   1100000
-   11--222
-   )";
-   */
+ * This creates a subplot grid, where each figure has the same position with the corresponding number in txt.
+ * For example:
+ *  "1100000\n"
+ *  "11--222\n"
+ * To add space, use '-' or any letter below 0x30. Spaces and empty lines are ignored.
+ * This allows expressing the same with a raw string literal, even when it is indented:
+ * {
+ *     R"(
+ *     1100000
+ *     11--222
+ *     )";
+ * }
+ */
 struct kahto_figure* kahto_subfigures_text_new(const char *txt);
 
 struct kahto_figure* kahto_add_subfigures(struct kahto_figure *fig, int n);

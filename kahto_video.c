@@ -132,7 +132,7 @@ static int write_frame(struct kahto_video *video, uint32_t *argb) {
 			luma[indW++] = get_luma(argb[ind++]);
 	}
 	uint8_t *u = video->frame->data[1],
-	*v = video->frame->data[2];
+			*v = video->frame->data[2];
 	ind = 0;
 	W = video->frame->linesize[1];
 	for (int i=0; i<h05; i++) {

@@ -11,8 +11,8 @@ static void draw_straight_triangle(
 	float n_per_m = !steep ? (float)dy / dx : (float)dx / dy;
 
 	float m0 = xy[0*2 + steep],
-	      m1 = xy[1*2 + steep],
-	      na = xy[0*2 + !steep],
+		  m1 = xy[1*2 + steep],
+		  na = xy[0*2 + !steep],
 		  /* if whichside == ndim (= !steep), nb (constant) is the same as n in the start,
 			 otherwise it is the same as n in the end */
 		  nb = xy[(whichside != !steep)*2 + !steep];

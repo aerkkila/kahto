@@ -203,8 +203,6 @@ static unsigned char* init_literal(unsigned char *bmap, int *w, int *h, struct k
 	ttra->y1 = *h;
 	ttra->alphamode = 1;
 	ttra_print(ttra, graph->markerstyle.marker);
-	/*for (int i=1; i<*w**h*4; i+=4)
-		bmap[i/4] = 0xff-bmap[i];*/
 	*ttra = memttra;
 	return bmap;
 }

@@ -693,9 +693,9 @@ jump_found:
    Return zero on success. */
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement method) {
 	int x0 = figure->ro_inner_xywh[0],
-	y0 = figure->ro_inner_xywh[1],
-	w = figure->ro_inner_xywh[2],
-	h = figure->ro_inner_xywh[3];
+		y0 = figure->ro_inner_xywh[1],
+		w = figure->ro_inner_xywh[2],
+		h = figure->ro_inner_xywh[3];
 	int x1 = x0 + w,
 		y1 = y0 + h;
 	if (w < rwidth || h < rheight)
@@ -705,7 +705,7 @@ int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rhei
 	int retval = 0;
 
 	int width = figure->wh[0],
-	height = figure->wh[1];
+		height = figure->wh[1];
 	unsigned (*image)[width] = calloc(width * height, sizeof(unsigned));
 	if (!figure->ro_colors_set)
 		kahto_set_colors(figure);
@@ -1337,7 +1337,7 @@ struct kahto_args* kahto_defaultargs(struct kahto_args *args) {
 struct kahto_args* kahto_default_lineargs(struct kahto_args *args) {
 	*args = (struct kahto_args) {
 		__kahto_defaultargs,
-			kahto_lineargs,
+		kahto_lineargs,
 	};
 	return args;
 }

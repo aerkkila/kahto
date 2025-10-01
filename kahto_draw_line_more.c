@@ -4,7 +4,7 @@ static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, ui
 	int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
 	int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
-	n1=xy[2*!backwards+nosteep],  n0=xy[2*backwards+nosteep]; // Δm ≥ Δn
+		n1=xy[2*!backwards+nosteep],  n0=xy[2*backwards+nosteep]; // Δm ≥ Δn
 
 	const int n_add = n1 > n0 ? 1 : -1;
 	const int dm = m1 - m0;
@@ -31,7 +31,7 @@ static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, ui
 	int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
 	int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
-	n1=xy[2*!backwards+nosteep],  n0=xy[2*backwards+nosteep]; // Δm ≥ Δn
+		n1=xy[2*!backwards+nosteep],  n0=xy[2*backwards+nosteep]; // Δm ≥ Δn
 
 	const int n_add = n1 > n0 ? 1 : -1;
 	const int dm = m1 - m0;
@@ -83,7 +83,7 @@ static uint32_t draw_line_bresenham_dashed(struct _kahto_dashed_line_args *args,
 
 	int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
 	int m1=args->xy[2*!backwards+!nosteep], m0=args->xy[2*backwards+!nosteep],
-	n1=args->xy[2*!backwards+nosteep],  n0=args->xy[2*backwards+nosteep]; // Δm ≥ Δn
+		n1=args->xy[2*!backwards+nosteep],  n0=args->xy[2*backwards+nosteep]; // Δm ≥ Δn
 
 	const int n_add = n1 > n0 ? 1 : -1;
 	const int dm = m1 - m0;
@@ -184,7 +184,7 @@ static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uin
 
 static uint32_t draw_line_xiaolin_dashed(struct _kahto_dashed_line_args *args, uint32_t carry) {
 	int nosteep = args->nosteep;
-		struct kahto_figure *fig = args->fig;
+	struct kahto_figure *fig = args->fig;
 	uint32_t (*canvas)[args->ystride] = (void*)args->canvas,
 			 color = args->color, *colors = args->colors, colornow;
 

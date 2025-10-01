@@ -1,5 +1,5 @@
-void kahto_colormesh_render(
-		struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start) {
+void kahto_colormesh_render
+(struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start) {
 	int xdatalen = graph->data.list.xdata->length;
 	int ydatalen = graph->data.list.ydata->length;
 	int xywh[4];
@@ -37,8 +37,9 @@ void kahto_colormesh_render(
 		double ydata1 = (iypix+1) * data_per_pixel[1];
 		if (iypix > 0) {
 			double ydata2 = (iypix-1) * data_per_pixel[1];
-			if ((int)(ydata2+epsilon) == (int)(ydata0+epsilon)
-					&& (int)(ydata1+epsilon) == (int)(ydata0+epsilon)) {
+			if ((int)(ydata2+epsilon) == (int)(ydata0+epsilon) &&
+				(int)(ydata1+epsilon) == (int)(ydata0+epsilon))
+			{
 				memcpy(canvas2d[iypix], canvas2d[iypix-1], sizeof(uint32_t)*xpixlen);
 				continue;
 			}
