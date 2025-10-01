@@ -143,8 +143,8 @@ void kahto_get_legend_dims_px(struct kahto_figure *figure, int *y, int *x);
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement);
 void kahto_ticks_draw(struct kahto_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride);
 void kahto_axistext_draw(struct kahto_axistext *axistext, unsigned *canvas, int figurewidth, int figureheight, int ystride);
-void legend_placement(struct kahto_figure *figure);
-void texts_placement(struct kahto_figure *figure);
+static void legend_placement(struct kahto_figure *figure);
+static void texts_placement(struct kahto_figure *figure);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -1060,7 +1060,7 @@ void kahto_get_legend_dims_px(struct kahto_figure *figure, int *Height, int *Wid
 	*Height += 1; // tyhjä tila kirjaimen yläreunan ja laatikon väliin
 }
 
-void legend_placement(struct kahto_figure *figure) {
+static void legend_placement(struct kahto_figure *figure) {
 	if (!figure->legend.visible)
 		return;
 	float coeff = 1.f / figure->legend.scale;
@@ -1103,19 +1103,43 @@ try:
 	figure->legend.ro_xywh[1] = jplace;
 }
 
-void texts_placement(struct kahto_figure *figure) {
-	for (int i=figure->ntexts-1; i>=0; i--) {
-		int *area = figure->texts[i].ro_area;
-		struct kahto_text *text = figure->texts+i;
-		area[0] = iroundpos(figure->wh[0] * text->xy[0]);
-		area[1] = iroundpos(figure->wh[1] * text->xy[1]);
-		if (text->rowheight == 0)
-			text->rowheight = figure->legend.rowheight;
-		if (text->reference == kahto_dataarea_e) {
-			area[0] += figure->ro_inner_xywh[0];
-			area[1] += figure->ro_inner_xywh[1];
-		}
+static void text_placement(struct kahto_figure *fig, struct kahto_text *text) {
+	int *area = text->ro_area;
+	if (text->rowheight == 0)
+		text->rowheight = fig->legend.rowheight;
+	set_fontheight(fig, text->rowheight);
+	put_text(fig->ttra, text->text, 0, 0, 0, 0, text->rotation_grad, area, 1); // get textsize
+	float move_xy[] = {
+		area[2] * text->hvalign[0],
+		area[3] * text->hvalign[1],
+	};
+	int ref_xywh[4];
+	switch (text->reference) {
+		case kahto_figurearea_e:
+			ref_xywh[0] = ref_xywh[1] = 0;
+			ref_xywh[2] = fig->wh[0];
+			ref_xywh[3] = fig->wh[1];
+			break;
+		case kahto_dataarea_e:
+			memcpy(ref_xywh, fig->ro_inner_xywh, sizeof(ref_xywh));
+			break;
+		case kahto_dataarea_inner_e:
+			memcpy(ref_xywh, fig->ro_inner_xywh, sizeof(ref_xywh));
+			ref_xywh[0] += fig->ro_inner_margin[0];
+			ref_xywh[1] += fig->ro_inner_margin[1];
+			ref_xywh[2] -= fig->ro_inner_margin[0] + fig->ro_inner_margin[2];
+			ref_xywh[3] -= fig->ro_inner_margin[1] + fig->ro_inner_margin[3];
+			break;
 	}
+	area[0] = ref_xywh[0] + text->xy[0] * ref_xywh[2] + move_xy[0];
+	area[1] = ref_xywh[1] + text->xy[1] * ref_xywh[3] + move_xy[1];
+	area[2] += area[0];
+	area[3] += area[1];
+}
+
+static void texts_placement(struct kahto_figure *fig) {
+	for (int i=fig->ntexts-1; i>=0; i--)
+		text_placement(fig, fig->texts+i);
 }
 
 /* These are probably unnecessary in the graph object */
@@ -1271,6 +1295,11 @@ struct kahto_figure* kahto_add_text(struct kahto_figure *figure, struct kahto_te
 	if (figure->ntexts >= figure->memtext)
 		figure->texts = realloc(figure->texts, (figure->memtext = figure->ntexts + 2) * sizeof(figure->texts[0]));
 	figure->texts[figure->ntexts++] = *text;
+	text = figure->texts + figure->ntexts-1;
+	if (text->owner < 0) {
+		text->text = strdup(text->text);
+		text->owner = 1;
+	}
 	return figure;
 }
 

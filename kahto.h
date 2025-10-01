@@ -201,7 +201,7 @@ struct kahto_axistext {
 	int ro_area[4];
 };
 
-enum kahto_coords_reference {kahto_dataarea_e, kahto_figurearea_e};
+enum kahto_coords_reference {kahto_dataarea_e, kahto_figurearea_e, kahto_dataarea_inner_e};
 
 struct kahto_text {
 	const char *text; // const will be discarded on destroy, if owner
