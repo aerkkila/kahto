@@ -17,8 +17,8 @@ int main(int argc, char **argv) {
 	struct kahto_figure *fig0 = kahto_figure_new();
 	kahto_yx(f4a, i2a, len, .figure=fig0, .label="10 log(i+1)");       // data type is automatically recognized
 	kahto_yx(f4b, i2b, len, .figure=fig0, .label="\e$10 (i+1)^-0.3$"); // data type is automatically recognized
-	kahto_axislabel(kahto_yaxis0(fig0), "real");
-	kahto_axislabel(kahto_xaxis0(fig0), "integer");
+	kahto_axislabel(kahto_glg(fig0)->yxaxis[0], "real");
+	kahto_axislabel(kahto_glg(fig0)->yxaxis[1], "integer");
 	fig0->legend.rowheight = 1.0 / 25; // defined as the fraction of figure height
 
 	/* The figure can also be obtained from the plotting function

@@ -431,7 +431,6 @@ struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis);
 struct kahto_axis* kahto_axis_new(struct kahto_figure *figure, int x_or_y, float position);
 struct kahto_axis* kahto_coloraxis_new(struct kahto_figure *figure, int x_or_y);
 struct kahto_figure* kahto_figure_new();
-struct kahto_figure* kahto_figure_void_new(); // does not create x and y axes
 struct kahto_figure* kahto_subfigures_new(int nrows, int ncols);
 /* xsizes[ncols] defines the proportional width of each column
  * the leftover space is divided equally between all columns with 0 value:
@@ -567,18 +566,19 @@ static inline struct kahto_axis* kahto_set_max(struct kahto_axis *axis, double m
 	return axis;
 }
 
+/* convenience function: get latest graph */
+static inline struct kahto_graph* kahto_glg(struct kahto_figure *fig) {
+	if (fig->ngraph <= 0)
+		return NULL;
+	return fig->graph[fig->ngraph-1];
+}
+
 void kahto_init_ticker_default(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_simple(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_datetime(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_arbitrary_datacoord(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_arbitrary_datacoord_enum(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, double max);
-
-#define kahto_ix0axis 0
-#define kahto_iy0axis 1
-
-static inline struct kahto_axis* kahto_xaxis0(struct kahto_figure *figure) { return figure->axis[kahto_ix0axis]; }
-static inline struct kahto_axis* kahto_yaxis0(struct kahto_figure *figure) { return figure->axis[kahto_iy0axis]; }
 
 struct kahto_async {
 	struct kahto_figure *figure;

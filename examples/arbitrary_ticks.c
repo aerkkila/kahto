@@ -14,7 +14,7 @@ int main() {
 
 	struct kahto_figure *fig = kahto_yx(y, x, len, kahto_lineargs);
 
-	struct kahto_ticks *ticks = kahto_xaxis0(fig)->ticks;
+	struct kahto_ticks *ticks = kahto_glg(fig)->yxaxis[1]->ticks;
 	/* ticks->init points to the function which determines the ticks.
 	   All functions are listed in kahto.h (kahto_init_ticker_*).
 	   In this case we select the function which reads arbitrary data given by user
@@ -39,7 +39,7 @@ int main() {
 	float y2high[] = {1.1, 1.75, -0.3, 3.1}; // higher error bars
 	struct kahto_figure *fig2 = kahto_y(y2, sizeof(y2)/sizeof(y2[0]), .edata0=y2low, .edata1=y2high);
 
-	ticks = kahto_xaxis0(fig2)->ticks;
+	ticks = kahto_glg(fig2)->yxaxis[1]->ticks;
 	char *labels2[] = {
 		"first location",
 		"",

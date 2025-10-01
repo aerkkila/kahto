@@ -319,7 +319,8 @@ struct ttra* kahto_figure_ttra_new(struct kahto_figure *figure) {
 	return figure->ttra;
 }
 
-struct kahto_figure* kahto_figure_void(struct kahto_figure *figure) {
+struct kahto_figure* kahto_figure_init(struct kahto_figure *figure) {
+	memset(figure, 0, sizeof(*figure));
 	figure->background = -1;
 
 	figure->wh[0] = kahto_default_width;
@@ -349,21 +350,8 @@ struct kahto_figure* kahto_figure_void(struct kahto_figure *figure) {
 	return figure;
 }
 
-struct kahto_figure* kahto_figure_void_new() {
-	return kahto_figure_void(calloc(1, sizeof(struct kahto_figure)));
-}
-
-struct kahto_figure* kahto_figure_init_axes(struct kahto_figure *figure) {
-	figure->axis = calloc((figure->mem_axis = 4) + 1, sizeof(void*));
-	figure->axis[0] = kahto_axis_new(figure, 'x', 1);
-	figure->axis[0]->ticks->gridstyle.style = kahto_line_normal_e;
-	figure->axis[1] = kahto_axis_new(figure, 'y', 0);
-	figure->axis[1]->ticks->gridstyle.style = kahto_line_normal_e;
-	return figure;
-}
-
 struct kahto_figure* kahto_figure_new() {
-	return kahto_figure_init_axes(kahto_figure_void_new());
+	return kahto_figure_init(malloc(sizeof(struct kahto_figure)));
 }
 
 struct kahto_figure* kahto_subfigures_put_rows_and_cols(struct kahto_figure *fig, int nrows, int ncols) {
@@ -457,11 +445,11 @@ struct kahto_figure* kahto_add_subfigures(struct kahto_figure *fig, int n) {
 }
 
 struct kahto_figure* kahto_subfigures_new(int nrows, int ncols) {
-	return kahto_subfigures_put_rows_and_cols(kahto_add_subfigures(kahto_figure_void_new(), nrows*ncols), nrows, ncols);
+	return kahto_subfigures_put_rows_and_cols(kahto_add_subfigures(kahto_figure_new(), nrows*ncols), nrows, ncols);
 }
 
 struct kahto_figure* kahto_subfigures_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
-	struct kahto_figure *fig = kahto_add_subfigures(kahto_figure_void_new(), nrows*ncols);
+	struct kahto_figure *fig = kahto_add_subfigures(kahto_figure_new(), nrows*ncols);
 	struct kahto_gridargs args = {
 		.nrows = nrows,
 		.ncols = ncols,
@@ -515,7 +503,7 @@ struct kahto_figure* kahto_subfigures_text_new(const char *_txt) {
 		nfig = i+1;
 	}
 
-	struct kahto_figure *fig = kahto_add_subfigures(kahto_figure_void_new(), nfig);
+	struct kahto_figure *fig = kahto_add_subfigures(kahto_figure_new(), nfig);
 	for (int i=0; i<nfig; i++) {
 		if (xyxy[i+'0'][0] == 0xffff)
 			continue;
@@ -1145,12 +1133,13 @@ static void graph_cmap_to_axis(struct kahto_graph *graph, struct kahto_axis *cax
 }
 
 static struct kahto_graph* add_graph(struct kahto_args *args) {
-	if (args->figure->mem_graph < args->figure->ngraph+1)
-		args->figure->graph = realloc(args->figure->graph,
-			(args->figure->mem_graph = args->figure->ngraph+3) * sizeof(void*));
+	struct kahto_figure *fig = args->figure;
+	if (fig->mem_graph < fig->ngraph+1)
+		fig->graph = realloc(fig->graph,
+			(fig->mem_graph = fig->ngraph+3) * sizeof(void*));
 
 	struct kahto_graph *graph;
-	args->figure->graph[args->figure->ngraph++] = graph = calloc(1, sizeof(struct kahto_graph));
+	fig->graph[fig->ngraph++] = graph = calloc(1, sizeof(struct kahto_graph));
 	/* copy to kahto_graph the part which is shared with kahto_args */
 	memcpy(&graph->yxaxis, &args->yaxis, sizeof(struct kahto_graph) - ((char*)graph->yxaxis - (char*)graph));
 
@@ -1175,7 +1164,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 			length = args->kahto_ylen;
 
 		if (!thedata) {
-			for (data=args->figure->data.next; data; data=data->next)
+			for (data=fig->data.next; data; data=data->next)
 				if (data->data == thedata &&
 					data->type == *type &&
 					data->length == length &&
@@ -1186,7 +1175,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 					goto found; }
 		}
 		else if (args->yxzowner[iyxz] != -1)
-			for (data=args->figure->data.next; data; data=data->next) {
+			for (data=fig->data.next; data; data=data->next) {
 				if (data->data == thedata &&
 					data->type == *type &&
 					data->length == length &&
@@ -1202,7 +1191,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 		data->type = *nth(args->ytype, iyxz);
 		data->length = length;
 		data->stride = *nth(args->ystride, iyxz);
-		data->prev = &args->figure->data;
+		data->prev = &fig->data;
 		data->next = data->prev->next;
 		data->prev->next = data;
 		if (data->next)
@@ -1227,16 +1216,24 @@ found:
 	}
 #undef nth
 
-	if (!graph->yxaxis[0])
-		graph->yxaxis[0] = kahto_yaxis0(args->figure);
-	if (!graph->yxaxis[1])
-		graph->yxaxis[1] = kahto_xaxis0(args->figure);
+	/* add yaxis and xaxis */
+	for (int iaxis=0; iaxis<2; iaxis++)
+		if (!graph->yxaxis[iaxis]) {
+			if (fig->ngraph > 1)
+				graph->yxaxis[iaxis] = fig->graph[fig->ngraph-2]->yxaxis[iaxis];
+			else {
+				graph->yxaxis[iaxis] = kahto_axis_new(fig, 'y'-iaxis, 0+iaxis);
+				graph->yxaxis[iaxis]->ticks->gridstyle.style = kahto_line_normal_e;
+			}
+		}
+
+	/* add featureaxis, if necessary */
 	if (graph->data.arr[2] && !graph->yxaxis[2]) {
-		for (int i=args->figure->naxis-1; i>=0; i--)
-			if (args->figure->axis[i]->feature == args->zfeature) {
-				graph->yxaxis[2] = args->figure->axis[i];
+		for (int i=fig->naxis-1; i>=0; i--)
+			if (fig->axis[i]->feature == args->zfeature) {
+				graph->yxaxis[2] = fig->axis[i];
 				goto found1; }
-		graph->yxaxis[2] = kahto_featureaxis_new(args->figure, 'y', args->zfeature);
+		graph->yxaxis[2] = kahto_featureaxis_new(fig, 'y', args->zfeature);
 found1:
 	}
 
@@ -1248,7 +1245,7 @@ found1:
 
 	if (graph->markerstyle.count) {
 		if (!graph->countaxis)
-			graph->countaxis = kahto_featureaxis_new(args->figure, 'y', kahto_color_e);
+			graph->countaxis = kahto_featureaxis_new(fig, 'y', kahto_color_e);
 		if (!my_isnan(args->caxis_center))
 			graph->countaxis->center = args->caxis_center;
 		graph_cmap_to_axis(graph, graph->countaxis);
@@ -1402,7 +1399,7 @@ struct kahto_figure* kahto_clean(struct kahto_figure *fig) {
 	fig->ttra_owner = 0;
 	int ttra_owner = fig->ttra_owner;
 	kahto_destroy_single(fig); // fig not freed
-	kahto_figure_init_axes(kahto_figure_void(fig));
+	kahto_figure_init(fig);
 	fig->ttra = ttra;
 	fig->ttra_owner = ttra_owner;
 	return fig;
