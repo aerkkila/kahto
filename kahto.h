@@ -27,10 +27,6 @@
 
 extern const unsigned char kahto_sizes[];
 
-/* For example: assert(figure->axis[kahto_ix]->direction == kahto_ix); // x-axis */
-#define kahto_ix 0
-#define kahto_iy 1
-
 /* To zoom axis to some piece of data, set axis->range_isset = kahto_range_isset */
 #define kahto_minbit 1
 #define kahto_maxbit 2
@@ -568,11 +564,25 @@ static inline struct kahto_axis* kahto_set_max(struct kahto_axis *axis, double m
 	return axis;
 }
 
-/* convenience function: get latest graph */
+/* get latest graph */
 static inline struct kahto_graph* kahto_glg(struct kahto_figure *fig) {
 	if (fig->ngraph <= 0)
 		return NULL;
 	return fig->graph[fig->ngraph-1];
+}
+
+/* get latest xaxis */
+static inline struct kahto_axis* kahto_glx(struct kahto_figure *fig) {
+	if (fig->ngraph <= 0)
+		return NULL;
+	return fig->graph[fig->ngraph-1]->yxaxis[1];
+}
+
+/* get latest yaxis */
+static inline struct kahto_axis* kahto_gly(struct kahto_figure *fig) {
+	if (fig->ngraph <= 0)
+		return NULL;
+	return fig->graph[fig->ngraph-1]->yxaxis[0];
 }
 
 void kahto_init_ticker_default(struct kahto_ticks *this, double min, double max);
