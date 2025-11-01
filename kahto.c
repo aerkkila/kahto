@@ -179,6 +179,7 @@ static int __attribute__((unused)) mkdir_file(const char *restrict name) {
 #include "kahto_rendering.c"
 #include "ticker.c"
 #include "layout.c"
+#include "kahto_new_init.c"
 
 int __attribute__((pure)) kahto_topixels(float size, struct kahto_figure *figure) {
 	return topixels(size, figure);
@@ -218,17 +219,6 @@ unsigned* kahto_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *
 	return dest;
 }
 
-struct kahto_axis* kahto_axis_void_new(struct kahto_figure *figure) {
-	struct kahto_axis *axis = calloc(1, sizeof(struct kahto_axis));
-	axis->figure = figure;
-	axis->center = 0.0 / 0.0;
-	if (figure->mem_axis < figure->naxis+1)
-		figure->axis = realloc(figure->axis, (figure->mem_axis+=2) * sizeof(void*));
-	figure->axis[figure->naxis++] = axis;
-	memset(figure->axis + figure->naxis, 0, (figure->mem_axis - figure->naxis) * sizeof(void*));
-	return axis;
-}
-
 long kahto_get_startcanvas(struct kahto_figure *fig, struct kahto_figure *dest, int ystride) {
 	long start = 0;
 	while (fig != dest) {
@@ -236,122 +226,6 @@ long kahto_get_startcanvas(struct kahto_figure *fig, struct kahto_figure *dest, 
 		fig = fig->super;
 	}
 	return start;
-}
-
-struct kahto_axis* kahto_axis_new(struct kahto_figure *figure, int x_or_y, float pos) {
-	struct kahto_axis *axis = kahto_axis_void_new(figure);
-	axis->visible = 1;
-	axis->linestyle.color = 0xff<<24;
-	axis->linestyle.thickness = 1.0 / 400;
-	axis->linestyle.style = 1;
-	axis->linestyle.align = pos == 0 ? -1 : pos == 1 ? 1 : 0;
-	axis->pos = pos;
-	axis->min = 0;
-	axis->max = 1;
-	axis->direction = x_or_y != 'x';
-	axis->ticks = kahto_ticks_new((void*)axis);
-	return axis;
-}
-
-struct kahto_axis* kahto_coloraxis_new(struct kahto_figure *figure, int x_or_y) {
-	struct kahto_axis *caxis = kahto_axis_void_new(figure);
-	caxis->visible = 1;
-	caxis->max = 1;
-	caxis->cmap = cmh_colormaps[default_colormap].map;
-	caxis->feature = kahto_color_e;
-	caxis->direction = x_or_y != 'x';
-	caxis->outside = 1;
-	caxis->pos = 1;
-	caxis->po[0] = 1;
-	caxis->po[1] = 1.0/30;
-	caxis->ticks = kahto_ticks_new((void*)caxis);
-	return caxis;
-}
-
-struct kahto_axis* kahto_featureaxis_new(struct kahto_figure *figure, int x_or_y, enum kahto_feature feature) {
-	switch (feature) {
-		case kahto_position_e: return kahto_axis_new(figure, x_or_y, 1);
-		case kahto_color_e:    return kahto_coloraxis_new(figure, x_or_y);
-		default: break;
-	}
-	struct kahto_axis *axis = kahto_axis_void_new(figure);
-	axis->min = 0;
-	axis->max = 1;
-	axis->direction = x_or_y != 'x';
-	axis->feature = feature;
-	return axis;
-}
-
-struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis) {
-	struct kahto_ticks *ticks = calloc(1, sizeof(struct kahto_ticks));
-	int ipar = axis->direction == 1;
-	ticks->axis = axis;
-	ticks->color = 0xff<<24;
-	ticks->init = kahto_init_ticker_default;
-	ticks->length = 1.0 / 80;
-	ticks->xyalign_text[ipar] = -0.5;
-	ticks->xyalign_text[!ipar] = -1 * (axis->pos < 0.5);
-
-	ticks->linestyle.thickness = 1.0 / 1200;
-	ticks->linestyle.color = RGB(0, 0, 0);
-	ticks->linestyle.style = kahto_line_normal_e;
-
-	ticks->gridstyle.thickness = 1.0 / 1200;
-	ticks->gridstyle.color = 0xffcccccc;
-
-	ticks->rowheight = 1./35;
-	ticks->visible = 1;
-	ticks->have_labels = 1;
-
-	ticks->linestyle1.style = kahto_line_normal_e;
-	ticks->linestyle1.thickness = 1.0 / 1200;
-	ticks->linestyle1.color = 0xff666666;
-	ticks->length1 = 1.0 / 180;
-
-	return ticks;
-}
-
-struct ttra* kahto_figure_ttra_new(struct kahto_figure *figure) {
-	figure->ttra = calloc(1, sizeof(struct ttra));
-	figure->ttra->fonttype = ttra_sans_e;
-	figure->ttra->chop_lines = 1;
-	figure->ttra_owner = 1;
-	return figure->ttra;
-}
-
-struct kahto_figure* kahto_figure_init(struct kahto_figure *figure) {
-	memset(figure, 0, sizeof(*figure));
-	figure->background = -1;
-
-	figure->wh[0] = kahto_default_width;
-	figure->wh[1] = kahto_default_height;
-
-	figure->topixels_reference = kahto_this_height;
-	figure->colorscheme.colors = kahto_colorschemes[0];
-	figure->title.rowheight = 0.05;
-	figure->fontheightmul = 1;
-	figure->fracsizemul = 1;
-
-	figure->legend.rowheight = 1.0 / 35;
-	figure->legend.symbolspace_per_rowheight = 1.25;
-	figure->legend.posx = 0;
-	figure->legend.posy = 1;
-	figure->legend.hvalign[1] = -1;
-	figure->legend.placement = kahto_placement_singlemaxdist;
-	figure->legend.visible = 1;
-	figure->legend.borderstyle.thickness = 1.0/500;
-	figure->legend.borderstyle.style = kahto_line_normal_e;
-	figure->legend.borderstyle.color = 0xff<<24;
-	figure->legend.fill = kahto_fill_bg_e;
-	figure->legend.minscale = 0.6;
-	figure->legend.scale = 1;
-
-	figure->name = "kahtofigure";
-	return figure;
-}
-
-struct kahto_figure* kahto_figure_new() {
-	return kahto_figure_init(malloc(sizeof(struct kahto_figure)));
 }
 
 struct kahto_figure* kahto_subfigures_put_rows_and_cols(struct kahto_figure *fig, int nrows, int ncols) {

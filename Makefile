@@ -5,7 +5,7 @@ CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
 OBJECTS =
-kahto_sources = kahto.h kahto_rendering.c rotate.c functions.c ticker.c layout.c kahto_png.c kahto_draw_line.c kahto_draw_line_more.c kahto_draw_triangle.c kahto_colormesh.c kahto_init_markers.c Makefile
+kahto_sources = kahto.h kahto_rendering.c rotate.c functions.c ticker.c layout.c kahto_png.c kahto_draw_line.c kahto_draw_line_more.c kahto_draw_triangle.c kahto_colormesh.c kahto_init_markers.c kahto_new_init.c Makefile
 dep_dir = dependencies
 dep_get =
 
