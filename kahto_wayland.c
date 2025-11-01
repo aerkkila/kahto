@@ -120,7 +120,7 @@ static void motioncallback(struct waylandhelper *wlh, int xmove, int ymove) {
 	struct highlight *hi = &cookie->highlight;
 
 	goto fig_test;
-	while ((ifig = kahto_next_ifigure_from_coords(fig, x, y)) >= 0) {
+	while ((ifig = kahto_isubfigure_from_coords(fig, x, y)) >= 0) {
 		if (!(fig = fig->subfigures[ifig]))
 			continue;
 		/* convert coordinates to child coordinates */
