@@ -157,6 +157,59 @@ void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth,
 		kahto_draw_axistext(axis->text[i], canvas, figurewidth, figureheight, ystride);
 }
 
+void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride) {
+	if (figure->background)
+		kahto_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
+	if (figure->ro_cannot_draw)
+		return;
+	if (!figure->ro_colors_set)
+		kahto_set_colors(figure);
+
+	for (int i=0; i<figure->naxis; i++)
+		kahto_draw_axis(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
+	for (int i=0; i<figure->ngraph; i++)
+		kahto_graph_render(figure->graph[i], canvas, ystride, figure, 0);
+	kahto_legend_draw(figure, canvas, ystride);
+
+	struct ttra *ttra = figure->ttra;
+	ttra->canvas = canvas;
+	ttra->ystride = ystride;
+	ttra->x1 = figure->wh[0];
+	ttra->y1 = figure->wh[1];
+	ttra->fg_default = 0xff<<24;
+	ttra->bg_default = -1;
+	ttra_printf(ttra, "\e[0m");
+	if (figure->title.text) {
+		struct kahto_text *text = &figure->title;
+		set_fontheight(figure, text->rowheight);
+		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
+	}
+	for (int i=0; i<figure->ntexts; i++) {
+		struct kahto_text *text = figure->texts+i;
+		set_fontheight(figure, text->rowheight);
+		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
+	}
+
+	if (figure->after_drawing)
+		figure->after_drawing(figure, canvas, ystride);
+	++figure->draw_counter;
+}
+
+void kahto_draw_figures(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
+	kahto_draw_figure(fig, canvas, ystride); // before subfigures to not cover them with background color
+	struct kahto_figure *f;
+	for (int i=0; i<fig->nsubfigures; i++)
+		if ((f = fig->subfigures[i]))
+			kahto_draw_figures(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
+	if (fig->revert_fixes)
+		fig->revert_fixes(fig);
+}
+
+void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
+	kahto_layout(fig);
+	kahto_draw_figures(fig, canvas, ystride);
+}
+
 /* This is embeded to draw_ticks, but animation may need a standalone function. */
 void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride) {
 	int naxis = figure->naxis;

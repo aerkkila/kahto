@@ -503,3 +503,18 @@ loop_done:
 }
 
 #undef return
+
+void kahto_layout(struct kahto_figure *fig) {
+	/* this figure first because ro_inner_xywh and other things are needed in subfigures */
+	if (kahto_figure_layout(fig) && fig->fix_too_little_space) {
+		fig->fix_too_little_space(fig);
+		kahto_figure_layout(fig);
+	}
+	/* then subfigures */
+	kahto_xywh_to_subfigures(fig);
+	for (int i=0; i<fig->nsubfigures; i++)
+		if ((fig->subfigures[i]))
+			kahto_layout(fig->subfigures[i]);
+	if (fig->nconnected_x)
+		connect_x(fig->connected_x, fig->nconnected_x);
+}

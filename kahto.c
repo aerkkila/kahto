@@ -143,6 +143,7 @@ void kahto_get_legend_dims_px(struct kahto_figure *figure, int *y, int *x);
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement);
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
+static void connect_x(struct kahto_figure **figs, int nconnected);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -180,6 +181,7 @@ static int __attribute__((unused)) mkdir_file(const char *restrict name) {
 #include "kahto_new_init.c"
 #include "kahto_find_empty_rectangle.c"
 #include "kahto_draw.c"
+#include "kahto_async.c"
 
 int __attribute__((pure)) kahto_topixels(float size, struct kahto_figure *figure) {
 	return topixels(size, figure);
@@ -478,44 +480,6 @@ void kahto_make_range(struct kahto_figure *figure) {
 	for (int i=0; i<figure->naxis; i++)
 		if (used_axis[i])
 			figure->axis[i]->range_isset = kahto_minbit | kahto_maxbit;
-}
-
-void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride) {
-	if (figure->background)
-		kahto_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
-	if (figure->ro_cannot_draw)
-		return;
-	if (!figure->ro_colors_set)
-		kahto_set_colors(figure);
-
-	for (int i=0; i<figure->naxis; i++)
-		kahto_draw_axis(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
-	for (int i=0; i<figure->ngraph; i++)
-		kahto_graph_render(figure->graph[i], canvas, ystride, figure, 0);
-	kahto_legend_draw(figure, canvas, ystride);
-
-	struct ttra *ttra = figure->ttra;
-	ttra->canvas = canvas;
-	ttra->ystride = ystride;
-	ttra->x1 = figure->wh[0];
-	ttra->y1 = figure->wh[1];
-	ttra->fg_default = 0xff<<24;
-	ttra->bg_default = -1;
-	ttra_printf(ttra, "\e[0m");
-	if (figure->title.text) {
-		struct kahto_text *text = &figure->title;
-		set_fontheight(figure, text->rowheight);
-		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
-	}
-	for (int i=0; i<figure->ntexts; i++) {
-		struct kahto_text *text = figure->texts+i;
-		set_fontheight(figure, text->rowheight);
-		put_text(ttra, text->text, text->ro_area[0], text->ro_area[1], 0, 0, text->rotation_grad, text->ro_area, 0);
-	}
-
-	if (figure->after_drawing)
-		figure->after_drawing(figure, canvas, ystride);
-	++figure->draw_counter;
 }
 
 static void set_icolor(struct kahto_graph *graph) {
@@ -1082,7 +1046,7 @@ void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride
 	kahto_fill_u4(canvas+ystride*ystart+xstart, figure->background, figure->ro_inner_xywh[2], figure->ro_inner_xywh[3], ystride);
 }
 
-void kahto_connect_x(struct kahto_figure **figs, int nconnected) {
+static void connect_x(struct kahto_figure **figs, int nconnected) {
 	int x0 = figs[0]->ro_inner_xywh[0];
 	int x1 = x0 + figs[0]->ro_inner_xywh[2];
 	for (int i=1; i<nconnected; i++) {
@@ -1100,36 +1064,6 @@ void kahto_connect_x(struct kahto_figure **figs, int nconnected) {
 	}
 }
 
-void kahto_layout(struct kahto_figure *fig) {
-	/* this figure first because ro_inner_xywh and other things are needed in subfigures */
-	if (kahto_figure_layout(fig) && fig->fix_too_little_space) {
-		fig->fix_too_little_space(fig);
-		kahto_figure_layout(fig);
-	}
-	/* then subfigures */
-	kahto_xywh_to_subfigures(fig);
-	for (int i=0; i<fig->nsubfigures; i++)
-		if ((fig->subfigures[i]))
-			kahto_layout(fig->subfigures[i]);
-	if (fig->nconnected_x)
-		kahto_connect_x(fig->connected_x, fig->nconnected_x);
-}
-
-void kahto_draw_figures(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
-	kahto_draw_figure(fig, canvas, ystride); // before subfigures to not cover them with background color
-	struct kahto_figure *f;
-	for (int i=0; i<fig->nsubfigures; i++)
-		if ((f = fig->subfigures[i]))
-			kahto_draw_figures(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
-	if (fig->revert_fixes)
-		fig->revert_fixes(fig);
-}
-
-void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
-	kahto_layout(fig);
-	kahto_draw_figures(fig, canvas, ystride);
-}
-
 static uint32_t* copy_canvas(uint32_t *dest1d, int dest_ystride, uint32_t *src1d, int src_ystride, int *wh) {
 	int width = wh[0], height = wh[1];
 	uint32_t (*dest)[dest_ystride] = (void*)dest1d,
@@ -1142,114 +1076,6 @@ static uint32_t* copy_canvas(uint32_t *dest1d, int dest_ystride, uint32_t *src1d
 static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *src1d, int src_ystride, int *wh) {
 	uint32_t *copy = malloc(wh[0] * wh[1] * sizeof(uint32_t));
 	return copy_canvas(copy, wh[0], src1d, src_ystride, wh);
-}
-
-static int async_response = 2,
-		   async_request = 1,
-		   async_step = 3;
-
-static int async_update(struct kahto_async *async, uint32_t *canvas, int ystride) {
-	if (!async)
-		return 0;
-	if (async->_exit == async_request)
-		return -1;
-	if (async->_lock != async_request)
-		return 0;
-	async->canvas = canvas;
-	async->ystride = ystride;
-	async->_lock = async_response;
-	while (async->_lock == async_response)
-		usleep(3000);
-	if (async->_lock == async_step)
-		async->_lock = async_request;
-	return 1;
-}
-
-int kahto_async_lock(struct kahto_async *async) {
-	async->_lock = async_request;
-	while (async->_lock != async_response) {
-		if (!kahto_async_running(async))
-			return 1;
-		usleep(10);
-	}
-	return 0;
-}
-
-void kahto_async_unlock(struct kahto_async *async) {
-	async->_lock = 0;
-}
-
-void kahto_async_unlock_step(struct kahto_async *async) {
-	async->_lock = async_step;
-}
-
-void kahto_async_stop(struct kahto_async *async) {
-	async->_exit = async_request;
-}
-
-int kahto_async_running(struct kahto_async *async) {
-	return async->_exit != async_response;
-}
-
-void kahto_async_destroy(struct kahto_async *async) {
-	if (kahto_async_running(async))
-		kahto_async_stop(async);
-	pthread_join(async->_thread, NULL);
-	kahto_destroy(async->figure);
-	free(async);
-}
-
-static void* async_show(void *vargs) {
-	struct kahto_async *h = vargs;
-	kahto_show_preserve(h->figure);
-	h->_exit = async_response;
-	return NULL;
-}
-
-struct kahto_async* kahto_async_show(struct kahto_figure *fig) {
-	struct kahto_async *h = calloc(1, sizeof(*h));
-	h->figure = fig;
-	fig->async = h;
-	pthread_create(&h->_thread, NULL, async_show, h);
-	return h;
-}
-
-static void* async_write_mp4(void *vargs) {
-	struct kahto_async *h = vargs;
-	kahto_async_unlock_step(h);
-	kahto_write_mp4_preserve(h->figure, NULL, h->_fps);
-	h->_exit = async_response;
-	return NULL;
-}
-
-struct kahto_async* kahto_async_write_mp4(struct kahto_figure *fig, const char *name, float fps) {
-	struct kahto_async *h = calloc(1, sizeof(*h));
-	h->figure = fig;
-	h->_fps = fps;
-	if (name)
-		fig->name = (void*)(intptr_t)name;
-	fig->async = h;
-	pthread_create(&h->_thread, NULL, async_write_mp4, h);
-	return h;
-}
-
-void kahto_async_join(struct kahto_async **async, int n) {
-	unsigned char *mask = malloc(n);
-	memset(mask, 1, n);
-	while (1) {
-		usleep(50'000);
-		int count = 0;
-		for (int i=0; i<n; i++) {
-			if (mask[i] && !kahto_async_running(async[i])) {
-				kahto_async_destroy(async[i]);
-				mask[i] = 0;
-			}
-			count += mask[i];
-		}
-		if (!count)
-			break;
-	}
-	free(mask);
 }
 
 #ifdef HAVE_PNG

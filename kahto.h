@@ -618,6 +618,7 @@ struct kahto_args* kahto_default_lineargs(struct kahto_args *args); // returns t
 /* Figure is re-initialized as in kahto_figure_new(), except that ttra is preserved.
    This increases performance because initializing ttra is slow. */
 struct kahto_figure* kahto_clean(struct kahto_figure*);
+void kahto_xywh_to_subfigures(struct kahto_figure*);
 
 /* These are used automatically when necessary
    but user might need these in user-defined drawing functions, e.g. figure->update. */
