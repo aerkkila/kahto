@@ -609,7 +609,7 @@ void kahto_async_stop(struct kahto_async *async); // destroy without stop is eno
 /* waits for all n threads to terminate and destroys them */
 void kahto_async_join(struct kahto_async **async, int n);
 
-void kahto_figure_render(struct kahto_figure *figure, uint32_t *canvas, int ystride);
+void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 int  kahto_figure_layout(struct kahto_figure *figure);
 void kahto_axis_datarange(struct kahto_axis*);
 void kahto_make_range(struct kahto_figure *);
@@ -623,7 +623,7 @@ struct kahto_figure* kahto_clean(struct kahto_figure*);
    but user might need these in user-defined drawing functions, e.g. figure->update. */
 int  kahto_topixels(float size, struct kahto_figure *figure) __attribute__((pure));
 void kahto_xywh_to_figure(struct kahto_figure*);
-void kahto_render(struct kahto_figure *figure, uint32_t *canvas, int ystride);
+void kahto_draw_figures(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_layout(struct kahto_figure *figure);
 void kahto_set_colors(struct kahto_figure*);
 void kahto_legend_draw(struct kahto_figure*, uint32_t *canvas, int ystride);
