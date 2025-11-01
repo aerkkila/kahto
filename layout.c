@@ -351,6 +351,7 @@ static void fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2], int *
 #define return return fig->ro_cannot_draw =
 
 int kahto_figure_layout(struct kahto_figure *fig) {
+start:
 	int imargin_xyxy[4];
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
@@ -392,8 +393,8 @@ break0:
 				kahto_axis_get_orthogonal(axis, imargin_xyxy);
 		}
 
-	if (fig->wh[0] <= imargin_xyxy[0]+imargin_xyxy[2] ||
-		fig->wh[1] <= imargin_xyxy[1]+imargin_xyxy[3])
+	if (fig->wh[0] < imargin_xyxy[0]+imargin_xyxy[2] ||
+		fig->wh[1] < imargin_xyxy[1]+imargin_xyxy[3])
 		return 1;
 
 	if (imargin_xyxy[0] < 0 || imargin_xyxy[1] < 0)
@@ -404,7 +405,7 @@ break0:
 	fig->ro_inner_xywh[2] = fig->wh[0] - imargin_xyxy[2] - fig->ro_inner_xywh[0];
 	fig->ro_inner_xywh[3] = fig->wh[1] - imargin_xyxy[3] - fig->ro_inner_xywh[1];
 	const int *axis_xywh = fig->ro_inner_xywh;
-	if (axis_xywh[2] <= 0 || axis_xywh[3] <= 0 || axis_xywh[0] >= fig->wh[0] || axis_xywh[1] >= fig->wh[1])
+	if (axis_xywh[2] < 0 || axis_xywh[3] < 0 || axis_xywh[0] > fig->wh[0] || axis_xywh[1] > fig->wh[1])
 		return 1;
 
 	struct kahto_axis *axis_xyxy[4] = {0};
@@ -423,7 +424,9 @@ break0:
 
 	kahto_make_inner_margin(fig);
 
-	/* while (1) but avoid halting in certain situations */
+	/* This loop adjusts fig->ro_inner_margin so that axes and ticklabels etc.
+	   fit in the figure without overlapping. */
+	/* while (1) but avoid halting when something goes wrong */
 	for (int iloop=0; iloop<30; iloop++) {
 		/* parallel size */
 		for (int i=0; i<fig->naxis; i++)
@@ -497,6 +500,22 @@ next:
 	}
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
+
+	if (!fig->data.next) {
+		/* Could be a standalone coloraxis.
+		   There is nothing which fills the whole figure without the data area,
+		   so let us adjust the size. */
+		int area[4];
+		if (!kahto_get_axisarea(fig, area)) {
+			int w = area[2] - area[0],
+				h = area[3] - area[1];
+			if (w != fig->wh[0] || h != fig->wh[1]) {
+				fig->wh[0] = w;
+				fig->wh[1] = h;
+				goto start; }
+		}
+	}
+
 	legend_placement(fig);
 	texts_placement(fig);
 	return 0;

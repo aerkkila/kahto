@@ -141,6 +141,7 @@ void inner_without_margin(int *xywh, struct kahto_figure *fig) {
 void kahto_get_legend_dims_chars(struct kahto_figure *figure, int *lines, int *cols);
 void kahto_get_legend_dims_px(struct kahto_figure *figure, int *y, int *x);
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement);
+int kahto_get_axisarea(struct kahto_figure *fig, int area[4]);
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
 static void connect_x(struct kahto_figure **figs, int nconnected);
@@ -304,6 +305,39 @@ float __attribute__((malloc))* kahto_f4arr(int n, double terminator, ...) {
 	}
 	memset(list+i, 0, (n-i)*sizeof(float));
 	return list;
+}
+
+void update_maxarea(int *a, int *b) {
+	if (b[0] < a[0]) a[0] = b[0];
+	if (b[1] < a[1]) a[1] = b[1];
+	if (b[2] > a[2]) a[2] = b[2];
+	if (b[3] > a[3]) a[3] = b[3];
+}
+
+void kahto_get_axisarea1(struct kahto_axis *ax, int area[4]) {
+	memcpy(area, ax->ro_area, 4*sizeof(int));
+	if (ax->ticks)
+		update_maxarea(area, ax->ticks->ro_labelarea);
+	for (int i=0; i<ax->ntexts; i++)
+		update_maxarea(area, ax->text[i]->ro_area);
+}
+
+int kahto_get_axisarea(struct kahto_figure *fig, int area[4]) {
+	int iaxis = 0;
+	int help[4];
+	for (; iaxis<fig->naxis; iaxis++)
+		if (fig->axis[iaxis]) {
+			kahto_get_axisarea1(fig->axis[iaxis], area);
+			goto other_axis;
+		}
+	return 1;
+other_axis:
+	for (; iaxis<fig->naxis; iaxis++)
+		if (fig->axis[iaxis]) {
+			kahto_get_axisarea1(fig->axis[iaxis], help);
+			update_maxarea(area, help);
+		}
+	return 0;
 }
 
 struct kahto_figure* kahto_add_subfigures(struct kahto_figure *fig, int n) {

@@ -55,8 +55,9 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
 }
 
 struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *fig, const char *name) {
+	kahto_layout(fig); // might change fig->wh
 	unsigned *argb = malloc(fig->wh[0] * fig->wh[1] * sizeof(unsigned));
-	kahto_draw(fig, argb, fig->wh[0]);
+	kahto_draw_figures(fig, argb, fig->wh[0]);
 
 	char _name[80];
 	if (!name) {
