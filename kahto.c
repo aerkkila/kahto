@@ -1004,6 +1004,7 @@ void kahto_figure_render(struct kahto_figure *figure, uint32_t *canvas, int ystr
 
 	if (figure->after_drawing)
 		figure->after_drawing(figure, canvas, ystride);
+	++figure->draw_counter;
 }
 
 static void set_icolor(struct kahto_graph *graph) {
