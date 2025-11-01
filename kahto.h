@@ -314,7 +314,7 @@ struct kahto_args {
 	struct kahto_figure **figureptr;
 
 	void *ydata, *xdata, *zdata, *edata0, *edata1;
-	int ytype, xtype, ztype, e0type, e1type; // unspecified is assumed equal to ytype
+	int ytype, xtype, ztype, e0type, e1type; // unspecified eXtype is assumed equal to ytype
 	long kahto_len, kahto_ylen, kahto_xlen; // xlen and ylen are for colormesh
 	short ystride, xstride, zstride, e0stride, e1stride;
 	double minmax[5][2];
