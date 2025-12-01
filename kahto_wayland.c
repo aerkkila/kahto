@@ -210,7 +210,7 @@ struct kahto_figure* kahto_show_preserve_(struct kahto_figure *fig, char *name) 
 	wlh.key_callback = keycallback;
 	wlh.motion_callback = motioncallback;
 	wlh.userdata = &cookie;
-	wlh.title = name ? name : fig->name;
+	wlh.title = name ? name : fig->name ? fig->name : "kahtofigure";
 
 	wlh_init(&wlh);
 	long updatecount = 1;

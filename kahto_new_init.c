@@ -132,7 +132,6 @@ struct kahto_figure* kahto_figure_init(struct kahto_figure *figure) {
 	figure->legend.minscale = 0.6;
 	figure->legend.scale = 1;
 
-	figure->name = "kahtofigure";
 	return figure;
 }
 
