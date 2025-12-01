@@ -157,6 +157,47 @@ void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth,
 		kahto_draw_axistext(axis->text[i], canvas, figurewidth, figureheight, ystride);
 }
 
+void kahto_draw_legend(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
+	if (!fig->legend.visible || no_room_for_legend(fig) || (fig->legend.visible < 0 && fig->legend.ro_place_err))
+		return;
+	uint32_t fillcolor = fig->background;
+	switch (fig->legend.fill) {
+		case kahto_fill_color_e:
+			fillcolor = fig->legend.fillcolor;
+			/* run through */
+		case kahto_fill_bg_e:
+			kahto_fill_box_xywh(canvas, ystride, fig->legend.ro_xywh, fillcolor);
+			/* run through */
+		case kahto_no_fill_e:
+			kahto_draw_box_xywh(canvas, ystride, fig, fig->legend.ro_xywh, &fig->legend.borderstyle);
+			break;
+	}
+
+	int leg_x0 = fig->legend.ro_xywh[0];
+	int leg_y0 = fig->legend.ro_xywh[1];
+	int linewidth = topixels(fig->legend.borderstyle.thickness, fig);
+	/* +1 to y to leave empty space between the letter and the borderline */
+	ttra_set_xy0(fig->ttra, leg_x0 + fig->legend.ro_text_left + linewidth, leg_y0 + linewidth + 1);
+	int text_left = fig->legend.ro_text_left;
+	for (int i=0; i<fig->ngraph; i++) {
+		if (!fig->graph[i]->label)
+			continue;
+		legend_draw_marker(
+			fig, fig->graph[i], canvas, ystride,
+			leg_x0 + text_left/2,
+			fig->legend.ro_xywh[1] + (fig->legend.ro_datay[i] + fig->legend.ro_datay[i+1]) / 2 + linewidth + 1,
+			text_left);
+		/* drawing a literal marker changes fontheight */
+		if (fig->graph[i]->label) {
+			set_fontheight(fig, fig->legend.rowheight);
+			uint32_t mem = fig->ttra->bg_default;
+			fig->ttra->bg_default = fillcolor;
+			ttra_printf(fig->ttra, "\033[0m%s\n", fig->graph[i]->label);
+			fig->ttra->bg_default = mem;
+		}
+	}
+}
+
 void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride) {
 	if (figure->background)
 		kahto_fill_u4(canvas, figure->background, figure->wh[0], figure->wh[1], ystride);
@@ -169,7 +210,7 @@ void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystrid
 		kahto_draw_axis(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
 	for (int i=0; i<figure->ngraph; i++)
 		kahto_graph_render(figure->graph[i], canvas, ystride, figure, 0);
-	kahto_legend_draw(figure, canvas, ystride);
+	kahto_draw_legend(figure, canvas, ystride);
 
 	struct ttra *ttra = figure->ttra;
 	ttra->canvas = canvas;
