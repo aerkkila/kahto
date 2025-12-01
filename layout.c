@@ -509,10 +509,15 @@ loop_done:
 		if (!kahto_get_axisarea(fig, area)) {
 			int w = area[2] - area[0],
 				h = area[3] - area[1];
-			if (w != fig->wh[0] || h != fig->wh[1]) {
-				fig->wh[0] = w;
-				fig->wh[1] = h;
-				goto start; }
+			void *jmp = &&nowhere;
+			if (w < fig->wh[0])
+				fig->wh[0] = w,
+					jmp = &&start;
+			if (h < fig->wh[1])
+				fig->wh[1] = h,
+					jmp = &&start;
+			goto *jmp;
+nowhere:
 		}
 	}
 
