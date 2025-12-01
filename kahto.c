@@ -119,6 +119,13 @@ static int set_fontheight(struct kahto_figure *figure, float size) {
 
 static inline int intsum_02(const int *a) { return a[0] + a[2]; }
 
+static void fig_inner_area(struct kahto_figure *fig, int *area) {
+	area[0] = fig->ro_inner_xywh[0] + fig->ro_inner_margin[0];
+	area[1] = fig->ro_inner_xywh[1] + fig->ro_inner_margin[1];
+	area[2] = area[0] + fig->ro_inner_xywh[2] - intsum_02(fig->ro_inner_margin+0);
+	area[3] = area[1] + fig->ro_inner_xywh[3] - intsum_02(fig->ro_inner_margin+1);
+}
+
 static int is_colormesh(struct kahto_graph *g) {
 	return
 		g->data.list.zdata &&
@@ -1081,20 +1088,21 @@ void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride
 }
 
 static void connect_x(struct kahto_figure **figs, int nconnected) {
-	int x0 = figs[0]->ro_inner_xywh[0];
-	int x1 = x0 + figs[0]->ro_inner_xywh[2];
+	int area[4], a[4];
+	fig_inner_area(figs[0], area);
 	for (int i=1; i<nconnected; i++) {
-		int *xywh = figs[i]->ro_inner_xywh;
-		if (xywh[0] > x0)
-			x0 = xywh[0];
-		else if (xywh[0] + xywh[2] < x1)
-			x1 = xywh[0] + xywh[2];
+		fig_inner_area(figs[i], a);
+		if (a[0] > area[0])
+			area[0] = a[0];
+		if (a[2] < area[2])
+			area[2] = a[2];
 	}
-
 	for (int i=0; i<nconnected; i++) {
-		int *xywh = figs[i]->ro_inner_xywh;
-		xywh[0] = x0;
-		xywh[2] = x1 - x0;
+		fig_inner_area(figs[i], a);
+		int diff = area[0] - a[0];
+		figs[i]->ro_inner_xywh[0] += diff;
+		figs[i]->ro_inner_xywh[2] -= diff;
+		figs[i]->ro_inner_xywh[2] -= a[2] - area[2];
 	}
 }
 
