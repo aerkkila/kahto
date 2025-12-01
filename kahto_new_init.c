@@ -125,7 +125,7 @@ struct kahto_figure* kahto_figure_init(struct kahto_figure *figure) {
 	figure->legend.hvalign[1] = -1;
 	figure->legend.placement = kahto_placement_singlemaxdist;
 	figure->legend.visible = 1;
-	figure->legend.borderstyle.thickness = 1.0/500;
+	figure->legend.borderstyle.thickness = 1.0/1200;
 	figure->legend.borderstyle.style = kahto_line_normal_e;
 	figure->legend.borderstyle.color = 0xff<<24;
 	figure->legend.fill = kahto_fill_bg_e;

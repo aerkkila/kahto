@@ -584,8 +584,6 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *area, struct kahto_linestyle *linestyle) {
 	int linewidth = topixels(linestyle->thickness, fig);
 	struct kahto_linestyle lstyle = *linestyle;
-	lstyle.thickness = -1; // becomes 1 for all fig sizes
-
 	{
 		int xy[] = {area[0], area[1], area[0], area[3]};
 		for (int i=0; i<linewidth; i++) {
