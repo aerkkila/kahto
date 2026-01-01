@@ -20,6 +20,24 @@ static inline uint32_t from_cmap(const unsigned char *ptr) {
 		(0xff << 24);
 }
 
+struct draw_data_args {
+	uint32_t *canvas;
+	unsigned *canvascount;
+	int ystride;
+	unsigned char alpha;
+	const int *axis_xywh_outer, *axis_area_outer;
+	uint32_t color;
+	uint32_t *colors;
+	int ncolors, ipoint;
+
+	int *yxz;
+	const unsigned char *cmap;
+	char reverse_cmap;
+
+	unsigned char *bmap;
+	int mapw, maph;
+};
+
 #include "kahto_draw_line.c" // future default method
 #include "kahto_draw_line_more.c" // other methods
 #include "kahto_draw_data.c"
@@ -41,27 +59,27 @@ void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int
 	{
 		int xy[] = {area[0], area[1], area[0], area[3]};
 		for (int i=0; i<linewidth; i++) {
-			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, 0);
 			xy[0]++; xy[2]++;
 		}
 	} {
 		int x1 = area[2] - linewidth;
 		int xy[] = {x1, area[1], x1, area[3]};
 		for (int i=0; i<linewidth; i++) {
-			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, 0);
 			xy[0]++; xy[2]++;
 		}
 	} {
 		int xy[] = {area[0], area[1], area[2], area[1]};
 		for (int i=0; i<linewidth; i++) {
-			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, 0);
 			xy[1]++; xy[3]++;
 		}
 	} {
 		int y1 = area[3] - linewidth;
 		int xy[] = {area[0], y1, area[2], y1};
 		for (int i=0; i<linewidth; i++) {
-			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, 0);
 			xy[1]++; xy[3]++;
 		}
 	}
@@ -121,13 +139,13 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 		if (!isx)
 			pos_rel = 1 - pos_rel;
 		line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
-		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, NULL, 0);
+		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, 0);
 		int area_text[4] = {0};
 		if (ttra && tick[0])
 			put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation_grad, area_text, 0);
 		if (ticks->gridstyle.style) {
 			gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, figure, NULL, 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, figure, 0);
 		}
 	}
 
@@ -142,10 +160,10 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
-			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, figure, NULL, 0);
+			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, figure, 0);
 			if (ticks->gridstyle1.style) {
 				gridline[!iort] = gridline[!iort+2] = line_px[!iort];
-				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, figure, NULL, 0);
+				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, figure, 0);
 			}
 		}
 	}
@@ -347,7 +365,7 @@ void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride)
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			gridline[!isx] = gridline[!isx+2] = xywh[!isx] + iroundpos(pos_rel * xywh[!isx+2]);
-			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, figure, NULL, 0);
+			draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle, figure, 0);
 		}
 	}
 }

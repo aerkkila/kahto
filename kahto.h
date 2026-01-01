@@ -87,9 +87,9 @@ struct kahto_marker {
 };
 
 struct kahto_linestyle {
-	enum kahto_linestyle_e style;
+	enum kahto_linestyle_e style; // 1. fixed order
+	float thickness;              // 2. fixed order
 	unsigned color;
-	float thickness;
 	float *pattern;   // 1. fixed order
 	int patternlen;   // 2. fixed order
 	unsigned *colors; // 3. fixed order. If given, must be the same length as pattern (default 2)

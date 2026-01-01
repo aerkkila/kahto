@@ -1,5 +1,5 @@
 void kahto_graph_draw_lines
-(struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig) {
+(struct kahto_graph *graph, struct kahto_figure *fig, struct draw_data_args *args) {
 	double yxmin[] = {
 		graph->yxaxis[0]->min,
 		graph->yxaxis[1]->min,
@@ -8,53 +8,16 @@ void kahto_graph_draw_lines
 		graph->yxaxis[0]->max - yxmin[0],
 		graph->yxaxis[1]->max - yxmin[1],
 	};
-	const int *margin = graph->yxaxis[0]->figure->ro_inner_margin;
-	const int *xywh0 = graph->yxaxis[0]->figure->ro_inner_xywh;
-	int yxlen[] = {xywh0[3]-margin[1]-margin[3], xywh0[2]-margin[0]-margin[2]};
-	int area[] = xywh_to_area(xywh0);
-
-	unsigned char *bmap = NULL;
-	int linepen_width, linepen_height, helper;
-	linepen_width = linepen_height = topixels(graph->linestyle.thickness, fig);
-	unsigned char bmap_buff[linepen_width*linepen_height];
-	if (graph->linestyle.style == kahto_line_circle_e) {
-		struct kahto_graph copy = *graph;
-		copy.markerstyle.marker = "o";
-		copy.markerstyle.size = graph->linestyle.thickness;
-		copy.markerstyle.literal = copy.markerstyle.nofill = 0;
-		bmap = kahto_data_marker_bmap(&copy, bmap_buff, &helper, &linepen_width, &linepen_height);
-	}
-
-	int line_thickness = topixels(graph->linestyle.thickness, fig);
-	if (line_thickness < 1) line_thickness = 1;
+	const int *margin = fig->ro_inner_margin;
+	int yxlen[] = {fig->ro_inner_xywh[3]-margin[1]-margin[3], fig->ro_inner_xywh[2]-margin[0]-margin[2]};
+	int area[] = xywh_to_area(fig->ro_inner_xywh);
 
 	struct kahto_axis *caxis = graph->yxaxis[2];
-
-	struct draw_data_args linepen_dataargs = {
-		.canvas = canvas,
-		.ystride = ystride,
-		.bmap = bmap,
-		.mapw = linepen_width,
-		.maph = linepen_height,
-		.axis_xywh_outer = xywh0,
-		.cmap = caxis ? caxis->cmap : NULL,
-		.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
-		.color = graph->color,
-		.alpha = graph->alpha,
-		/*
-		 * xypixels, x0, len
-		 * zlevels
-		 * (x, y), not set in this function
-		 */
-	};
 
 	struct kahto_data
 		*xdata = graph->data.list.xdata,
 		*ydata = graph->data.list.ydata,
 		*zdata = graph->data.list.zdata;
-
-	if (graph->markerstyle.count)
-		linepen_dataargs.canvascount = calloc(xywh0[2] * xywh0[3], sizeof(unsigned));
 
 	/* help for xdata */
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
@@ -95,18 +58,12 @@ void kahto_graph_draw_lines
 		if (get_datalevel_fun) {
 			z[iyxz] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
 			short level = (z[0] + z[1]) * 0.5;
-			if (linepen_dataargs.reverse_cmap)
+			if (caxis->reverse_cmap)
 				level = 255 - level;
-			linepen_dataargs.color = graph->linestyle.color = from_cmap(linepen_dataargs.cmap+3*level);
+			graph->linestyle.color = from_cmap(caxis->cmap+3*level);
 		}
-		carry = draw_line(canvas, ystride, xy[0], area, &graph->linestyle, fig, &linepen_dataargs, carry);
+		carry = draw_line(args->canvas, args->ystride, xy[0], area, &graph->linestyle, fig, carry);
 	}
-
-	if (bmap != bmap_buff)
-		free(bmap);
-
-	if (!linepen_dataargs.canvascount)
-		return;
 }
 
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
@@ -135,8 +92,9 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 	}
 #endif
 	if (marker) {
+		int yx[] = {y0, x0};
 		struct draw_data_args args = {
-			.yxz = {y0, x0},
+			.yxz = yx,
 			.canvas = canvas,
 			.ystride = ystride,
 			.axis_xywh_outer = xywh,

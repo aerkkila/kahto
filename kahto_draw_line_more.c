@@ -26,23 +26,24 @@ static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, ui
 		}
 }
 
-static void draw_datum_for_line(struct draw_data_args *ar) {
+#if 0
+static void draw_datum_for_line(struct draw_data_args *ar, struct bmap *sbmap) {
 	int x0_ = ar->axis_xywh_outer[0],       y0_ = ar->axis_xywh_outer[1];
 	int x1_ = x0_ + ar->axis_xywh_outer[2], y1_ = y0_ + ar->axis_xywh_outer[3];
-	int x0  = ar->yxz[1] - ar->mapw/2,           y0 = ar->yxz[0] - ar->maph/2; // x0_ and x1_ has been already taken into account
+	int x0  = ar->yxz[1] - sbmap->mapw/2,           y0 = ar->yxz[0] - sbmap->maph/2;
 	int j0  = max(0, y0_ - y0);
-	int j1  = min(ar->maph, y1_ - y0);
+	int j1  = min(sbmap->maph, y1_ - y0);
 	int i0  = max(0, x0_ - x0);
-	int i1  = min(ar->mapw, x1_ - x0);
+	int i1  = min(sbmap->mapw, x1_ - x0);
 	uint32_t (*canvas)[ar->ystride] = (void*)ar->canvas;
-	const unsigned char (*bmap)[ar->mapw] = (void*)ar->bmap;
+	const unsigned char (*bmap)[sbmap->mapw] = (void*)sbmap->bmap;
 	for (int j=j0, y=y0+j0; j<j1; j++, y++)
 		for (int i=i0; i<i1; i++)
 			tocanvas(canvas[y]+x0+i, bmap[j][i], ar->color);
 }
 
 /* like draw_line_bresenham, but instead of a dot, each pixel is used as a center for a circle */
-static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, uint32_t color, struct draw_data_args *args) {
+static void _draw_line_circle_e(const int *xy, struct draw_data_args *args, struct bmap *bmap) {
 	int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
 	int m1=xy[2*!backwards+!nosteep], m0=xy[2*backwards+!nosteep],
@@ -58,7 +59,7 @@ static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, ui
 		for (; m0<=m1; m0++) {
 			args->yxz[1] = m0;
 			args->yxz[0] = n0;
-			draw_datum_for_line(args);
+			draw_datum_for_line(args, bmap);
 			n0 += D > 0 ? n_add : 0;
 			D  += D > 0 ? D_add1 : D_add0;
 		}
@@ -66,25 +67,18 @@ static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, ui
 		for (; m0<=m1; m0++) {
 			args->yxz[0] = m0;
 			args->yxz[1] = n0;
-			draw_datum_for_line(args);
+			draw_datum_for_line(args, bmap);
 			n0 += D > 0 ? n_add : 0;
 			D  += D > 0 ? D_add1 : D_add0;
 		}
 }
+#endif
 
 struct _kahto_dashed_line_args {
 	uint32_t *canvas, color, *colors;
 	int ystride, *xy, ithickness, *axis_area, nosteep, patternlength;
 	struct kahto_figure *fig;
 	float *pattern;
-};
-
-struct _kahto_line_args {
-	short *xypixels;
-	long x0, len;
-	uint32_t *canvas;
-	const int ystride, *axis_xywh;
-	struct kahto_figure *fig;
 };
 
 static uint32_t draw_line_bresenham_dashed(struct _kahto_dashed_line_args *args, uint32_t carry) {
@@ -156,7 +150,8 @@ static uint32_t draw_line_bresenham_dashed(struct _kahto_dashed_line_args *args,
 }
 
 /* anti-aliased line */
-static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uint32_t color) {
+static void draw_line_xiaolin
+(uint32_t *canvas_, int ystride, int *xy, uint32_t color) {
 	uint32_t (*canvas)[ystride] = (void*)canvas_;
 	int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0
@@ -332,9 +327,8 @@ static int check_line(int *line, const int *area) {
 	return 0;
 }
 
-static void _draw_thick_line_bresenham_xiaolin(uint32_t *canvas, int ystride,
-	int xy[4], uint32_t color, int ithickness, int *axis_area, int nosteep)
-{
+static void _draw_thick_line_bresenham_xiaolin
+(uint32_t *canvas, int ystride, int xy[4], uint32_t color, int ithickness, int *axis_area, int nosteep) {
 	if (!check_line(xy, axis_area))
 		draw_line_xiaolin(canvas, ystride, xy, color);
 	xy[nosteep+0]++;
@@ -368,16 +362,14 @@ static uint32_t _draw_thick_line_dashed(struct _kahto_dashed_line_args *args, ui
 	return new_carry;
 }
 
-static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *area,
-	struct kahto_linestyle *style, struct kahto_figure *fig, struct draw_data_args *dotargs, int32_t carry)
-{
+static uint32_t draw_line
+(uint32_t *canvas, int ystride, int *xy, int *area, struct kahto_linestyle *style,
+ struct kahto_figure *fig, int32_t carry) {
 	if (style->style == kahto_line_future_e) {
-		draw_line_kahto(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig), area);
+		draw_line_kahto(canvas, ystride, xy, style->color, tofpixels(style->thickness, fig), area);
 		return 0;
 	}
 
-	int xy[4];
-	memcpy(xy, xy_c, sizeof(xy));
 	float nthickness = topixels(style->thickness, fig); // initially just thickness,
 	int n_ind = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	// m is the direction which is always incremented (x on non-steep lines)
@@ -419,14 +411,14 @@ static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *a
 			}
 			if (!style->patternlen)
 				style->patternlen = 2;
-			struct _kahto_dashed_line_args args = {
+			struct _kahto_dashed_line_args dargs = {
 				canvas, style->color, style->colors, ystride, xy, inthickness, area, n_ind,
 				style->patternlen, fig, style->pattern };
-			carry = _draw_thick_line_dashed(&args, carry);
+			carry = _draw_thick_line_dashed(&dargs, carry);
 			break;
 		case kahto_line_circle_e:
-			if (dotargs) {
-				_draw_line_circle_e(canvas, ystride, xy, style->color, dotargs);
+			if (0) {
+				//_draw_line_circle_e();
 				break;
 			}
 			/* run through */
