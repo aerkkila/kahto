@@ -181,9 +181,17 @@ static int __attribute__((unused)) mkdir_file(const char *restrict name) {
 	}
 }
 
+static int kahto_visible_marker(const char *str) {
+	return str && (unsigned char)*str > ' ';
+}
+
+static int kahto_visible_graph(struct kahto_graph *graph) {
+	return kahto_visible_marker(graph->markerstyle.marker) || graph->linestyle.style || graph->errstyle.style;
+}
+
 #include "functions.c"
 #include "rotate.c"
-#include "kahto_rendering.c"
+#include "kahto_text.c"
 #include "ticker.c"
 #include "layout.c"
 #include "kahto_new_init.c"

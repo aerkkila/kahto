@@ -613,15 +613,15 @@ void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int
 	}
 }
 
+void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *xywh, struct kahto_linestyle *linestyle) {
+	int area[] = xywh_to_area(xywh);
+	kahto_draw_box(canvas, ystride, fig, area, linestyle);
+}
+
 void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color) {
 	for (int j=area[1]; j<area[3]; j++)
 		for (int i=area[0]; i<area[2]; i++)
 			canvas[j*ystride+i] = color;
-}
-
-void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *xywh, struct kahto_linestyle *linestyle) {
-	int area[] = xywh_to_area(xywh);
-	kahto_draw_box(canvas, ystride, fig, area, linestyle);
 }
 
 void kahto_fill_box_xywh(uint32_t *canvas, int ystride, int *xywh, uint32_t color) {

@@ -1,3 +1,77 @@
+static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
+	int eulav = 255 - value;
+	int fg2 = color >> 16 & 0xff,
+		fg1 = color >> 8 & 0xff,
+		fg0 = color >> 0 & 0xff,
+		bg2 = *ptr >> 16 & 0xff,
+		bg1 = *ptr >> 8 & 0xff,
+		bg0 = *ptr >> 0 & 0xff;
+	int c2 = (fg2 * value + bg2 * eulav) / 255,
+		c1 = (fg1 * value + bg1 * eulav) / 255,
+		c0 = (fg0 * value + bg0 * eulav) / 255;
+	*ptr = (color & 0xff<<24) | c2 << 16 | c1 << 8 | c0 << 0;
+}
+
+static inline uint32_t from_cmap(const unsigned char *ptr) {
+	return
+		(ptr[0] << 16 ) |
+		(ptr[1] << 8 ) |
+		(ptr[2] << 0) |
+		(0xff << 24);
+}
+
+#include "kahto_draw_line.c" // future default method
+#include "kahto_draw_line_more.c" // other methods
+#include "kahto_draw_data.c"
+
+void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color) {
+	for (int j=area[1]; j<area[3]; j++)
+		for (int i=area[0]; i<area[2]; i++)
+			canvas[j*ystride+i] = color;
+}
+
+void kahto_fill_box_xywh(uint32_t *canvas, int ystride, int *xywh, uint32_t color) {
+	int area[] = xywh_to_area(xywh);
+	kahto_fill_box(canvas, ystride, area, color);
+}
+
+void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *area, struct kahto_linestyle *linestyle) {
+	int linewidth = topixels(linestyle->thickness, fig);
+	struct kahto_linestyle lstyle = *linestyle;
+	{
+		int xy[] = {area[0], area[1], area[0], area[3]};
+		for (int i=0; i<linewidth; i++) {
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			xy[0]++; xy[2]++;
+		}
+	} {
+		int x1 = area[2] - linewidth;
+		int xy[] = {x1, area[1], x1, area[3]};
+		for (int i=0; i<linewidth; i++) {
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			xy[0]++; xy[2]++;
+		}
+	} {
+		int xy[] = {area[0], area[1], area[2], area[1]};
+		for (int i=0; i<linewidth; i++) {
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			xy[1]++; xy[3]++;
+		}
+	} {
+		int y1 = area[3] - linewidth;
+		int xy[] = {area[0], y1, area[2], y1};
+		for (int i=0; i<linewidth; i++) {
+			draw_line(canvas, ystride, xy, area, &lstyle, fig, NULL, 0);
+			xy[1]++; xy[3]++;
+		}
+	}
+}
+
+void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *xywh, struct kahto_linestyle *linestyle) {
+	int area[] = xywh_to_area(xywh);
+	kahto_draw_box(canvas, ystride, fig, area, linestyle);
+}
+
 /* These are called after calling the correct layout functions, which decide where to draw the objects. */
 
 void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
@@ -103,21 +177,18 @@ void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth,
 		int len1 = axis->ro_area[2+isx] - axis->ro_area[0+isx];
 		unsigned char levels[len];
 		{
-			unsigned short values[len];
+			double limits[] = {axis->min, axis->center, axis->max};
+			typeof(get_datalevel_u2) *getlevel = my_isnan(axis->center) ? get_datalevel_u2 : get_datalevel_with_center_u2;
 			if (!isx) // y-axis goes from bottom to top
-				for (int i=0; i<len; i++)
-					values[i] = len-1-i;
+				for (int i=0; i<len; i++) {
+					unsigned short value = len-1-i;
+					levels[i] = getlevel(&value, 0, limits, 255);
+				}
 			else
-				for (int i=0; i<len; i++)
-					values[i] = i;
-			if (my_isnan(axis->center))
-				get_datalevels_u2(0, len, values, levels, 0, len-1, 255, 1);
-			else {
-				double center_rel = axis->center / (axis->max - axis->min);
-				double center = len * center_rel;
-				get_datalevels_with_center_u2(0, len, values, levels, 0, center, len-1, 255, 1);
-			}
+				for (unsigned short i=0; i<len; i++)
+					levels[i] = getlevel(&i, 0, limits, 255);
 		}
+
 		if (axis->reverse_cmap)
 			for (int i=0; i<len; i++)
 				levels[i] = 255 - levels[i];
@@ -182,11 +253,13 @@ void kahto_draw_legend(struct kahto_figure *fig, uint32_t *canvas, int ystride) 
 	for (int i=0; i<fig->ngraph; i++) {
 		if (!fig->graph[i]->label)
 			continue;
+#if 0
 		legend_draw_marker(
 			fig, fig->graph[i], canvas, ystride,
 			leg_x0 + text_left/2,
 			fig->legend.ro_xywh[1] + (fig->legend.ro_datay[i] + fig->legend.ro_datay[i+1]) / 2 + linewidth + 1,
 			text_left);
+#endif
 		/* drawing a literal marker changes fontheight */
 		if (fig->graph[i]->label) {
 			set_fontheight(fig, fig->legend.rowheight);

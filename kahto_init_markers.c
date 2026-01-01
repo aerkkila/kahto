@@ -138,3 +138,19 @@ static unsigned char* init_4star(unsigned char *to, int *_tow, int *_toh) {
 	free(to16);
 	return to;
 }
+
+static unsigned char* init_literal(unsigned char *bmap, int *w, int *h, struct kahto_graph *graph) {
+	struct ttra *ttra = graph->yxaxis[0]->figure->ttra;
+	struct ttra memttra = *ttra;
+	ttra_set_xy0(ttra, 0, 0);
+	ttra_set_fontheight(ttra, *h);
+	ttra_get_textdims_pixels(ttra, graph->markerstyle.marker, w, h);
+	bmap = calloc(*w**h, 4);
+	ttra->canvas = (void*)bmap;
+	ttra->ystride = ttra->x1 = *w;
+	ttra->y1 = *h;
+	ttra->alphamode = 1;
+	ttra_print(ttra, graph->markerstyle.marker);
+	*ttra = memttra;
+	return bmap;
+}

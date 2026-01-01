@@ -1,9 +1,7 @@
 /* xy gives points A0 and A1 in both sides of hypotenusa.
    Point A2 at the rectangle has the same x (y) coordinate than A0 if whichside is 0 (1) */
-static void draw_straight_triangle(
-	uint32_t *canvas, int ystride, const float *xy, uint32_t color, int whichside,
-	int xmin, int xmax, int ymin, int ymax)
-{
+static void draw_straight_triangle
+(uint32_t *canvas, int ystride, const float *xy, uint32_t color, int whichside, int *xyminmax) {
 	int dx = xy[2] - xy[0],
 		dy = xy[3] - xy[1];
 

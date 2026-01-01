@@ -18,68 +18,41 @@ static inline int my_isnan_double(double f) {
 #define my_isnan(a) ((typeof(a))1.5 == 1 ? 0 : sizeof(a) == 4 ? my_isnan_float(a) : my_isnan_double(a))
 
 @startperl
-static void get_datapx_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int stridein, int strideout, int addthis) {
+static short get_datapx_@dtype(const void *vdata, long ind, double axismin, double axisdiff, int axislen) {
 	const $dtype *data = vdata;
-	axislen--;
-	data += istart * stridein;
-	long len = iend - istart;
-	for (long i=0; i<len; i++) {
-		long iout = i * strideout;
-		long iin = i * stridein;
-		if (my_isnan(data[iin])) {
-			out[iout] = NOT_A_PIXEL;
-			continue;
-		}
-		float pos = (data[iin] - axismin) / axisdiff;
-		out[iout] = iround(pos * axislen - 0.5) + addthis;
-	}
+	if (my_isnan(data[ind]))
+		return NOT_A_PIXEL;
+	float pos = (data[ind] - axismin) / axisdiff;
+	return iround(pos * (axislen-1) - 0.5);
 }
 
-static void get_datapx_inv_@dtype(long istart, long iend, const void *vdata, short *out, double axismin, double axisdiff, int axislen, int stridein, int strideout, int addthis) {
+static short get_datapx_inv_@dtype(const void *vdata, long ind, double axismin, double axisdiff, int axislen) {
 	const $dtype *data = vdata;
-	axislen--;
-	data += istart * stridein;
-	long len = iend - istart;
-	for (long i=0; i<len; i++) {
-		long iout = i * strideout;
-		long iin = i * stridein;
-		if (my_isnan(data[iin])) {
-			out[iout] = NOT_A_PIXEL;
-			continue;
-		}
-		float pos = (data[iin] - axismin) / axisdiff;
-		out[iout] = iround((1 - pos) * axislen - 0.5) + addthis;
-	}
+	if (my_isnan(data[ind]))
+		return NOT_A_PIXEL;
+	float pos = (data[ind] - axismin) / axisdiff;
+	return iround((1-pos) * (axislen-1) - 0.5);
 }
 
-static void get_datalevels_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axismin, double axismax, float scale, int stridein) {
+static short get_datalevel_@dtype(const void *vdata, long ind, double *axislim, int axislen) {
 	const $dtype *data = vdata;
-	data += istart * stridein;
-	int len = iend - istart;
-	double axisdiff = axismax - axismin;
-	for (int i=0; i<len; i++) {
-		float pos = (data[i*stridein] - axismin) / axisdiff;
-		if (pos > 1) pos = 1;
-		if (pos < 0) pos = 0;
-		out[i] = iround(pos*scale);
-	}
+	if (my_isnan(data[ind]))
+		return -1;
+	float pos = (data[ind]-axislim[0]) / (axislim[2]-axislim[0]);
+	if (pos < 0) pos = 0;
+	if (pos > 1) pos = 1;
+	return iroundpos(pos * axislen);
 }
 
-static void get_datalevels_with_center_@dtype(long istart, long iend, const void *vdata, unsigned char *out, double axmin0, double axmid, double axmax, float scale, int stridein) {
+static short get_datalevel_with_center_@dtype(const void *vdata, long ind, double *axislim, int axislen) {
 	const $dtype *data = vdata;
-	data += istart * stridein;
-	int len = iend - istart;
-	double axmin[] = {axmin0, axmid};
-	double axdiff[] = {axmid - axmin0, axmax - axmid};
-	float move[] = {0, 0.5};
-	for (int i=0; i<len; i++) {
-		double val = data[i*stridein];
-		int ind = val >= axmid;
-		float pos = (val - axmin[ind]) / axdiff[ind] * 0.5 + move[ind];
-		if (pos > 1) pos = 1;
-		if (pos < 0) pos = 0;
-		out[i] = iround(pos*scale);
-	}
+	if (my_isnan(data[ind]))
+		return -1;
+	int side = data[ind] >= axislim[1];
+	float pos = (data[ind]-axislim[side]) / (axislim[side+1]-axislim[side]) + 0.5*side;
+	if (pos < 0) pos = 0;
+	if (pos > 1) pos = 1;
+	return iroundpos(pos * axislen);
 }
 
 static double get_floating_@dtype(const void *vdata, long ind) {

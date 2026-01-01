@@ -12,7 +12,7 @@ void kahto_colormesh_render
 		(float)xdatalen / xywh[2],
 		(float)ydatalen / xywh[3],
 	};
-	/* akseli piirretään väärin, koska kokoa muokataan vain täällä */
+	/* akseli menee väärin, koska kokoa muokataan vain täällä */
 	if (graph->equal_xy) {
 		data_per_pixel[0] = max(data_per_pixel[0], data_per_pixel[1]);
 		data_per_pixel[1] = data_per_pixel[0];
@@ -85,20 +85,18 @@ void kahto_colormesh_render
 		for (int i=0; i<xpixlen; i++)
 			rowvalues[i] /= rowweight[i];
 
-		unsigned char zlevels[xpixlen];
-		struct kahto_axis *caxis = graph->yxaxis[2];
-		if (my_isnan(caxis->center))
-			get_datalevels_f8(
-				0, xpixlen, rowvalues, zlevels, caxis->min, caxis->max, 255, 1);
-		else
-			get_datalevels_with_center_f8(
-				0, xpixlen, rowvalues, zlevels, caxis->min, caxis->center, caxis->max, 255, 1);
+		double axlim[] = {graph->yxaxis[2]->min, graph->yxaxis[2]->center, graph->yxaxis[2]->max};
+		typeof(get_datalevel_f8) *getdatalevel = my_isnan(axlim[1]) ? get_datalevel_f8 : get_datalevel_with_center_f8;
 
 		if (reverse_cmap)
-			for (int i=0; i<xpixlen; i++)
-				canvas2d[iypix][i] = from_cmap(cmap + (255-zlevels[i])*3);
+			for (int i=0; i<xpixlen; i++) {
+				unsigned short zlevel = 255 - getdatalevel(rowvalues, i, axlim, 255);
+				canvas2d[iypix][i] = from_cmap(cmap + zlevel*3);
+			}
 		else
-			for (int i=0; i<xpixlen; i++)
-				canvas2d[iypix][i] = from_cmap(cmap + zlevels[i]*3);
+			for (int i=0; i<xpixlen; i++) {
+				unsigned short zlevel = getdatalevel(rowvalues, i, axlim, 255);
+				canvas2d[iypix][i] = from_cmap(cmap + zlevel*3);
+			}
 	}
 }

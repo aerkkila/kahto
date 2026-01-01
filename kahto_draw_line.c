@@ -1,7 +1,5 @@
-static void kahto_draw_straight_line(
-	uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness,
-	int xmin, int xmax, int ymin, int ymax)
-{
+static void kahto_draw_straight_line
+(uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness, int *yxminmax) {
 	int i1, i0, j1, j0;
 	int ithickness = iroundpos(thickness);
 	if (xy[3] == xy[1]) {
@@ -18,6 +16,10 @@ static void kahto_draw_straight_line(
 		i0 = xy[0] - ithickness/2;
 		i1 = i0 + ithickness;
 	}
+	if (j0 < yxminmax[0]) j0 = yxminmax[0];
+	if (i0 < yxminmax[1]) i0 = yxminmax[1];
+	if (j1 > yxminmax[2]) j1 = yxminmax[2];
+	if (i1 > yxminmax[3]) i1 = yxminmax[3];
 	for (int j=j0; j<j1; j++)
 		for (int i=i0; i<i1; i++)
 			canvas[j*ystride+i] = color;
@@ -48,14 +50,12 @@ static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uin
 
 #include "kahto_draw_triangle.c"
 
-static void draw_line_kahto(
-	uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness,
-	int xmin, int xmax, int ymin, int ymax)
-{
+static void draw_line_kahto
+(uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness, int *yxminmax) {
 	int dx = xy[2] - xy[0],
 		dy = xy[3] - xy[1];
 	if (!dy || !dx)
-		return kahto_draw_straight_line(canvas, ystride, xy, color, thickness, xmin, xmax, ymin, ymax);
+		return kahto_draw_straight_line(canvas, ystride, xy, color, thickness, yxminmax);
 
 	int steep = Abs(xy[3] - xy[1]) >= Abs(xy[2] - xy[0]);
 	float m_per_n = steep ? (float)dy / dx : (float)dx / dy; // m,n = (steep ? y,x : x,y)
@@ -156,16 +156,16 @@ static void draw_line_kahto(
 		float theline[4] = {corners[ind[0]][0], corners[ind[0]][1]};
 		theline[2+steep] = im00;
 		theline[2+!steep] = na;
-		draw_straight_triangle(canvas, ystride, theline, color, !steep, xmin, xmax, ymin, ymax);
+		draw_straight_triangle(canvas, ystride, theline, color, !steep, yxminmax);
 		theline[2+!steep] = nb;
-		draw_straight_triangle(canvas, ystride, theline, color, !steep, xmin, xmax, ymin, ymax);
+		draw_straight_triangle(canvas, ystride, theline, color, !steep, yxminmax);
 	} {
 		float theline[4] = {corners[ind[3]][0], corners[ind[3]][1]};
 		theline[2+steep] = im1-1;
 		theline[2+!steep] = ina - alfa(0) / 256.f;
-		draw_straight_triangle(canvas, ystride, theline, color, !steep, xmin, xmax, ymin, ymax);
+		draw_straight_triangle(canvas, ystride, theline, color, !steep, yxminmax);
 		theline[2+!steep] = inb + alfa(1) / 256.f;
-		draw_straight_triangle(canvas, ystride, theline, color, !steep, xmin, xmax, ymin, ymax);
+		draw_straight_triangle(canvas, ystride, theline, color, !steep, yxminmax);
 	}
 }
 

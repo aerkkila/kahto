@@ -26,6 +26,21 @@ static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, ui
 		}
 }
 
+static void draw_datum_for_line(struct draw_data_args *ar) {
+	int x0_ = ar->axis_xywh_outer[0],       y0_ = ar->axis_xywh_outer[1];
+	int x1_ = x0_ + ar->axis_xywh_outer[2], y1_ = y0_ + ar->axis_xywh_outer[3];
+	int x0  = ar->yxz[1] - ar->mapw/2,           y0 = ar->yxz[0] - ar->maph/2; // x0_ and x1_ has been already taken into account
+	int j0  = max(0, y0_ - y0);
+	int j1  = min(ar->maph, y1_ - y0);
+	int i0  = max(0, x0_ - x0);
+	int i1  = min(ar->mapw, x1_ - x0);
+	uint32_t (*canvas)[ar->ystride] = (void*)ar->canvas;
+	const unsigned char (*bmap)[ar->mapw] = (void*)ar->bmap;
+	for (int j=j0, y=y0+j0; j<j1; j++, y++)
+		for (int i=i0; i<i1; i++)
+			tocanvas(canvas[y]+x0+i, bmap[j][i], ar->color);
+}
+
 /* like draw_line_bresenham, but instead of a dot, each pixel is used as a center for a circle */
 static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, uint32_t color, struct draw_data_args *args) {
 	int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
@@ -41,16 +56,16 @@ static void _draw_line_circle_e(uint32_t *canvas, int ystride, const int *xy, ui
 	int D = 2*dn - dm;
 	if (nosteep) // (m,n) = (x,y)
 		for (; m0<=m1; m0++) {
-			args->x = m0;
-			args->y = n0;
+			args->yxz[1] = m0;
+			args->yxz[0] = n0;
 			draw_datum_for_line(args);
 			n0 += D > 0 ? n_add : 0;
 			D  += D > 0 ? D_add1 : D_add0;
 		}
 	else // (m,n) = (y,x)
 		for (; m0<=m1; m0++) {
-			args->y = m0;
-			args->x = n0;
+			args->yxz[0] = m0;
+			args->yxz[1] = n0;
 			draw_datum_for_line(args);
 			n0 += D > 0 ? n_add : 0;
 			D  += D > 0 ? D_add1 : D_add0;
@@ -357,8 +372,7 @@ static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *a
 	struct kahto_linestyle *style, struct kahto_figure *fig, struct draw_data_args *dotargs, int32_t carry)
 {
 	if (style->style == kahto_line_future_e) {
-		draw_line_kahto(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig),
-			area[0], area[2], area[1], area[3]);
+		draw_line_kahto(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig), area);
 		return 0;
 	}
 
