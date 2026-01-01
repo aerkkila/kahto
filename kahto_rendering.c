@@ -534,14 +534,26 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
 	uint32_t *canvas, int ystride, int x0, int y0, int text_left)
 {
+	if (fig->legend.coloronly) {
+		int height = topixels(fig->legend.rowheight, fig);
+		int corners[] = {x0 - (text_left+1)/3, y0-height/2, x0 + (text_left+1)/3, y0+height/2};
+		uint32_t (*canvas2d)[ystride] = (void*)canvas;
+		uint32_t color = graph->color;
+		for (int i=corners[1]; i<corners[3]; i++)
+			for (int ii=corners[0]; ii<corners[2]; ii++)
+				canvas2d[i][ii] = color;
+		return;
+	}
+
 	int width, height, marker;
 	width = height = topixels(graph->markerstyle.size, fig);
 	unsigned char bmap_buff[width*height];
 	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
-	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
+	struct kahto_axis *caxis = graph->yxaxis[2];
+	int *xywh = fig->ro_inner_xywh;
 	x0 -= xywh[0];
 	y0 -= xywh[1];
-	struct kahto_axis *caxis = graph->yxaxis[2];
+
 	if (graph->linestyle.style) {
 		short xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
 		struct _kahto_line_args args = {
