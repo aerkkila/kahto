@@ -366,9 +366,6 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 		linepen_bmap = kahto_data_marker_bmap(&copy, linepen_buff, &helper, &linepen_width, &linepen_height);
 	}
 
-	int line_thickness = topixels(graph->linestyle.thickness, fig);
-	if (line_thickness < 1) line_thickness = 1;
-
 	struct kahto_axis *caxis = graph->yxaxis[2];
 
 	struct draw_data_args data_args = {
