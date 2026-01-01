@@ -242,7 +242,8 @@ struct kahto_graph {
 	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
 	unsigned equal_xy : 1, // only works with colormesh
-			 exact : 1; // only needed with colormesh
+			 exact : 1, // only needed with colormesh
+			 legend_coloronly : 1;
 };
 
 enum kahto_fill {kahto_no_fill_e, kahto_fill_bg_e, kahto_fill_color_e};
@@ -339,7 +340,8 @@ struct kahto_args {
 	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
 	unsigned equal_xy : 1, // only works with colormesh
-			 exact : 1; // only needed with colormesh
+			 exact : 1, // only needed with colormesh
+			 legend_coloronly : 1;
 	/* above must match with kahto_graph */
 
 	double caxis_center; // datavalue that evaluates to center color of cmap

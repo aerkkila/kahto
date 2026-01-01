@@ -534,7 +534,7 @@ void kahto_graph_render(struct kahto_graph *graph, uint32_t *canvas, int ystride
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
 	uint32_t *canvas, int ystride, int x0, int y0, int text_left)
 {
-	if (fig->legend.coloronly) {
+	if (fig->legend.coloronly || graph->legend_coloronly) {
 		int height = topixels(fig->legend.rowheight, fig);
 		int corners[] = {x0 - (text_left+1)/3, y0-height/2, x0 + (text_left+1)/3, y0+height/2};
 		uint32_t (*canvas2d)[ystride] = (void*)canvas;
