@@ -1,10 +1,10 @@
 static unsigned char* init_plus(unsigned char *to, int *_tow, int *_toh) {
 	int tow = *_tow, toh = *_toh;
-	float rside = min(tow, toh) / 15.0;
-	float x0 = tow*0.5 - rside,
-		  x1 = tow*0.5 + rside;
-	float y0 = toh*0.5 - rside,
-		  y1 = toh*0.5 + rside;
+	float halfthickness = min(tow, toh) / 15.0;
+	float x0 = tow*0.5 - halfthickness,
+		  x1 = tow*0.5 + halfthickness;
+	float y0 = toh*0.5 - halfthickness,
+		  y1 = toh*0.5 + halfthickness;
 	for (int j=0; j<toh; j++) {
 		float a = y0 - j;
 		float b = j+1 - y1;
@@ -15,6 +15,33 @@ static unsigned char* init_plus(unsigned char *to, int *_tow, int *_toh) {
 			float xfrac = 1.0 - a * (a>0) - b * (b>0);
 			float frac = max(yfrac, xfrac);
 			to[j*tow+i] = frac*255 * (frac >= 0);
+		}
+	}
+	return to;
+}
+
+static unsigned char* init_xmarker(unsigned char *to, int *_tow, int *_toh) {
+	int tow = *_tow, toh = *_toh;
+	float halfthickness = min(tow, toh) / 12.0;
+	float a0 = (toh-1) / (tow-1);
+	float a1 = -a0;
+	float b0 = 0;
+	float b1 = toh-1;
+	for (int j=0; j<toh; j++) {
+		for (int i=0; i<tow; i++) {
+			float s = 0;
+			for (int jj=0; jj<8; jj++) {
+				for (int ii=0; ii<8; ii++) {
+					float x = i + ii/8.0;
+					float y = j + jj/8.0;
+					float d0 = (a0*x + b0 - y) / a0;
+					float d1 = (a1*x + b1 - y) / a1;
+					if (d0 < 0) d0 = -d0;
+					if (d1 < 0) d1 = -d1;
+					s += (d0 <= halfthickness) || (d1 <= halfthickness);
+				}
+			}
+			to[j*tow+i] = 255 * (s/(8*8));
 		}
 	}
 	return to;

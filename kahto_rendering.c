@@ -302,6 +302,7 @@ static unsigned char* kahto_data_marker_bmap
 			case  0 : *has_marker = 0;
 			case '.': return NULL;
 			case '+': initfun = (void*)init_plus; break;
+			case 'x': initfun = (void*)init_xmarker; break;
 			case '^': initfun = (void*)init_triangle; break;
 			case '*':
 			case '4': initfun = (void*)init_4star; break;
