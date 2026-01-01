@@ -122,7 +122,10 @@ struct kahto_tickerdata_datetime {
 struct kahto_tickerdata_arbitrary {
 	int nticks; // must be first
 	double *ticks;
-	char **labels;
+	union {
+		const char **c;
+		char **m;
+	} labels;
 	double min, max; // only used with relcoord
 };
 
