@@ -364,7 +364,7 @@ static uint32_t draw_line(uint32_t *canvas, int ystride, const int *xy_c, int *a
 
 	int xy[4];
 	memcpy(xy, xy_c, sizeof(xy));
-	float nthickness = topixels(style->thickness, fig); // initially just thickness,
+	float nthickness = tofpixels(style->thickness, fig); // initially just thickness,
 	int n_ind = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	// m is the direction which is always incremented (x on non-steep lines)
 	// n is incremented only sometimes
