@@ -363,14 +363,16 @@ static uint32_t _draw_thick_line_dashed(struct _kahto_dashed_line_args *args, ui
 }
 
 static uint32_t draw_line
-(uint32_t *canvas, int ystride, int *xy, int *area, struct kahto_linestyle *style,
+(uint32_t *canvas, int ystride, const int *xy_c, int *area, struct kahto_linestyle *style,
  struct kahto_figure *fig, int32_t carry) {
 	if (style->style == kahto_line_future_e) {
-		draw_line_kahto(canvas, ystride, xy, style->color, tofpixels(style->thickness, fig), area);
+		draw_line_kahto(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig), area);
 		return 0;
 	}
 
-	float nthickness = topixels(style->thickness, fig); // initially just thickness,
+	int xy[4];
+	memcpy(xy, xy_c, sizeof(xy));
+	float nthickness = tofpixels(style->thickness, fig); // initially just thickness,
 	int n_ind = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	// m is the direction which is always incremented (x on non-steep lines)
 	// n is incremented only sometimes

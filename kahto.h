@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 40
+#define __kahto_version_in_program 41
 extern const int __kahto_version_in_library;
 #ifndef KAHTO_NO_VERSION_CHECK
 static void __attribute__((constructor)) kahto_check_version() {
@@ -122,7 +122,10 @@ struct kahto_tickerdata_datetime {
 struct kahto_tickerdata_arbitrary {
 	int nticks; // must be first
 	double *ticks;
-	char **labels;
+	union {
+		const char **c;
+		char **m;
+	} labels;
 	double min, max; // only used with relcoord
 };
 
@@ -240,7 +243,8 @@ struct kahto_graph {
 	int cmh_enum, icolor;
 	double xoffset; // if xdata is not given, xₙ = xoffset + n
 	unsigned equal_xy : 1, // only works with colormesh
-			 exact : 1; // only needed with colormesh
+			 exact : 1, // only needed with colormesh
+			 legend_coloronly : 1;
 };
 
 enum kahto_fill {kahto_no_fill_e, kahto_fill_bg_e, kahto_fill_color_e};
@@ -299,12 +303,13 @@ struct kahto_figure {
 		/* if legend would cover some data, its size is multiplied with scale in range [minscale,1] */
 		float rowheight, symbolspace_per_rowheight, scale, minscale;
 		/* if visible = -1, legend is drawn only if it doesn't cover any data */
-		int ro_xywh[4], ro_text_left, visible, ro_place_err, *ro_datay, ro_datay_len;
+		int ro_xywh[4], ro_text_left, ro_place_err, *ro_datay, ro_datay_len, visible;
 		float posx, posy, hvalign[2];
 		struct kahto_linestyle borderstyle;
 		enum kahto_fill fill;
 		unsigned fillcolor;
 		enum kahto_placement placement;
+		unsigned char coloronly:1;
 	} legend;
 
 	struct kahto_async *async;
@@ -337,7 +342,8 @@ struct kahto_args {
 	int cmh_enum, icolor;
 	double xoffset;
 	unsigned equal_xy : 1, // only works with colormesh
-			 exact : 1; // only needed with colormesh
+			 exact : 1, // only needed with colormesh
+			 legend_coloronly : 1;
 	/* above must match with kahto_graph */
 
 	double caxis_center; // datavalue that evaluates to center color of cmap

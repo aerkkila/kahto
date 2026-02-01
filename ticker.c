@@ -140,17 +140,17 @@ double kahto_get_tick_datetime_daily(struct kahto_ticks *this, int ind, char **l
 }
 
 double kahto_get_tick_arbitrary_datacoord(struct kahto_ticks *this, int ind, char **label, int _) {
-	*label = this->tickerdata.arb.labels[ind];
+	*label = this->tickerdata.arb.labels.m[ind];
 	return this->tickerdata.arb.ticks[ind];
 }
 
 double kahto_get_tick_arbitrary_datacoord_enum(struct kahto_ticks *this, int ind, char **label, int _) {
-	*label = this->tickerdata.arb.labels[ind];
+	*label = this->tickerdata.arb.labels.m[ind];
 	return ind;
 }
 
 double kahto_get_tick_arbitrary_relcoord(struct kahto_ticks *this, int ind, char **label, int _) {
-	*label = this->tickerdata.arb.labels[ind];
+	*label = this->tickerdata.arb.labels.m[ind];
 	double min = this->tickerdata.arb.min,
 		   max = this->tickerdata.arb.max;
 	return min + this->tickerdata.arb.ticks[ind] * (max - min);

@@ -847,7 +847,7 @@ struct kahto_axistext* kahto_axislabel(struct kahto_axis *axis, char *label) {
 
 void kahto_ticklabels(struct kahto_axis *axis, char **names, int howmany) {
 	axis->ticks->init = kahto_init_ticker_arbitrary_datacoord_enum;
-	axis->ticks->tickerdata.arb.labels = names;
+	axis->ticks->tickerdata.arb.labels.m = names;
 	axis->ticks->tickerdata.arb.nticks = howmany;
 	axis->ticks->rotation_grad = 300;
 }
