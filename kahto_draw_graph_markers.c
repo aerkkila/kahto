@@ -106,7 +106,7 @@ static unsigned char* kahto_data_marker_bmap
 	return bmap;
 }
 
-void kahto_graph_draw_markers
+void kahto_draw_graph_markers
 (struct kahto_graph *graph, struct kahto_figure *fig, struct draw_data_args *args) {
 	double yxmin[] = {
 		graph->yxaxis[0]->min,

@@ -104,7 +104,7 @@ int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rhei
 	unsigned background = figure->background;
 	kahto_fill_u4((void*)image, background, width, height, width);
 	for (int i=0; i<figure->ngraph; i++)
-		kahto_graph_render(figure->graph[i], (void*)image, width, figure, 0);
+		kahto_draw_graph(figure->graph[i], (void*)image, width, figure, 0);
 
 	/* including the pointed spot */
 	short (*spaceright)[w] = malloc(w*h * sizeof(short));

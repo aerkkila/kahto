@@ -191,7 +191,7 @@ new_copy:
 	copy.markerstyle.size *= 3;
 	copy.errstyle.thickness *= 3;
 	uint32_t *canvas = wlh->data + hl->canvascopy_start;//kahto_get_startcanvas(hl->fig, cookie->fig, wlh->xres);
-	kahto_graph_render(&copy, canvas, wlh->xres, hl->fig, 0);
+	kahto_draw_graph(&copy, canvas, wlh->xres, hl->fig, 0);
 }
 
 struct kahto_figure* kahto_show_preserve_(struct kahto_figure *fig, char *name) {

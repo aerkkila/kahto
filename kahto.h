@@ -628,7 +628,7 @@ void kahto_draw_figures(struct kahto_figure *figure, uint32_t *canvas, int ystri
 void kahto_layout(struct kahto_figure *figure);
 void kahto_set_colors(struct kahto_figure*);
 void kahto_legend_draw(struct kahto_figure*, uint32_t *canvas, int ystride);
-void kahto_graph_render(struct kahto_graph *data, uint32_t *canvas, int ystride, struct kahto_figure *figure, long start);
+void kahto_draw_graph(struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start);
 void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride);

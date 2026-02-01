@@ -40,7 +40,7 @@ struct draw_data_args {
 
 #include "kahto_draw_line.c" // future default method
 #include "kahto_draw_line_more.c" // other methods
-#include "kahto_draw_data.c"
+#include "kahto_draw_graph.c"
 
 void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color) {
 	for (int j=area[1]; j<area[3]; j++)
@@ -298,7 +298,7 @@ void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystrid
 	for (int i=0; i<figure->naxis; i++)
 		kahto_draw_axis(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
 	for (int i=0; i<figure->ngraph; i++)
-		kahto_graph_render(figure->graph[i], canvas, ystride, figure, 0);
+		kahto_draw_graph(figure->graph[i], canvas, ystride, figure, 0);
 	kahto_draw_legend(figure, canvas, ystride);
 
 	struct ttra *ttra = figure->ttra;

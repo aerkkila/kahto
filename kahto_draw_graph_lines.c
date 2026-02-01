@@ -1,4 +1,4 @@
-void kahto_graph_draw_lines
+void kahto_draw_graph_lines
 (struct kahto_graph *graph, struct kahto_figure *fig, struct draw_data_args *args) {
 	double yxmin[] = {
 		graph->yxaxis[0]->min,
