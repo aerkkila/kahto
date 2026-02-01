@@ -82,39 +82,33 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 	x0 -= xywh[0];
 	y0 -= xywh[1];
 	struct kahto_axis *caxis = graph->yxaxis[2];
-#if 0
-	if (graph->linestyle.style) {
-		short xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
-		struct _kahto_line_args args = {
-			.xypixels = xypixels,
-			.x0 = 0, .len = 2,
-			.canvas = canvas,
-			.ystride = ystride,
-			.axis_xywh = xywh,
-			.fig = fig,
-		};
-		connect_data_xy(&args, &graph->linestyle, NULL);
-	}
-#endif
+
+	int yx[] = {y0, x0};
+	struct draw_data_args args = {
+		.yxz = yx,
+		.canvas = canvas,
+		.ystride = ystride,
+		.axis_xywh_outer = xywh,
+		.bmap = bmap,
+		.mapw = width,
+		.maph = height,
+		.color = graph->color,
+		.cmap = caxis ? caxis->cmap : NULL,
+		.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
+		.alpha = graph->alpha,
+	};
+
 	if (marker) {
-		int yx[] = {y0, x0};
-		struct draw_data_args args = {
-			.yxz = yx,
-			.canvas = canvas,
-			.ystride = ystride,
-			.axis_xywh_outer = xywh,
-			.bmap = bmap,
-			.mapw = width,
-			.maph = height,
-			.color = graph->color,
-			.cmap = caxis ? caxis->cmap : NULL,
-			.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
-			.alpha = graph->alpha,
-		};
 		if (graph->data.list.zdata)
 			draw_data_xyc(&args);
 		else
 			draw_datum(&args);
+	}
+
+	if (graph->linestyle.style) {
+		int xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
+		int area[] = xywh_to_area(fig->ro_inner_xywh);
+		draw_line(canvas, ystride, xypixels, area, &graph->linestyle, fig, 0);
 	}
 
 	if (bmap != bmap_buff)

@@ -271,13 +271,11 @@ void kahto_draw_legend(struct kahto_figure *fig, uint32_t *canvas, int ystride) 
 	for (int i=0; i<fig->ngraph; i++) {
 		if (!fig->graph[i]->label)
 			continue;
-#if 0
 		legend_draw_marker(
 			fig, fig->graph[i], canvas, ystride,
 			leg_x0 + text_left/2,
 			fig->legend.ro_xywh[1] + (fig->legend.ro_datay[i] + fig->legend.ro_datay[i+1]) / 2 + linewidth + 1,
 			text_left);
-#endif
 		/* drawing a literal marker changes fontheight */
 		if (fig->graph[i]->label) {
 			set_fontheight(fig, fig->legend.rowheight);
