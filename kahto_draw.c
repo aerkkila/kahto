@@ -55,6 +55,8 @@ void kahto_fill_box_xywh(uint32_t *canvas, int ystride, int *xywh, uint32_t colo
 
 void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *area, struct kahto_linestyle *linestyle) {
 	int linewidth = topixels(linestyle->thickness, fig);
+	if (linewidth == 0 && linestyle->thickness > 0)
+		linewidth = 1;
 	struct kahto_linestyle lstyle = *linestyle;
 	{
 		int xy[] = {area[0], area[1], area[0], area[3]};

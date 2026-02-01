@@ -151,7 +151,7 @@ static uint32_t draw_line_bresenham_dashed(struct _kahto_dashed_line_args *args,
 
 /* anti-aliased line */
 static void draw_line_xiaolin
-(uint32_t *canvas_, int ystride, int *xy, uint32_t color) {
+(uint32_t *canvas_, int ystride, const int *xy, uint32_t color) {
 	uint32_t (*canvas)[ystride] = (void*)canvas_;
 	int nosteep = Abs(xy[3] - xy[1]) < Abs(xy[2] - xy[0]);
 	int backwards = xy[2+!nosteep] < xy[!nosteep]; // m1 < m0

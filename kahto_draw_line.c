@@ -46,12 +46,12 @@ static void _kahto_draw_line_sort(const float corners[4][2], unsigned char *ind,
 	}
 }
 
-static void draw_line_xiaolin(uint32_t *canvas_, int ystride, int *xy, uint32_t color);
+static void draw_line_xiaolin(uint32_t *canvas_, int ystride, const int *xy, uint32_t color);
 
 #include "kahto_draw_triangle.c"
 
 static void draw_line_kahto
-(uint32_t *canvas, int ystride, int *xy, uint32_t color, float thickness, int *yxminmax) {
+(uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness, int *yxminmax) {
 	int dx = xy[2] - xy[0],
 		dy = xy[3] - xy[1];
 	if (!dy || !dx)
