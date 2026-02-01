@@ -164,20 +164,23 @@ void kahto_draw_graph_markers
 	else if (graph->colors)
 		draw_data_fun = draw_data_xyc_list;
 
+	int xoffset = xdata->data ? 0 :
+		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1]);
+
+	int yxz[3];
+	args->yxz = yxz;
 	long end = graph->data.list.ydata->length;
 	for (int ipoint=0; ipoint<end; ipoint++) {
-		int yxz[3];
 		if (xdata->data)
 			yxz[1] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
 		else
-			yxz[1] = iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
+			yxz[1] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
 		yxz[1] += margin[0];
 		if (get_datalevel_fun)
 			yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
 		yxz[0] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0])
 			+ margin[1];
 
-		args->yxz = yxz;
 		args->ipoint = ipoint;
 		draw_data_fun(args);
 	}

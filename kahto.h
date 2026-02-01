@@ -238,6 +238,7 @@ struct kahto_graph {
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
+	double xoffset; // if xdata is not given, xₙ = xoffset + n
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1; // only needed with colormesh
 };
@@ -334,6 +335,7 @@ struct kahto_args {
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
+	double xoffset;
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1; // only needed with colormesh
 	/* above must match with kahto_graph */

@@ -34,6 +34,8 @@ void kahto_draw_graph_lines
 			get_datalevel[zdata->type] : get_datalevel_with_center[zdata->type];
 	}
 
+	int xoffset = xdata->data ? 0 :
+		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1]);
 	long end = graph->data.list.ydata->length, ipoint=0;
 	int xy[2][2], z[2];
 	int iyxz = 0;
@@ -42,7 +44,7 @@ void kahto_draw_graph_lines
 	if (xdata->data)
 		xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
 	else
-		xy[iyxz][0] = iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
+		xy[iyxz][0] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
 	xy[iyxz][0] += args->xywh_limits[0] + margin[0];
 	xy[iyxz][1] += args->xywh_limits[1];
 	if (get_datalevel_fun)
