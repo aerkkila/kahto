@@ -25,7 +25,7 @@ int main() {
 	char *labels[] = {"0", "\e$π^-1$", "π", "2π", "2.5π", "3π", "4ln(π)"};
 	double coords[] = {0,      1/π,     π,   2*π,  2.5*π,  3*π, 4*log(π)}; // don't have to be sorted
 	ticks->tickerdata.arb = (struct kahto_tickerdata_arbitrary) {
-		.labels.m = labels,
+		.labels = labels,
 		.ticks = coords,
 		.nticks = sizeof(coords)/sizeof(coords[0]),
 		/* fields min and max need not to be set manually */
@@ -48,7 +48,7 @@ int main() {
 	};
 	/* There is a special method for placing the ticks to coordinates 0, 1, 2, ... */
 	ticks->init = kahto_init_ticker_arbitrary_datacoord_enum;
-	ticks->tickerdata.arb.labels.m = labels2;
+	ticks->tickerdata.arb.labels = labels2;
 	ticks->tickerdata.arb.nticks = sizeof(labels2)/sizeof(labels2[0]);
 	/* locations (tickerdata.arb.ticks) need not to be set in this case */
 

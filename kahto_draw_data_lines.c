@@ -43,6 +43,8 @@ void kahto_graph_draw_lines
 		xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
 	else
 		xy[iyxz][0] = iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
+	xy[iyxz][0] += args->axis_xywh_outer[0] + margin[0];
+	xy[iyxz][1] += args->axis_xywh_outer[1];
 	if (get_datalevel_fun)
 		z[iyxz] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
 
@@ -55,6 +57,7 @@ void kahto_graph_draw_lines
 			xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
 		else
 			xy[iyxz][0] = iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
+		xy[iyxz][0] += margin[0];
 		if (get_datalevel_fun) {
 			z[iyxz] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
 			short level = (z[0] + z[1]) * 0.5;
@@ -62,6 +65,8 @@ void kahto_graph_draw_lines
 				level = 255 - level;
 			graph->linestyle.color = from_cmap(caxis->cmap+3*level);
 		}
+		xy[iyxz][0] += args->axis_xywh_outer[0];
+		xy[iyxz][1] += args->axis_xywh_outer[1];
 		carry = draw_line(args->canvas, args->ystride, xy[0], area, &graph->linestyle, fig, carry);
 	}
 }
