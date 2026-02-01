@@ -60,7 +60,7 @@ int update(struct kahto_figure *fig, uint32_t *canvas, int ystride, long count, 
 	data[0] = height;
 
 	/* Adjust the y-axis range if necessary */
-	struct kahto_axis *yaxis = kahto_yaxis0(fig);
+	struct kahto_axis *yaxis = kahto_gly(fig);
 	if (height < yaxis->min)
 		yaxis->min = height;
 	if (height > yaxis->max)
@@ -94,10 +94,10 @@ int main(int argc, char **argv) {
 
 	/* Range has to be set manually, since there is only 1 datum.
 	   Automatic range would be from minimum to maximum, but those are equal in this case. */
-	kahto_set_range(kahto_xaxis0(fig), -1, 1);
-	kahto_set_range(kahto_yaxis0(fig), -5, 0.1);
+	kahto_set_range(kahto_glx(fig), -1, 1);
+	kahto_set_range(kahto_gly(fig), -5, 0.1);
 
-	kahto_remove_ticks(kahto_xaxis0(fig));
+	//kahto_remove_ticks(kahto_glx(fig));
 
 	fig->update = update; // This function is responsible for updating the figure
 	fig->userdata = &state; // This is where we can store our data to be used in the update function
