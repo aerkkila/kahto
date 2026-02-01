@@ -167,6 +167,11 @@ void kahto_draw_graph_markers
 	int xoffset = xdata->data ? 0 :
 		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1]);
 
+	int area[] = xywh_to_area(fig->ro_inner_xywh);
+	struct kahto_data *edatalist[] = {
+		graph->data.list.e0data,
+		graph->data.list.e1data,
+	};
 	int yxz[3];
 	args->yxz = yxz;
 	long end = graph->data.list.ydata->length;
@@ -183,6 +188,17 @@ void kahto_draw_graph_markers
 
 		args->ipoint = ipoint;
 		draw_data_fun(args);
+
+		for (int iedata=0; iedata<arrlen(edatalist); iedata++) {
+			struct kahto_data *edata = edatalist[iedata];
+			if (!edata)
+				continue;
+			int y = get_datapx_inv[edata->type](edata->data, ipoint*edata->stride, yxmin[0], yxdiff[0], yxlen[0])
+				+ margin[1] + args->xywh_limits[1];
+			int x = yxz[1] + args->xywh_limits[0];
+			int xyxy[] = {x, yxz[0]+args->xywh_limits[1], x, y};
+			draw_line(args->canvas, args->ystride, xyxy, area, &graph->errstyle, fig, 0);
+		}
 	}
 
 	if (args->bmap != bmap_buff)
