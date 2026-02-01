@@ -28,8 +28,8 @@ static void draw_line_bresenham(uint32_t *canvas, int ystride, const int *xy, ui
 
 #if 0
 static void draw_datum_for_line(struct draw_data_args *ar, struct bmap *sbmap) {
-	int x0_ = ar->axis_xywh_outer[0],       y0_ = ar->axis_xywh_outer[1];
-	int x1_ = x0_ + ar->axis_xywh_outer[2], y1_ = y0_ + ar->axis_xywh_outer[3];
+	int x0_ = ar->xywh_limits[0],       y0_ = ar->xywh_limits[1];
+	int x1_ = x0_ + ar->xywh_limits[2], y1_ = y0_ + ar->xywh_limits[3];
 	int x0  = ar->yxz[1] - sbmap->mapw/2,           y0 = ar->yxz[0] - sbmap->maph/2;
 	int j0  = max(0, y0_ - y0);
 	int j1  = min(sbmap->maph, y1_ - y0);

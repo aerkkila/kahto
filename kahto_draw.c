@@ -25,7 +25,7 @@ struct draw_data_args {
 	unsigned *canvascount;
 	int ystride;
 	unsigned char alpha;
-	const int *axis_xywh_outer, *axis_area_outer;
+	const int *xywh_limits;
 	uint32_t color;
 	uint32_t *colors;
 	int ncolors, ipoint;
@@ -88,6 +88,51 @@ void kahto_draw_box(uint32_t *canvas, int ystride, struct kahto_figure *fig, int
 void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig, int *xywh, struct kahto_linestyle *linestyle) {
 	int area[] = xywh_to_area(xywh);
 	kahto_draw_box(canvas, ystride, fig, area, linestyle);
+}
+
+static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
+	uint32_t *canvas, int ystride, int x0, int y0, int text_left)
+{
+	int width, height, marker;
+	width = height = topixels(graph->markerstyle.size, fig);
+	unsigned char bmap_buff[width*height];
+	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
+	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
+	x0 -= xywh[0];
+	y0 -= xywh[1];
+	struct kahto_axis *caxis = graph->yxaxis[2];
+
+	if (graph->linestyle.style) {
+		int xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
+		for (int i=0; i<4; i++)
+			xypixels[i] += xywh[i%2];
+		int area[] = xywh_to_area(fig->ro_inner_xywh);
+		draw_line(canvas, ystride, xypixels, area, &graph->linestyle, fig, 0);
+	}
+
+	if (marker) {
+		int yx[] = {y0, x0};
+		struct draw_data_args args = {
+			.yxz = yx,
+			.canvas = canvas,
+			.ystride = ystride,
+			.xywh_limits = xywh,
+			.bmap = bmap,
+			.mapw = width,
+			.maph = height,
+			.color = graph->color,
+			.cmap = caxis ? caxis->cmap : NULL,
+			.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
+			.alpha = graph->alpha,
+		};
+		if (graph->data.list.zdata)
+			draw_data_xyc(&args);
+		else
+			draw_datum(&args);
+	}
+
+	if (bmap != bmap_buff)
+		free(bmap);
 }
 
 /* These are called after calling the correct layout functions, which decide where to draw the objects. */

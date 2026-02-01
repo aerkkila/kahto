@@ -43,8 +43,8 @@ void kahto_draw_graph_lines
 		xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
 	else
 		xy[iyxz][0] = iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
-	xy[iyxz][0] += args->axis_xywh_outer[0] + margin[0];
-	xy[iyxz][1] += args->axis_xywh_outer[1];
+	xy[iyxz][0] += args->xywh_limits[0] + margin[0];
+	xy[iyxz][1] += args->xywh_limits[1];
 	if (get_datalevel_fun)
 		z[iyxz] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
 
@@ -65,52 +65,8 @@ void kahto_draw_graph_lines
 				level = 255 - level;
 			graph->linestyle.color = from_cmap(caxis->cmap+3*level);
 		}
-		xy[iyxz][0] += args->axis_xywh_outer[0];
-		xy[iyxz][1] += args->axis_xywh_outer[1];
+		xy[iyxz][0] += args->xywh_limits[0];
+		xy[iyxz][1] += args->xywh_limits[1];
 		carry = draw_line(args->canvas, args->ystride, xy[0], area, &graph->linestyle, fig, carry);
 	}
-}
-
-static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
-	uint32_t *canvas, int ystride, int x0, int y0, int text_left)
-{
-	int width, height, marker;
-	width = height = topixels(graph->markerstyle.size, fig);
-	unsigned char bmap_buff[width*height];
-	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
-	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
-	x0 -= xywh[0];
-	y0 -= xywh[1];
-	struct kahto_axis *caxis = graph->yxaxis[2];
-
-	int yx[] = {y0, x0};
-	struct draw_data_args args = {
-		.yxz = yx,
-		.canvas = canvas,
-		.ystride = ystride,
-		.axis_xywh_outer = xywh,
-		.bmap = bmap,
-		.mapw = width,
-		.maph = height,
-		.color = graph->color,
-		.cmap = caxis ? caxis->cmap : NULL,
-		.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
-		.alpha = graph->alpha,
-	};
-
-	if (marker) {
-		if (graph->data.list.zdata)
-			draw_data_xyc(&args);
-		else
-			draw_datum(&args);
-	}
-
-	if (graph->linestyle.style) {
-		int xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
-		int area[] = xywh_to_area(fig->ro_inner_xywh);
-		draw_line(canvas, ystride, xypixels, area, &graph->linestyle, fig, 0);
-	}
-
-	if (bmap != bmap_buff)
-		free(bmap);
 }

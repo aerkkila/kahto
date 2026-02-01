@@ -1,16 +1,16 @@
 static void draw_datum_count(struct draw_data_args *ar) {
-	unsigned (*count)[ar->axis_xywh_outer[2]] = (void*)ar->canvascount;
+	unsigned (*count)[ar->xywh_limits[2]] = (void*)ar->canvascount;
 	int x = ar->yxz[1], y = ar->yxz[0];
 	float alfa = ar->alpha;
 	if (!ar->bmap) {
-		if (0 <= x && x < ar->axis_xywh_outer[2] && 0 <= y && y < ar->axis_xywh_outer[3])
+		if (0 <= x && x < ar->xywh_limits[2] && 0 <= y && y < ar->xywh_limits[3])
 			count[y][x] += alfa;
 		return;
 	}
 	int j0 = max(0, y-ar->maph/2);
-	int j1 = min(ar->axis_xywh_outer[3]-1, y+(ar->maph-ar->maph/2));
+	int j1 = min(ar->xywh_limits[3]-1, y+(ar->maph-ar->maph/2));
 	int i0 = max(0, x-ar->mapw/2);
-	int i1 = min(ar->axis_xywh_outer[2]-1, x+(ar->mapw-ar->mapw/2));
+	int i1 = min(ar->xywh_limits[2]-1, x+(ar->mapw-ar->mapw/2));
 	int bj0 = j0 - (y-ar->maph/2);
 	int bi0 = i0 - (x-ar->mapw/2);
 	const unsigned char (*bmap)[ar->mapw] = (void*)ar->bmap;
@@ -25,13 +25,13 @@ static void draw_datum(struct draw_data_args *ar) {
 		draw_datum_count(ar);
 	int *yxz = ar->yxz;
 	if (!ar->bmap) {
-		if (0 <= yxz[1] && yxz[1] < ar->axis_xywh_outer[2] && 0 <= yxz[0] && yxz[0] < ar->axis_xywh_outer[3])
-			ar->canvas[(ar->axis_xywh_outer[1] + yxz[0]) * ar->ystride + ar->axis_xywh_outer[0] + yxz[1]] = ar->color;
+		if (0 <= yxz[1] && yxz[1] < ar->xywh_limits[2] && 0 <= yxz[0] && yxz[0] < ar->xywh_limits[3])
+			ar->canvas[(ar->xywh_limits[1] + yxz[0]) * ar->ystride + ar->xywh_limits[0] + yxz[1]] = ar->color;
 		/* alfaa ei ole toteutettu tähän */
 		return;
 	}
-	int x0_ = ar->axis_xywh_outer[0],       y0_ = ar->axis_xywh_outer[1];
-	int x1_ = x0_ + ar->axis_xywh_outer[2], y1_ = y0_ + ar->axis_xywh_outer[3];
+	int x0_ = ar->xywh_limits[0],       y0_ = ar->xywh_limits[1];
+	int x1_ = x0_ + ar->xywh_limits[2], y1_ = y0_ + ar->xywh_limits[3];
 	int x0  = x0_ + ar->yxz[1] - ar->mapw/2,      y0 = y0_ + yxz[0] - ar->maph/2;
 	int j0  = max(0, y0_ - y0);
 	int j1  = min(ar->maph, y1_ - y0);

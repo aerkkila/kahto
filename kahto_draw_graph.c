@@ -12,13 +12,11 @@ void kahto_draw_graph(struct kahto_graph *graph, uint32_t *canvas, int ystride, 
 	//const int *margin = fig->ro_inner_margin;
 	//int yxlen[] = {xywh0[3]-margin[1]-margin[3], xywh0[2]-margin[0]-margin[2]}; // area check is missing
 	struct kahto_axis *caxis = graph->yxaxis[2];
-	int area[] = xywh_to_area(xywh0);
 
 	struct draw_data_args args = {
 		.canvas = canvas,
 		.ystride = ystride,
-		.axis_xywh_outer = xywh0,
-		.axis_area_outer = area,
+		.xywh_limits = xywh0,
 		.cmap = caxis ? caxis->cmap : NULL,
 		.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
 		.color = graph->color,
