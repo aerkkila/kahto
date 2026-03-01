@@ -656,7 +656,6 @@ void kahto_async_join(struct kahto_async **async, int n);
 
 void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 int  kahto_figure_layout(struct kahto_figure *figure);
-void kahto_axis_datarange(struct kahto_axis*);
 void kahto_make_range(struct kahto_figure *);
 struct kahto_args* kahto_defaultargs(struct kahto_args *args); // returns the input
 struct kahto_args* kahto_default_lineargs(struct kahto_args *args); // returns the input
