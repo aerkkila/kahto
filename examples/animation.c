@@ -1,6 +1,8 @@
 /* Animates an object hanging from a spring with damped oscillation.
    Given argument -t <seconds>, this generates a video file of length <seconds>.
    Otherwise the animation is shown at runtime.
+
+   See also animation_sync.c for a simpler example.
 */
 
 #include <kahto.h>

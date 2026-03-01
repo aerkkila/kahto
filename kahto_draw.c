@@ -215,46 +215,52 @@ void kahto_draw_axistext(struct kahto_axistext *axistext, unsigned *canvas, int 
 	ttra->fg_default = 0xff<<24;
 }
 
+void _draw_coloraxis(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
+	const unsigned char *cmap = axis->cmap;
+	int isx = axis->direction == 0;
+	int len = axis->ro_area[2+!isx] - axis->ro_area[0+!isx];
+	int len1 = axis->ro_area[2+isx] - axis->ro_area[0+isx];
+	unsigned char levels[len];
+	{
+		double centerfrac = (axis->center - axis->min) / (axis->max - axis->min);
+		double limits[] = {0, len*centerfrac, len};
+		typeof(get_datalevel_u2) *getlevel = my_isnan(axis->center) ?
+			get_datalevel_u2 : get_datalevel_with_center_u2;
+		if (!isx) // y-axis goes from bottom to top
+			for (int i=0; i<len; i++) {
+				unsigned short value = len-1-i;
+				levels[i] = getlevel(&value, 0, limits, 255);
+			}
+		else
+			for (unsigned short i=0; i<len; i++)
+				levels[i] = getlevel(&i, 0, limits, 255);
+	}
+
+	if (axis->reverse_cmap)
+		for (int i=0; i<len; i++)
+			levels[i] = 255 - levels[i];
+	uint32_t (*canvas1)[ystride] = (void*)(canvas + axis->ro_area[1]*ystride + axis->ro_area[0]);
+	if (!isx)
+		for (int j=0; j<len; j++) {
+			unsigned color = from_cmap(cmap + levels[j] * 3);
+			for (int i=0; i<len1; i++)
+				canvas1[j][i] = color;
+		}
+	else {
+		for (int i=0; i<len; i++)
+			canvas1[0][i] = from_cmap(cmap + levels[i] * 3);
+		for (int j=1; j<len1; j++)
+			memcpy(canvas1[j], canvas1[0], sizeof(canvas1[0]));
+	}
+}
+
 void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	if (!axis || axis->direction < 0 || !axis->visible)
 		return;
 	int isx = axis->direction == 0;
 
-	if (axis->cmap) {
-		const unsigned char *cmap = axis->cmap;
-		int len = axis->ro_area[2+!isx] - axis->ro_area[0+!isx];
-		int len1 = axis->ro_area[2+isx] - axis->ro_area[0+isx];
-		unsigned char levels[len];
-		{
-			double limits[] = {axis->min, axis->center, axis->max};
-			typeof(get_datalevel_u2) *getlevel = my_isnan(axis->center) ? get_datalevel_u2 : get_datalevel_with_center_u2;
-			if (!isx) // y-axis goes from bottom to top
-				for (int i=0; i<len; i++) {
-					unsigned short value = len-1-i;
-					levels[i] = getlevel(&value, 0, limits, 255);
-				}
-			else
-				for (unsigned short i=0; i<len; i++)
-					levels[i] = getlevel(&i, 0, limits, 255);
-		}
-
-		if (axis->reverse_cmap)
-			for (int i=0; i<len; i++)
-				levels[i] = 255 - levels[i];
-		uint32_t (*canvas1)[ystride] = (void*)(canvas + axis->ro_area[1]*ystride + axis->ro_area[0]);
-		if (!isx)
-			for (int j=0; j<len; j++) {
-				unsigned color = from_cmap(cmap + levels[j] * 3);
-				for (int i=0; i<len1; i++)
-					canvas1[j][i] = color;
-			}
-		else {
-			for (int i=0; i<len; i++)
-				canvas1[0][i] = from_cmap(cmap + levels[i] * 3);
-			for (int j=1; j<len1; j++)
-				memcpy(canvas1[j], canvas1[0], sizeof(canvas1[0]));
-		}
-	}
+	if (axis->cmap)
+		_draw_coloraxis(axis, canvas, figurewidth, figureheight, ystride);
 
 	if (axis->linestyle.style != kahto_line_none_e) {
 		typeof(axis->ro_area[0]) area[4];
