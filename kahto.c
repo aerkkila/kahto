@@ -939,10 +939,10 @@ struct kahto_figure* kahto_plot_args(struct kahto_args *args) {
 	if (args->kahto_len < 0)
 		args->kahto_len = args->kahto_xlen * args->kahto_ylen;
 
-	if (args->plot_interlazed_y || args->labels) {
-		const char **labels = args->labels;
+	if (args->plot_interlazed_y || args->labels.c) {
+		const char **labels = args->labels.c;
 		args->plot_interlazed_y = 0;
-		args->labels = NULL;
+		args->labels.c = NULL;
 		if (labels)
 			args->label = labels[0];
 

@@ -372,7 +372,10 @@ struct kahto_args {
 
 	/* if ystride > 1, plot the skipped data with the same stride The number of graphs equals ystride. */
 	char plot_interlazed_y;
-	const char **labels; // a different label for each data for interlazed plots
+	union {
+		const char **c;
+		char **m;
+	} labels; // a different label for each data for interlazed plots
 };
 
 /* To change the defaultargs, use the following macro before #include <kahto.h>, e.g.
