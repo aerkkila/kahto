@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 45
+#define __kahto_version_in_program 46
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -293,9 +293,10 @@ struct kahto_figure {
 
 	struct kahto_axis **axis;
 	int naxis, mem_axis;
-	/* these figures share the same x-coordinates
-	   after computing the layout, each size is changed according to the smallest x-axis */
-	struct kahto_figure **connected_x; int nconnected_x;
+	/* these figures share the same x- or y-coordinates
+	   after computing the layout, each size is changed according to the smallest x- or y-axis */
+	struct kahto_figure **aligned_x; int naligned_x;
+	struct kahto_figure **aligned_y; int naligned_y;
 	struct ttra *ttra;
 	char ttra_owner;
 	int ro_inner_xywh[4], ro_inner_margin[4], ro_corner[2];
@@ -620,7 +621,7 @@ void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, 
 // Don't set this manually. Set axis->logscale=true instead:
 void kahto_init_ticker_log(struct kahto_ticks *this, double min, double max);
 
-void kahto_use_halfwaygrid_on_arbitrary(struct kahto_axis *ax); // can be used with arbitrary_datacoord_enum
+void kahto_grid_halfway_on_arbitrary(struct kahto_axis *ax); // can be used with arbitrary_datacoord_enum
 
 /* can be given by user to graph->draw_marker_fun */
 void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args);

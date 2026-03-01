@@ -539,6 +539,8 @@ void kahto_layout(struct kahto_figure *fig) {
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((fig->subfigures[i]))
 			kahto_layout(fig->subfigures[i]);
-	if (fig->nconnected_x)
-		connect_x(fig->connected_x, fig->nconnected_x);
+	if (fig->naligned_x)
+		align_inner_area(fig->aligned_x, fig->naligned_x, 0);
+	if (fig->naligned_y)
+		align_inner_area(fig->aligned_y, fig->naligned_y, 1); // this may cause a segfault
 }

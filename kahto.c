@@ -150,7 +150,7 @@ int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rhei
 int kahto_get_axisarea(struct kahto_figure *fig, int area[4]);
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
-static void connect_x(struct kahto_figure **figs, int nconnected);
+static void align_inner_area(struct kahto_figure **figs, int naligned, int xy);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -1036,7 +1036,7 @@ void kahto_set_colors(struct kahto_figure *figure) {
 	figure->ro_colors_set = 1;
 }
 
-void kahto_use_halfwaygrid_on_arbitrary(struct kahto_axis *ax) {
+void kahto_grid_halfway_on_arbitrary(struct kahto_axis *ax) {
 	ax->ticks->tickerdata.arb.nsubticks = kahto_automatic;
 	ax->ticks->gridstyle1 = ax->ticks->gridstyle;
 	ax->ticks->gridstyle.style = 0;
@@ -1074,28 +1074,28 @@ void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride
 	kahto_fill_u4(canvas+ystride*ystart+xstart, figure->background, figure->ro_inner_xywh[2], figure->ro_inner_xywh[3], ystride);
 }
 
-static void connect_x(struct kahto_figure **figs, int nconnected) {
+static void align_inner_area(struct kahto_figure **figs, int naligned, int xy) {
 	int area[4], a[4];
 	fig_inner_area(figs[0], area);
-	area[0] += figs[0]->ro_corner[0];
-	area[2] += figs[0]->ro_corner[0];
-	for (int i=1; i<nconnected; i++) {
+	area[0+xy] += figs[0]->ro_corner[xy];
+	area[2+xy] += figs[0]->ro_corner[xy];
+	for (int i=1; i<naligned; i++) {
 		fig_inner_area(figs[i], a);
-		a[0] += figs[i]->ro_corner[0];
-		a[2] += figs[i]->ro_corner[0];
-		if (a[0] > area[0])
-			area[0] = a[0];
-		if (a[2] < area[2])
-			area[2] = a[2];
+		a[0+xy] += figs[i]->ro_corner[xy];
+		a[2+xy] += figs[i]->ro_corner[xy];
+		if (a[0+xy] > area[0+xy])
+			area[0+xy] = a[0+xy];
+		if (a[2+xy] < area[2+xy])
+			area[2+xy] = a[2+xy];
 	}
-	for (int i=0; i<nconnected; i++) {
+	for (int i=0; i<naligned; i++) {
 		fig_inner_area(figs[i], a);
-		a[0] += figs[i]->ro_corner[0];
-		a[2] += figs[i]->ro_corner[0];
+		a[0+xy] += figs[i]->ro_corner[xy];
+		a[2+xy] += figs[i]->ro_corner[xy];
 		int diff = area[0] - a[0];
-		figs[i]->ro_inner_xywh[0] += diff;
-		figs[i]->ro_inner_xywh[2] -= diff;
-		figs[i]->ro_inner_xywh[2] -= a[2] - area[2];
+		figs[i]->ro_inner_xywh[0+xy] += diff;
+		figs[i]->ro_inner_xywh[2+xy] -= diff;
+		figs[i]->ro_inner_xywh[2+xy] -= a[2+xy] - area[2+xy];
 	}
 }
 
