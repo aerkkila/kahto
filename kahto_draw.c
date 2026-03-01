@@ -211,7 +211,7 @@ void kahto_draw_axistext(struct kahto_axistext *axistext, unsigned *canvas, int 
 	ttra_print(ttra, "\033[0m");
 	set_fontheight(axistext->axis->figure, axistext->rowheight);
 	int *area = axistext->ro_area;
-	put_text(ttra, axistext->text, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
+	put_text(ttra, axistext->text.c, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
 	ttra->fg_default = 0xff<<24;
 }
 

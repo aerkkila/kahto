@@ -199,7 +199,10 @@ enum axistext_type {kahto_axistext_other, kahto_axistext_label, kahto_axistext_t
 
 struct kahto_axistext {
 	struct kahto_axis *axis;
-	char *text;
+	union {
+		char *m;
+		const char *c;
+	} text;
 	enum axistext_type type;
 	int owner;
 	float pos, rowheight, rotation_grad;
@@ -559,7 +562,7 @@ static inline struct kahto_figure* kahto_line_inl(float y0, float x0, float y1, 
 	return kahto_plot_args(&args);
 }
 
-struct kahto_axistext* kahto_axislabel(struct kahto_axis *axis, char *label);
+struct kahto_axistext* kahto_axislabel(struct kahto_axis *axis, const char *label);
 void kahto_ticklabels(struct kahto_axis *axis, char **labels, int howmany);
 struct kahto_axis* kahto_remove_ticks(struct kahto_axis *axis);
 void kahto_destroy(struct kahto_figure *figure);

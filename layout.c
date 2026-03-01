@@ -213,7 +213,7 @@ static void _axis_texts_orthogonal(struct kahto_axis *axis, struct layout_ort_ar
 		struct kahto_axistext *axistext = axis->text[itext];
 		set_fontheight(args->fig, axistext->rowheight);
 		int area[4];
-		put_text(axis->figure->ttra, axistext->text, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
+		put_text(axis->figure->ttra, axistext->text.c, 0, 0, axistext->hvalign[!iort], axistext->hvalign[iort], axistext->rotation_grad, area, 1);
 		sizes[itext] = iside ? area[iort+2] : -area[iort];
 		update_max(imaxtext, sizes[itext]);
 		/* save the parallel size to avoid calling put_text again */

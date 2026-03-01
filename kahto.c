@@ -839,10 +839,10 @@ struct kahto_figure* kahto_add_text(struct kahto_figure *figure, struct kahto_te
 	return figure;
 }
 
-struct kahto_axistext* kahto_axislabel(struct kahto_axis *axis, char *label) {
+struct kahto_axistext* kahto_axislabel(struct kahto_axis *axis, const char *label) {
 	struct kahto_axistext *text = malloc(sizeof(struct kahto_axistext));
 	*text = (struct kahto_axistext) {
-		.text = label,
+		.text.c = label,
 		.pos = 0.5,
 		.hvalign = {-0.5, -1.2 * (axis->pos < 0.5)},
 		.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
@@ -884,7 +884,7 @@ struct kahto_axis* kahto_remove_ticks(struct kahto_axis *axis) {
 void kahto_destroy_axis(struct kahto_axis *axis) {
 	for (int i=axis->ntexts-1; i>=0; i--) {
 		if (axis->text[i]->owner)
-			free(axis->text[i]->text);
+			free(axis->text[i]->text.m);
 		free(axis->text[i]);
 	}
 	free(axis->text);
