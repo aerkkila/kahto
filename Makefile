@@ -1,6 +1,6 @@
 include config.mk
 
-CFLAGS += -Wall -g3 -gdwarf-2 -DHAVE_PNG -Wno-unused-result -O2
+CFLAGS += -Wall -g3 -gdwarf-2 -Wno-unused-result -O2
 CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
@@ -45,7 +45,9 @@ ifeq ($(use_ffmpeg), yes)
 	alltargets += libkahto-ffmpeg.so
 endif
 
-# XXX use_png
+ifeq ($(use_libpng), yes)
+	CFLAGS += -DHAVE_PNG
+endif
 
 all: $(alltargets)
 
