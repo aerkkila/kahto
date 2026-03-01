@@ -24,13 +24,24 @@ void kahto_draw_graph_lines
 		*ydata = graph->data.list.ydata,
 		*zdata = graph->data.list.zdata;
 
-	double multiplier = 1;
-	int ylogscale = graph->yxaxis[0]->logscale;
-	typeof(get_datapx[0]) get_ypx = get_datapx_inv[ydata->type];
-	if (ylogscale) {
-		get_ypx = get_datapx_log_inv[ydata->type];
-		multiplier = 1 / log(graph->yxaxis[0]->ticks->tickerdata.log.base);
-	}
+	int yxlogscale[] = {graph->yxaxis[0]->logscale, graph->yxaxis[1]->logscale};
+	double yxmultiplier[] = {1, 1};
+	typeof(get_datapx[0]) get_yxpx[] = {
+		get_datapx_inv[ydata->type],
+		get_datapx[ydata->type],
+	};
+
+	for (int iyx=0; iyx<2; iyx++)
+		if (yxlogscale[iyx]) {
+			// convert from log_e to log_base
+			yxmultiplier[iyx] = 1 / log(graph->yxaxis[iyx]->ticks->tickerdata.log.base);
+			if (iyx == 0)
+				get_yxpx[0] = get_datapx_log_inv[ydata->type];
+			else
+				get_yxpx[1] = get_datapx_inv[xdata->type];
+			yxmin[iyx] = log(yxmin[iyx]) * yxmultiplier[iyx];
+			yxdiff[iyx] = log(graph->yxaxis[iyx]->max) * yxmultiplier[iyx] - yxmin[iyx];
+		}
 
 	/* help for xdata */
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
@@ -48,16 +59,16 @@ void kahto_draw_graph_lines
 	}
 
 	char notapixel = 0;
-	int xoffset = xdata->data ? 0 :
-		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1], 1);
+	int xoffset = (xdata->data ? 0 :
+		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1], 1));
 	long end = graph->data.list.ydata->length, ipoint=0;
 	int xy[2][2], z[2];
 	int iyxz = 0;
-	xy[iyxz][1] = get_ypx(ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0], multiplier);
+	xy[iyxz][1] = get_yxpx[0](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
 	notapixel = set_bit(notapixel, iyxz*2+1, xy[iyxz][1]==NOT_A_PIXEL);
 	xy[iyxz][1] += margin[1];
 	if (xdata->data) {
-		xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], 1);
+		xy[iyxz][0] = get_yxpx[1](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], yxmultiplier[1]);
 		notapixel = set_bit(notapixel, iyxz*2+0, xy[iyxz][0]==NOT_A_PIXEL);
 	}
 	else
@@ -70,11 +81,11 @@ void kahto_draw_graph_lines
 	int32_t carry = 0;
 	for (ipoint=1; ipoint<end; ipoint++) {
 		iyxz = !iyxz;
-		xy[iyxz][1] = get_ypx(ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0], multiplier);
+		xy[iyxz][1] = get_yxpx[0](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
 		notapixel = set_bit(notapixel, iyxz*2+1, xy[iyxz][1]==NOT_A_PIXEL);
 		xy[iyxz][1] += margin[1];
 		if (xdata->data) {
-			xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], 1);
+			xy[iyxz][0] = get_yxpx[1](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], yxmultiplier[1]);
 			notapixel = set_bit(notapixel, iyxz*2+0, xy[iyxz][0]==NOT_A_PIXEL);
 		}
 		else
