@@ -923,8 +923,8 @@ struct kahto_figure* kahto_clean(struct kahto_figure *fig) {
 	for (int i=0; i<fig->nsubfigures; i++)
 		kahto_destroy(fig->subfigures[i]);
 	struct ttra *ttra = fig->ttra;
-	fig->ttra_owner = 0;
 	int ttra_owner = fig->ttra_owner;
+	fig->ttra_owner = 0;
 	kahto_destroy_single(fig); // fig not freed
 	kahto_figure_init(fig);
 	fig->ttra = ttra;
