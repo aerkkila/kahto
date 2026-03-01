@@ -1,3 +1,8 @@
+static inline char set_bit(char num, int ibit, int val) {
+	return ((num) & ~(1 << (ibit))) // reset bit
+		| (val) << (ibit); /* set bit */
+}
+
 void kahto_draw_graph_lines
 (struct kahto_graph *graph, struct kahto_figure *fig, struct draw_data_args *args) {
 	double yxmin[] = {
@@ -34,15 +39,19 @@ void kahto_draw_graph_lines
 			get_datalevel[zdata->type] : get_datalevel_with_center[zdata->type];
 	}
 
+	char notapixel = 0;
 	int xoffset = xdata->data ? 0 :
 		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1]);
 	long end = graph->data.list.ydata->length, ipoint=0;
 	int xy[2][2], z[2];
 	int iyxz = 0;
-	xy[iyxz][1] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0])
-		+ margin[1];
-	if (xdata->data)
+	xy[iyxz][1] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0]);
+	notapixel = set_bit(notapixel, iyxz*2+1, xy[iyxz][1]==NOT_A_PIXEL);
+	xy[iyxz][1] += margin[1];
+	if (xdata->data) {
 		xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
+		notapixel = set_bit(notapixel, iyxz*2+0, xy[iyxz][0]==NOT_A_PIXEL);
+	}
 	else
 		xy[iyxz][0] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
 	xy[iyxz][0] += args->xywh_limits[0] + margin[0];
@@ -53,10 +62,13 @@ void kahto_draw_graph_lines
 	int32_t carry = 0;
 	for (ipoint=1; ipoint<end; ipoint++) {
 		iyxz = !iyxz;
-		xy[iyxz][1] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0])
-			+ margin[1];
-		if (xdata->data)
+		xy[iyxz][1] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0]);
+		notapixel = set_bit(notapixel, iyxz*2+1, xy[iyxz][1]==NOT_A_PIXEL);
+		xy[iyxz][1] += margin[1];
+		if (xdata->data) {
 			xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
+			notapixel = set_bit(notapixel, iyxz*2+0, xy[iyxz][0]==NOT_A_PIXEL);
+		}
 		else
 			xy[iyxz][0] = iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
 		xy[iyxz][0] += margin[0];
@@ -69,6 +81,7 @@ void kahto_draw_graph_lines
 		}
 		xy[iyxz][0] += args->xywh_limits[0];
 		xy[iyxz][1] += args->xywh_limits[1];
-		carry = draw_line(args->canvas, args->ystride, xy[0], area, &graph->linestyle, fig, carry);
+		if (!notapixel)
+			carry = draw_line(args->canvas, args->ystride, xy[0], area, &graph->linestyle, fig, carry);
 	}
 }
