@@ -12,7 +12,7 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 	int boxw = topixels(bargs->boxwidth ? bargs->boxwidth : 0.02, args->fig);
 	int linew = topixels(bargs->linewidth ? bargs->linewidth : 0.003, args->fig);
 	int mlinew = topixels(bargs->linewidth ? bargs->mlinewidth : 0.003, args->fig);
-	int area[] = {0, 0, args->fig->wh[0], args->fig->wh[1]};
+	int area[] = {0, 0, args->fig->wh[1], args->fig->wh[0]};
 	int *xzy = args->yxz;
 	int ydirection = xzy[2+1] < xzy[2+3];
 
