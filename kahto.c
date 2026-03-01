@@ -30,7 +30,7 @@ const int __kahto_version_in_library = __kahto_version_in_program;
 
 unsigned kahto_colorscheme_00[] = { // color deficient semi friendly, semi dark
 	0xff000000, 0xfff20700, 0xff505eff, 0xfff781bf, 0xff108a4f, 0xff66ccff, 0xffffc73a,
-	0xffc84eff, 0xffffff33, 0xffa65628, 0xff999999, 0
+	0xffc84eff, 0xffe0dd33, 0xffa65628, 0xff999999, 0
 };
 unsigned kahto_colorscheme_01[] = { // color deficient friendly, semi dark
 	0xff000000, 0xff505eff, 0xff337538, 0xffc26a77, 0xff56b4e9, 0xffdddd55, 0xff9f4a96, 0
