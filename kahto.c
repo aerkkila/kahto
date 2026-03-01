@@ -1115,15 +1115,25 @@ static uint32_t __attribute__((malloc,unused))* duplicate_canvas(uint32_t *src1d
 #ifdef HAVE_PNG
 #include "kahto_png.c"
 #else
-struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *a, const char *b) {
+struct kahto_figure* kahto_write_png_preserve_va(struct kahto_figure *a, const char *b, va_list *va) {
 	fprintf(stderr, "kahto library was compiled without support for writing a png image.\n"
 		"Configure and compile again with libpng enabled.\n"
 	);
 	return a;
 }
 #endif
-void kahto_write_png(struct kahto_figure *fig, const char *name) {
-	kahto_destroy(kahto_write_png_preserve(fig, name));
+struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *fig, const char *name, ...) {
+	va_list va;
+	va_start(va);
+	void *r = kahto_write_png_preserve_va(fig, name, va);
+	va_end(va);
+	return r;
+}
+void kahto_write_png(struct kahto_figure *fig, const char *name, ...) {
+	va_list va;
+	va_start(va);
+	kahto_destroy(kahto_write_png_preserve_va(fig, name, va));
+	va_end(va);
 }
 
 #ifdef HAVE_wlh

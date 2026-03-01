@@ -55,10 +55,17 @@ static void argb_to_bgr(void *vfrom, unsigned char *to, long size) {
 	}
 }
 
-struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *fig, const char *name) {
+struct kahto_figure* kahto_write_png_preserve_va(struct kahto_figure *fig, const char *name_, va_list va) {
 	kahto_layout(fig); // might change fig->wh
 	unsigned *argb = malloc(fig->wh[0] * fig->wh[1] * sizeof(unsigned));
 	kahto_draw_figures(fig, argb, fig->wh[0]);
+
+	char *name = NULL;
+	char freename = 0;
+	if (name_) {
+		vasprintf(&name, name_, va);
+		freename = 1;
+	}
 
 	char _name[80];
 	if (!name) {
@@ -76,5 +83,7 @@ struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *fig, const ch
 	mkdir_file(name);
 	write_png(bgr, name, fig->wh[0], fig->wh[1]);
 	free(bgr);
+	if (freename)
+		free(name);
 	return fig;
 }

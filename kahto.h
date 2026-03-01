@@ -276,7 +276,7 @@ struct kahto_figure {
 	int draw_counter, wh[2];
 	unsigned background;
 	struct waylandhelper *wlh;
-	char *name; /* window title (kahto_show) or filename (kahto_save_png) */
+	char *name; /* window title (kahto_show) or filename (kahto_write_png) */
 	/* For animated plot. */
 	/* return 1 if something changed on the screen, -1 if animation ended, 0 if nothing changed */
 	int (*update)(struct kahto_figure*, uint32_t *canvas, int ystride, long count, double elapsed);
@@ -553,12 +553,10 @@ void kahto_show_(struct kahto_figure *figure, char *name); // destroys the input
 void kahto_show(struct kahto_figure *figure); // destroys the input
 struct kahto_async* kahto_async_show(struct kahto_figure*);
 
-struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *figure, const char *name); // returns the input figure
-void kahto_write_png(struct kahto_figure *figure, const char *name); // destroys the input
-#define _kahto_save_png(a, b, ...) kahto_write_png(a, b)
-#define kahto_save_png(...) _kahto_save_png(__VA_ARGS__, NULL) // kahto_write_png but name is an optional argument
-#define _kahto_save_png_preserve(a, b, ...) kahto_write_png_preserve(a, b)
-#define kahto_save_png_preserve(...) _kahto_save_png_preserve(__VA_ARGS__, NULL)
+/* Here, nameformat and optional arguments are formatted with printf-style functions.
+   Hence, literal '%' in filename must be written as %% */
+struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *figure, const char *nameformat, ...); // returns the input figure
+void kahto_write_png(struct kahto_figure *figure, const char *nameformat, ...); // destroys the input
 
 /* Available only if compiled with ffmpeg enabled.
    needs to be linked separately with -lkahto-ffmpeg
