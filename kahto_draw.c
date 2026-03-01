@@ -171,7 +171,7 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 		if (!isx)
 			pos_rel = 1 - pos_rel;
 		line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
-		if (ticks->visible)
+		if (ticks->visible && ticks->length)
 			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, 0);
 		int area_text[4] = {0};
 		if (tick[0] && visible_labels)
@@ -193,7 +193,8 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 			if (!isx)
 				pos_rel = 1 - pos_rel;
 			line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
-			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, figure, 0);
+			if (ticks->visible && ticks->length1)
+				draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, figure, 0);
 			if (ticks->gridstyle1.style) {
 				gridline[!iort] = gridline[!iort+2] = line_px[!iort];
 				draw_line(canvas, ystride, gridline, inner_area, &ticks->gridstyle1, figure, 0);

@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 	kahto_set_range(kahto_glx(fig), -1, 1);
 	kahto_set_range(kahto_gly(fig), -5, 0.1);
 
-	//kahto_remove_ticks(kahto_glx(fig));
+	kahto_remove_ticks(kahto_glx(fig));
 
 	fig->update = update; // This function is responsible for updating the figure
 	fig->userdata = &state; // This is where we can store our data to be used in the update function
