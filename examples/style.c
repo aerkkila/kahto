@@ -43,6 +43,7 @@ int main() {
 		}
 	);
 
+	kahto_axislabel(kahto_glx(fig), "\e[1;3;94mbold italic\e[0m normal");
 	fig->legend.borderstyle.color=0xffaa33ff;
 	fig->legend.borderstyle.thickness=0.01;
 	fig->legend.fillcolor = 0xff888888;

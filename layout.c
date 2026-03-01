@@ -368,7 +368,7 @@ start:
 		kahto_figure_ttra_new(fig);
 break0:
 	}
-	if (!fig->ttra->text_initialized)
+	if (!fig->ttra->initialized)
 		ttra_init(fig->ttra);
 	if (fig->title.text) {
 		set_fontheight(fig, fig->title.rowheight);
