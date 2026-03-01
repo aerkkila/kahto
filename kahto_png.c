@@ -2,6 +2,7 @@
 #include <string.h>
 #include <err.h>
 #include <stdlib.h>
+#include "kahto_mkdir.c"
 
 static int write_png(unsigned char* rgb, const char* name, int draw_w, int draw_h) {
 	png_structp png_p = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);

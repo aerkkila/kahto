@@ -6,7 +6,6 @@
 #include <float.h>
 #include <cmh_colormaps.h>
 #include <sys/time.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
@@ -157,28 +156,6 @@ static double __attribute__((unused)) get_time() {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return tv.tv_sec + tv.tv_usec * 1e-6;
-}
-
-static int __attribute__((unused)) mkdir_file(const char *restrict name) {
-	int len = strlen(name);
-	char k1[len+1];
-	strcpy(k1, name);
-	char k2[len+2];
-	if (name[0] == '/')
-		k2[0] = '/', len = 1;
-	else
-		len = 0;
-	char *str = strtok(k1, "/"), *str1;
-	while (1) {
-		if (!(str1 = strtok(NULL, "/")))
-			return 0;
-		while (*str) k2[len++] = *str++;
-		str = str1;
-		k2[len++] = '/';
-		k2[len] = 0;
-		if (mkdir(k2, 0755) && errno != EEXIST)
-			return 1;
-	}
 }
 
 static int kahto_visible_marker(const char *str) {
@@ -1141,18 +1118,6 @@ struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *a, const char
 #endif
 void kahto_write_png(struct kahto_figure *fig, const char *name) {
 	kahto_destroy(kahto_write_png_preserve(fig, name));
-}
-
-#ifdef HAVE_ffmpeg
-#include "kahto_video.c"
-#else
-struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const char *name, float fps) {
-	fprintf(stderr, "kahto library was compiled without support for \e[1m%s\e[0m\n", __func__);
-	return fig;
-}
-#endif
-void kahto_write_mp4(struct kahto_figure *fig, const char *name, float fps) {
-	kahto_destroy(kahto_write_mp4_preserve(fig, name, fps));
 }
 
 #ifdef HAVE_wlh

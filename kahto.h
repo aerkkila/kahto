@@ -557,7 +557,9 @@ void kahto_write_png(struct kahto_figure *figure, const char *name); // destroys
 #define _kahto_save_png_preserve(a, b, ...) kahto_write_png_preserve(a, b)
 #define kahto_save_png_preserve(...) _kahto_save_png_preserve(__VA_ARGS__, NULL)
 
-/* Available only if compiled with video support. Function figure->update has to be defined. */
+/* Available only if compiled with ffmpeg enabled.
+   needs to be linked separately with -lkahto-ffmpeg
+   In other than async functions, function figure->update has to be defined. */
 struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *figure, const char *name, float fps); // returns the input
 void kahto_write_mp4(struct kahto_figure *figure, const char *name, float fps); // destroys the input
 struct kahto_async* kahto_async_write_mp4(struct kahto_figure *fig, const char *name, float fps);

@@ -5,11 +5,13 @@ CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng
 OBJECTS =
-kahto_sources = kahto.h kahto_draw_graph.c kahto_draw_graph_markers.c kahto_draw_graph_lines.c rotate.c functions.c ticker.c layout.c kahto_png.c kahto_draw_line.c kahto_draw_line_more.c kahto_draw_triangle.c kahto_draw.c kahto_colormesh.c kahto_init_markers.c kahto_new_init.c kahto_find_empty_rectangle.c kahto_async.c Makefile
+kahto_sources = kahto.h kahto_draw_graph.c kahto_draw_graph_markers.c kahto_draw_graph_lines.c rotate.c functions.c ticker.c layout.c kahto_png.c kahto_draw_line.c kahto_draw_line_more.c kahto_draw_triangle.c kahto_draw.c kahto_colormesh.c kahto_init_markers.c kahto_new_init.c kahto_find_empty_rectangle.c kahto_async.c kahto_mkdir.c Makefile
 dep_dir = dependencies
 dep_get =
+alltargets = libkahto.so
+allpossibletargets = libkahto.so
 
-ifeq ($(use_libttra), 1)
+ifeq ($(use_libttra), yes)
 	LDLIBS += -lttra
 else # mandatory
 	dep_get += $(dep_dir)/ttra
@@ -18,46 +20,47 @@ else # mandatory
 	CFLAGS += -I$(dep_dir)/ttra
 endif
 
-ifeq ($(use_cmh_colormaps), 1)
+ifeq ($(use_cmh_colormaps), yes)
 else # mandatory
 	dep_get += $(dep_dir)/colormap-headers
 	kahto_sources += $(dep_dir)/colormap-headers/cmh_colormaps.h
 	CFLAGS += -I$(dep_dir)/colormap-headers
 endif
 
-ifeq ($(use_libwaylandhelper), 1)
+ifeq ($(use_libwaylandhelper), yes)
 	LDLIBS += -lwaylandhelper
 	CFLAGS += -DHAVE_wlh
-else ifeq ($(use_libwaylandhelper), 2)
+else ifeq ($(use_libwaylandhelper), static)
 	dep_get += $(dep_dir)/waylandhelper
 	OBJECTS += $(dep_dir)/waylandhelper/waylandhelper.o
 	LDLIBS += -lxkbcommon -lwayland-client
 	CFLAGS += -I$(dep_dir)/waylandhelper -DHAVE_wlh
 endif
-ifneq ($(use_libwaylandhelper), 0)
+ifneq ($(use_libwaylandhelper), no)
 	kahto_sources += kahto_wayland.c
 endif
 
-ifeq ($(use_ffmpeg), 1)
-	LDLIBS += -lavcodec -lavutil -lavformat
-	CFLAGS += -DHAVE_ffmpeg
-	kahto_sources += kahto_video.c
+allpossibletargets += libkahto-ffmpeg.so
+ifeq ($(use_ffmpeg), yes)
+	alltargets += libkahto-ffmpeg.so
 endif
 
-all: libkahto.so
+# XXX use_png
+
+all: $(alltargets)
 
 tulosta:
 	@echo dep_get: $(dep_get)
 	@echo LDLIBS: $(LDLIBS)
-
-testi.out: testi.c kahto.o $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 kahto.o: kahto.c $(kahto_sources) config.mk
 	$(CC) $(CFLAGS_OBJ) -o $@ $<
 
 libkahto.so: kahto.c $(kahto_sources) $(OBJECTS) config.mk
 	$(CC) $(CFLAGS_LIB) -o $@ $< $(OBJECTS) $(LDLIBS)
+
+libkahto-ffmpeg.so: kahto_ffmpeg.c kahto_mkdir.c config.mk
+	$(CC) $(CFLAGS_LIB) -o $@ $< -lavcodec -lavutil -lavformat
 
 functions.c: make_functions.pl functions.in.c
 	./$<
@@ -99,12 +102,16 @@ clean: _clean
 dist-clean: _clean
 	rm -rf $(dep_dir) config.mk
 
-install: libkahto.so
+install: $(alltargets)
 	mkdir -p $(prefix)/include $(prefix)/lib
 	cp kahto.h $(prefix)/include
-	cp libkahto.so $(prefix)/lib
+	cp $(alltargets) $(prefix)/lib
 
 uninstall:
-	rm -rf $(prefix)/include/kahto.h $(prefix)/lib/libkahto.so
+	rm -rf $(prefix)/include/kahto.h $(addprefix $(prefix)/lib/, $(allpossibletargets))
 	if [ -d $(prefix)/include ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/include; fi
 	if [ -d $(prefix)/lib ]; then rmdir -p --ignore-fail-on-non-empty $(prefix)/lib; fi
+
+config.mk: configure.sh
+	@echo -e '\e[1mrun configure.sh first\e[0m'
+	@exit 1

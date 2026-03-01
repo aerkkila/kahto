@@ -27,31 +27,36 @@ isinstalled() {
 }
 
 make_dependency() {
-	default=$1
-	name=$2
-	shift 2
-	isinstalled $@ && arvo=1 || arvo=$default
+	success=$1
+	default=$2
+	name=$3
+	shift 3
+	isinstalled $@ && arvo=$success || arvo=$default
 	printf "use_$name = $arvo\n" >> $file
 }
 
-printf "# Automatically created by $0. Edit if necessary.\n%s\n\n"\
-	"# If a value is not 1, that dependency was not found."\
-	> $file
+printf "# Automatically created by $0. Edit if necessary.\n\n" > $file
 
-printf "# Enables cplot_write_png\n" >> $file
-make_dependency 0 libpng png
-printf "# Enables cplot_write_mp4\n" >> $file
-make_dependency 0 ffmpeg avcodec avutil avformat
-printf "\n# Small libraries. Here you have the following options:\n" >> $file
-printf "#   0: Disables the dependency, if optional.\n" >> $file
-printf "#   1: Already installed. Will be linked dynamically.\n" >> $file
-printf "#   2: Download this and link statically to the library.\n" >> $file
-make_dependency 2 libttra ttra
-isinstalled wayland-client && default=2 || default=0
-make_dependency 2 cmh_colormaps cmh_colormaps.h
-printf "# Optional. Enables cplot_show\n" >> $file
-make_dependency $default libwaylandhelper waylandhelper
+printf "# Optional third party libraries. If value is no, library was not found.\n" >> $file
+printf "# Enable cplot_write_png (yes, no)\n" >> $file
+make_dependency yes no libpng png
+printf "# Enable cplot_write_mp4 (yes, no)\n" >> $file
+printf "# This becomes a separate object file to be linked with -lkahto-ffmpeg when necessary.\n" >> $file
+printf "# Linking to ffmpeg libraries is slow, which is the reason for separating it.\n" >> $file
+make_dependency yes no ffmpeg avcodec avutil avformat
 printf "\n" >> $file
+
+printf "# Small libraries. Here you have the following options:\n" >> $file
+printf "#   no:     Disables the dependency, if optional.\n" >> $file
+printf "#   yes:    Already installed. Will be linked dynamically.\n" >> $file
+printf "#   static: Download this and link statically to the library.\n" >> $file
+make_dependency yes static libttra ttra
+make_dependency yes static cmh_colormaps cmh_colormaps.h
+printf "# Optional. Enables cplot_show\n" >> $file
+isinstalled wayland-client && default=static || default=no
+make_dependency yes $default libwaylandhelper waylandhelper
+printf "\n" >> $file
+
 printf "prefix = %s\n" "$prefix" >> $file
 printf "CC = %s\n" "$CC" >> $file
 

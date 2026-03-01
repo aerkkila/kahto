@@ -25,6 +25,7 @@ static int async_update(struct kahto_async *async, uint32_t *canvas, int ystride
 	return 1;
 }
 
+#ifndef include_async_staticonly
 int kahto_async_lock(struct kahto_async *async) {
 	async->_lock = async_request;
 	while (async->_lock != async_response) {
@@ -75,25 +76,6 @@ struct kahto_async* kahto_async_show(struct kahto_figure *fig) {
 	return h;
 }
 
-static void* async_write_mp4(void *vargs) {
-	struct kahto_async *h = vargs;
-	kahto_async_unlock_step(h);
-	kahto_write_mp4_preserve(h->figure, NULL, h->_fps);
-	h->_exit = async_response;
-	return NULL;
-}
-
-struct kahto_async* kahto_async_write_mp4(struct kahto_figure *fig, const char *name, float fps) {
-	struct kahto_async *h = calloc(1, sizeof(*h));
-	h->figure = fig;
-	h->_fps = fps;
-	if (name)
-		fig->name = (void*)(intptr_t)name;
-	fig->async = h;
-	pthread_create(&h->_thread, NULL, async_write_mp4, h);
-	return h;
-}
-
 void kahto_async_join(struct kahto_async **async, int n) {
 	unsigned char *mask = malloc(n);
 	memset(mask, 1, n);
@@ -112,3 +94,5 @@ void kahto_async_join(struct kahto_async **async, int n) {
 	}
 	free(mask);
 }
+#endif
+#undef include_async_staticonly

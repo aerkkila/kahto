@@ -3,6 +3,12 @@
 #include <libavutil/opt.h> // av_opt_set
 #include <stdio.h>
 #include <err.h>
+#include <unistd.h>
+#include <pthread.h>
+#include "kahto.h"
+#include "kahto_mkdir.c"
+#define include_async_staticonly
+#include "kahto_async.c"
 
 #define error(fun) fprintf(stderr, "%s (%i): %s, %s\n", __FILE__, __LINE__, fun, strerror(errno))
 
@@ -179,4 +185,31 @@ struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const ch
 	kahto_destroy_video(&video);
 
 	return fig;
+}
+
+#undef error
+#undef boolfun
+#undef negfun
+
+void kahto_write_mp4(struct kahto_figure *fig, const char *name, float fps) {
+	kahto_destroy(kahto_write_mp4_preserve(fig, name, fps));
+}
+
+static void* async_write_mp4(void *vargs) {
+	struct kahto_async *h = vargs;
+	kahto_async_unlock_step(h);
+	kahto_write_mp4_preserve(h->figure, NULL, h->_fps);
+	h->_exit = async_response;
+	return NULL;
+}
+
+struct kahto_async* kahto_async_write_mp4(struct kahto_figure *fig, const char *name, float fps) {
+	struct kahto_async *h = calloc(1, sizeof(*h));
+	h->figure = fig;
+	h->_fps = fps;
+	if (name)
+		fig->name = (void*)(intptr_t)name;
+	fig->async = h;
+	pthread_create(&h->_thread, NULL, async_write_mp4, h);
+	return h;
 }
