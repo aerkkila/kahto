@@ -504,12 +504,12 @@ void kahto_make_range(struct kahto_figure *figure) {
 			struct kahto_data *data = graph->data.arr[yxz];
 			if (!data)
 				continue;
+			kahto_check_dataminmax(data, yxz);
 			struct kahto_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
 			used_axis[kahto_get_iaxis(axis)] = 1;
 			// errordata uses yaxis
 			if ((axis->range_isset & minmax) == minmax)
 				continue;
-			kahto_check_dataminmax(data, yxz);
 			if (!(axis->range_isset & kahto_minbit)) {
 				if (axis->range_isset & kahto_minbit<<4) // we use this temporarily to mark initialized minmax
 					update_min(axis->min, data->minmax[0]);
