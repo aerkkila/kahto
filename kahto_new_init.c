@@ -112,7 +112,7 @@ struct kahto_figure* kahto_figure_init(struct kahto_figure *figure) {
 	figure->wh[0] = kahto_default_width;
 	figure->wh[1] = kahto_default_height;
 
-	figure->topixels_reference = kahto_this_height;
+	figure->topixels_reference = kahto_total_height;
 	figure->colorscheme.colors = kahto_colorschemes[0];
 	figure->title.rowheight = 0.05;
 	figure->fontheightmul = 1;
