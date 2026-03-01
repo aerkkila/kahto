@@ -7,10 +7,10 @@ static int async_response = 2,
    -1 if we should exit,
    0 otherwise */
 static int async_update(struct kahto_async *async, uint32_t *canvas, int ystride) {
-	async->canvas = canvas;
-	async->ystride = ystride;
 	if (!async)
 		return 0;
+	async->canvas = canvas;
+	async->ystride = ystride;
 	if (async->_exit == async_request)
 		return -1;
 	if (async->_lock == 0)
