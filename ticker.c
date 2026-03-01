@@ -116,6 +116,38 @@ double kahto_get_tick_log(struct kahto_ticks *this, int ind, char **label, int s
 	return this->axis->min + frac * (this->axis->max - this->axis->min);
 }
 
+int kahto_get_maxn_subticks_log(struct kahto_ticks *this) {
+	int ibase = iceil(this->tickerdata.log.base);
+	return this->tickerdata.log.nticks * (ibase-1);
+}
+
+int kahto_get_subticks_log(struct kahto_ticks *this, float *pos) {
+	double ilogmin = this->tickerdata.log.ro_ilogmin,
+		   min = this->axis->min,
+		   max = this->axis->max,
+		   base = this->tickerdata.log.base;
+	int nmaj = this->tickerdata.common.nticks,
+		itick = 0;
+
+	double multi = 1 / log(base);
+	double minlog = log(min) * multi;
+	double maxlog = log(max) * multi;
+
+	double lsubfrac[iceil(base)];
+	for (int i=2; i<base; i++)
+		lsubfrac[i] = log(i) * multi;
+
+	for (int imaj=0; imaj<nmaj; imaj++) {
+		int maj = ilogmin + imaj;
+		double majfrac0 = (maj - minlog) / (maxlog - minlog);
+		double majfrac1 = (maj+1 - minlog) / (maxlog - minlog);
+		for (int isub=1; isub<base; isub++)
+			pos[itick++] = min + majfrac0 * (max-min) + lsubfrac[isub] * (majfrac1-majfrac0) * (max-min);
+	}
+
+	return itick;
+}
+
 double kahto_get_tick_datetime_annual(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
 	int step = this->tickerdata.datetime.step;
 	time_t min = this->tickerdata.datetime.min;
@@ -243,6 +275,8 @@ void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, 
 void kahto_init_ticker_log(struct kahto_ticks *this, double min, double max) {
 	this->species = kahto_ticker_log;
 	this->get_tick = kahto_get_tick_log;
+	this->get_subticks = kahto_get_subticks_log;
+	this->get_maxn_subticks = kahto_get_maxn_subticks_log;
 	struct kahto_tickerdata_log *data = &this->tickerdata.log;
 	if (!data->base)
 		data->base = 10;
