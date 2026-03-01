@@ -1099,6 +1099,19 @@ static void connect_x(struct kahto_figure **figs, int nconnected) {
 	}
 }
 
+void kahto_same_range(struct kahto_axis **axs, int naxs) {
+	double min=DBL_MAX, max=-DBL_MAX;
+	for (int iax=0; iax<naxs; iax++) {
+		kahto_make_range(axs[iax]->figure);
+		if (axs[iax]->min < min)
+			min = axs[iax]->min;
+		if (axs[iax]->max > max)
+			max = axs[iax]->max;
+	}
+	for (int iax=0; iax<naxs; iax++)
+		kahto_set_range(axs[iax], min, max);
+}
+
 static uint32_t* copy_canvas(uint32_t *dest1d, int dest_ystride, uint32_t *src1d, int src_ystride, int *wh) {
 	int width = wh[0], height = wh[1];
 	uint32_t (*dest)[dest_ystride] = (void*)dest1d,
