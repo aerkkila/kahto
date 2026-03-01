@@ -1062,8 +1062,8 @@ void kahto_set_colors(struct kahto_figure *figure) {
 		cs->cmh_enum = 0;
 	}
 	if (cs->ncolors <= 0) {
-		cs->ncolors = 0;
-		while (cs->colors[cs->ncolors++]); // count the number of colors
+		cs->ncolors = -1;
+		while (cs->colors[++cs->ncolors]); // count the number of colors
 	}
 	for (int i=0; i<figure->ngraph; i++) {
 		if (!figure->graph[i]->color)
