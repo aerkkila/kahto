@@ -208,6 +208,36 @@ double kahto_get_tick_arbitrary_relcoord(struct kahto_ticks *this, int ind, char
 	return min + this->tickerdata.arb.ticks[ind] * (max - min);
 }
 
+int kahto_get_subticks_arbitrary_relcoord(struct kahto_ticks *this, float *pos) {
+	struct kahto_tickerdata_arbitrary *d = &this->tickerdata.arb;
+	double *s = d->subticks;
+	double min = this->tickerdata.arb.min,
+		   max = this->tickerdata.arb.max;
+	for (int i=d->nsubticks-1; i>=0; i--)
+		pos[i] = min + s[i] * (max - min);
+	return d->nsubticks;
+}
+
+int kahto_get_subticks_arbitrary_datacoord(struct kahto_ticks *this, float *pos) {
+	struct kahto_tickerdata_arbitrary *d = &this->tickerdata.arb;
+	double *s = d->subticks;
+	if (d->nsubticks == kahto_automatic) { // if automatic, subticks are 0.5, 1.5, etc.
+		for (int i=d->nticks-1; i>=0; i--)
+			pos[i] = i + 0.5;
+		return d->nticks-1;
+	}
+	for (int i=d->nsubticks-1; i>=0; i--)
+		pos[i] = s[i];
+	return d->nsubticks;
+}
+
+int kahto_get_maxn_subticks_arbitrary(struct kahto_ticks *this) {
+	int n = this->tickerdata.arb.nsubticks;
+	if (n == kahto_automatic && this->get_subticks != kahto_get_subticks_arbitrary_datacoord)
+		n = 0; // not supported
+	return n == kahto_automatic ? this->tickerdata.arb.nticks-1 : n;
+}
+
 #define default_linear_target_nticks 7
 #define default_datetime_nticksmin 4
 #define default_datetime_nticksmax 10
@@ -251,25 +281,29 @@ void kahto_init_ticker_simple(struct kahto_ticks *this, double min, double max) 
 	this->tickerdata.lin.baseten = maxpower;
 }
 
-void kahto_init_ticker_arbitrary_datacoord(struct kahto_ticks *this, double min, double max) {
+static void _init_ticker_arbitrary(struct kahto_ticks *this, double min, double max) {
 	this->species = kahto_ticker_arbitrary;
-	this->get_tick = kahto_get_tick_arbitrary_datacoord;
+	this->get_maxn_subticks = kahto_get_maxn_subticks_arbitrary;
 	this->tickerdata.arb.min = min;
 	this->tickerdata.arb.max = max;
+}
+
+void kahto_init_ticker_arbitrary_datacoord(struct kahto_ticks *this, double min, double max) {
+	_init_ticker_arbitrary(this, min, max);
+	this->get_tick = kahto_get_tick_arbitrary_datacoord;
+	this->get_subticks = kahto_get_subticks_arbitrary_datacoord;
 }
 
 void kahto_init_ticker_arbitrary_datacoord_enum(struct kahto_ticks *this, double min, double max) {
-	this->species = kahto_ticker_arbitrary;
+	_init_ticker_arbitrary(this, min, max);
 	this->get_tick = kahto_get_tick_arbitrary_datacoord_enum;
-	this->tickerdata.arb.min = min;
-	this->tickerdata.arb.max = max;
+	this->get_subticks = kahto_get_subticks_arbitrary_datacoord;
 }
 
 void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, double max) {
-	this->species = kahto_ticker_arbitrary;
+	_init_ticker_arbitrary(this, min, max);
 	this->get_tick = kahto_get_tick_arbitrary_relcoord;
-	this->tickerdata.arb.min = min;
-	this->tickerdata.arb.max = max;
+	this->get_subticks = kahto_get_subticks_arbitrary_relcoord;
 }
 
 void kahto_init_ticker_log(struct kahto_ticks *this, double min, double max) {

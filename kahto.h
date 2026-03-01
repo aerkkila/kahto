@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 44
+#define __kahto_version_in_program 45
 extern const int __kahto_version_in_library;
 #ifndef KAHTO_NO_VERSION_CHECK
 static void __attribute__((constructor)) kahto_check_version() {
@@ -126,8 +126,9 @@ struct kahto_tickerdata_datetime {
 };
 
 struct kahto_tickerdata_arbitrary {
-	int nticks; // must be first
-	double *ticks;
+	int nticks, // must be first
+		nsubticks;
+	double *ticks, *subticks;
 	union {
 		const char **c;
 		char **m;
@@ -641,6 +642,8 @@ void kahto_init_ticker_arbitrary_datacoord_enum(struct kahto_ticks *this, double
 void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, double max);
 // Don't set this manually. Set axis->logscale=true instead:
 void kahto_init_ticker_log(struct kahto_ticks *this, double min, double max);
+
+void kahto_use_halfwaygrid_on_arbitrary(struct kahto_axis *ax); // can be used with arbitrary_datacoord_enum
 
 /* can be given by user to graph->draw_marker_fun */
 void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args);

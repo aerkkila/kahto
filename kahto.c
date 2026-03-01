@@ -1058,6 +1058,13 @@ void kahto_set_colors(struct kahto_figure *figure) {
 	figure->ro_colors_set = 1;
 }
 
+void kahto_use_halfwaygrid_on_arbitrary(struct kahto_axis *ax) {
+	ax->ticks->tickerdata.arb.nsubticks = kahto_automatic;
+	ax->ticks->gridstyle1 = ax->ticks->gridstyle;
+	ax->ticks->gridstyle.style = 0;
+	ax->ticks->length1 = 0;
+}
+
 static void subfigures_xywh_to_pixels(struct kahto_figure *fig, int islot, int px[4]) {
 	px[0] = iroundpos(fig->subfigures_xywh[islot][0] * fig->ro_inner_xywh[2]) + fig->ro_inner_xywh[0];
 	px[1] = iroundpos(fig->subfigures_xywh[islot][1] * fig->ro_inner_xywh[3]) + fig->ro_inner_xywh[1];

@@ -56,10 +56,11 @@ int main() {
 	/* We want the right edge of texts to be on the tick location.
 	   Therefore we move texts to left by the amount of their widths, i.e. -1 width to right */
 	ticks->xyalign_text[0] = -1;
+	kahto_use_halfwaygrid_on_arbitrary(ticks->axis);
 
 	/* put both subfigures to a figure */
 	struct kahto_figure *super = kahto_subfigures_new(2, 1);
-	super->wh[0] /= 2;
+	super->wh[0] /= 1.5;
 	super->subfigures[0] = fig;
 	super->subfigures[1] = fig2;
 	kahto_show(super);
