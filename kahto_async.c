@@ -2,20 +2,26 @@ static int async_response = 2,
 		   async_request = 1,
 		   async_step = 3;
 
+/* This is called by the created thread, not by user.
+   return 1 if figure should update,
+   -1 if we should exit,
+   0 otherwise */
 static int async_update(struct kahto_async *async, uint32_t *canvas, int ystride) {
+	async->canvas = canvas;
+	async->ystride = ystride;
 	if (!async)
 		return 0;
 	if (async->_exit == async_request)
 		return -1;
-	if (async->_lock != async_request)
+	if (async->_lock == 0)
 		return 0;
-	async->canvas = canvas;
-	async->ystride = ystride;
+	if (async->_lock == async_step) {
+		async->_lock = async_request;
+		return 0;
+	}
 	async->_lock = async_response;
 	while (async->_lock == async_response)
 		usleep(3000);
-	if (async->_lock == async_step)
-		async->_lock = async_request;
 	return 1;
 }
 
@@ -38,7 +44,8 @@ void kahto_async_unlock_step(struct kahto_async *async) {
 }
 
 void kahto_async_stop(struct kahto_async *async) {
-	async->_exit = async_request;
+	if (async->_exit != async_response)
+		async->_exit = async_request;
 }
 
 int kahto_async_running(struct kahto_async *async) {
