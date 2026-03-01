@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 
+/* get_tick should return the data value on the axis */
+
 const char *kahto_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
 static inline long ifloor_ticker(double a) {
@@ -94,6 +96,24 @@ int kahto_get_subticks_linear(struct kahto_ticks *this, float *pos) {
 		for (int i=1; i<nsub; i++)
 			pos[itick++] = min + j*step + i*substep;
 	return itick;
+}
+
+double kahto_get_tick_log(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
+	struct kahto_tickerdata_log *d = &this->tickerdata.log;
+	int ival = d->ro_ilogmin + ind;
+	float base = d->base;
+	int ibase = base;
+	if (base == ibase)
+		snprintf(*label, sizelabel, "\e$%i^%i$", ibase, ival);
+	else
+		snprintf(*label, sizelabel, "\e$%.2f^%i$", base, ival);
+
+	double multi = 1 / log(d->base);
+	double axisminlog = log(this->axis->min) * multi;
+	double axismaxlog = log(this->axis->max) * multi;
+
+	double frac = (ival - axisminlog) / (axismaxlog - axisminlog);
+	return this->axis->min + frac * (this->axis->max - this->axis->min);
 }
 
 double kahto_get_tick_datetime_annual(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
@@ -220,7 +240,29 @@ void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, 
 	this->tickerdata.arb.max = max;
 }
 
+void kahto_init_ticker_log(struct kahto_ticks *this, double min, double max) {
+	this->species = kahto_ticker_log;
+	this->get_tick = kahto_get_tick_log;
+	struct kahto_tickerdata_log *data = &this->tickerdata.log;
+	if (!data->base)
+		data->base = 10;
+	double logmin = log(min) / log(data->base);
+	double logmax = log(max) / log(data->base);
+	int ilogmin = data->ro_ilogmin = floor(logmin);
+	int ilogmax = data->ro_ilogmax = ceil(logmax);
+	data->nticks = ilogmax - ilogmin;
+	if (logmax - logmin == data->nticks+1) {
+		++data->ro_ilogmax;
+		++data->nticks;
+	}
+}
+
 void kahto_init_ticker_default(struct kahto_ticks *this, double min, double max) {
+	if (this->axis->logscale) {
+		this->init = kahto_init_ticker_log;
+		return kahto_init_ticker_log(this, min, max);
+	}
+
 	double step_opts0[] = {1, 1.5, 2, 2.5, 5};
 	int subticks_mul0[] = {4, 3, 4, 5, 5};
 	int nstep_opt0 = arrlen(step_opts0);

@@ -24,6 +24,14 @@ void kahto_draw_graph_lines
 		*ydata = graph->data.list.ydata,
 		*zdata = graph->data.list.zdata;
 
+	double multiplier = 1;
+	int ylogscale = graph->yxaxis[0]->logscale;
+	typeof(get_datapx[0]) get_ypx = get_datapx_inv[ydata->type];
+	if (ylogscale) {
+		get_ypx = get_datapx_log_inv[ydata->type];
+		multiplier = 1 / log(graph->yxaxis[0]->ticks->tickerdata.log.base);
+	}
+
 	/* help for xdata */
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
 	double xpix_per_unit = yxlen[1] / yxdiff[1] * xstep;
@@ -41,15 +49,15 @@ void kahto_draw_graph_lines
 
 	char notapixel = 0;
 	int xoffset = xdata->data ? 0 :
-		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1]);
+		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1], 1);
 	long end = graph->data.list.ydata->length, ipoint=0;
 	int xy[2][2], z[2];
 	int iyxz = 0;
-	xy[iyxz][1] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0]);
+	xy[iyxz][1] = get_ypx(ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0], multiplier);
 	notapixel = set_bit(notapixel, iyxz*2+1, xy[iyxz][1]==NOT_A_PIXEL);
 	xy[iyxz][1] += margin[1];
 	if (xdata->data) {
-		xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
+		xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], 1);
 		notapixel = set_bit(notapixel, iyxz*2+0, xy[iyxz][0]==NOT_A_PIXEL);
 	}
 	else
@@ -62,11 +70,11 @@ void kahto_draw_graph_lines
 	int32_t carry = 0;
 	for (ipoint=1; ipoint<end; ipoint++) {
 		iyxz = !iyxz;
-		xy[iyxz][1] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0]);
+		xy[iyxz][1] = get_ypx(ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0], multiplier);
 		notapixel = set_bit(notapixel, iyxz*2+1, xy[iyxz][1]==NOT_A_PIXEL);
 		xy[iyxz][1] += margin[1];
 		if (xdata->data) {
-			xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
+			xy[iyxz][0] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], 1);
 			notapixel = set_bit(notapixel, iyxz*2+0, xy[iyxz][0]==NOT_A_PIXEL);
 		}
 		else

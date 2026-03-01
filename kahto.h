@@ -111,6 +111,12 @@ struct kahto_tickerdata_linear {
 	int omit_coef, out_omitted_coef, nsubticks;
 };
 
+struct kahto_tickerdata_log {
+	int nticks; // must be first
+	float base;
+	int ro_ilogmin, ro_ilogmax;
+};
+
 struct kahto_tickerdata_datetime {
 	int nticks, // must be first
 		step;
@@ -136,11 +142,12 @@ struct kahto_tickerdata_common { // only used to access shared members
 union kahto_tickerdata { // kahto_tickerdata_common defines how each struct must begin
 	struct kahto_tickerdata_common common;
 	struct kahto_tickerdata_linear lin;
+	struct kahto_tickerdata_log log;
 	struct kahto_tickerdata_datetime datetime;
 	struct kahto_tickerdata_arbitrary arb;
 };
 
-enum kahto_tickere {kahto_ticker_linear, kahto_ticker_datetime, kahto_ticker_arbitrary};
+enum kahto_tickere {kahto_ticker_linear, kahto_ticker_log, kahto_ticker_datetime, kahto_ticker_arbitrary};
 
 struct kahto_ticks {
 	struct kahto_axis *axis;
@@ -170,7 +177,7 @@ enum kahto_feature {kahto_position_e, kahto_color_e, kahto_alpha_e};
 
 struct kahto_axis {
 	struct kahto_figure *figure;
-	char direction, outside, visible; // direction: x=0, y=1
+	char direction, outside, visible, logscale; // direction: x=0, y=1
 	float pos;
 	double min, max,
 		   center; // works only for coloraxis
@@ -633,6 +640,8 @@ void kahto_init_ticker_datetime(struct kahto_ticks *this, double min, double max
 void kahto_init_ticker_arbitrary_datacoord(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_arbitrary_datacoord_enum(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, double max);
+// Don't set this manually. Set axis->logscale=true instead:
+void kahto_init_ticker_log(struct kahto_ticks *this, double min, double max);
 
 /* can be given by user to graph->draw_marker_fun */
 void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args);
