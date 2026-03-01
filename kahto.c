@@ -624,6 +624,7 @@ static void text_placement(struct kahto_figure *fig, struct kahto_text *text) {
 	};
 	int ref_xywh[4];
 	switch (text->reference) {
+		default:
 		case kahto_figurearea_e:
 			ref_xywh[0] = ref_xywh[1] = 0;
 			ref_xywh[2] = fig->wh[0];

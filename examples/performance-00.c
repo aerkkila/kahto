@@ -40,7 +40,7 @@ int main(){
 	printf("%f s preserving the figure\n", time);
 
 	/* When I ran this code, I got:
-	   2.238252 s without preserving the figure
-	   1.922100 s preserving the figure
+	   1.969382 s without preserving the figure
+	   1.619292 s preserving the figure
 	   */
 }

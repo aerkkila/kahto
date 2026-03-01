@@ -69,7 +69,8 @@ found=
 cflags=
 for std in gnu23 gnu2x; do
 	if compiler_flag_works "--std=$std"; then
-		cflags="--std=$std"
+		[ "$cflags" = "" ] && space="" || space=" "
+		cflags="${cflags}${space}--std=$std"
 		found=1
 		break
 	fi

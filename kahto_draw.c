@@ -97,7 +97,7 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 	}
 
 	if (marker) {
-		int yx[] = {y0, x0};
+		int yx[3] = {y0, x0};
 		struct kahto_draw_data_args args = {
 			.yxz = yx,
 			.canvas = canvas,
