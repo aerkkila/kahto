@@ -75,6 +75,16 @@ static unsigned char* init_triangle(unsigned char *to, int *_tow, int *_toh) {
 	return to;
 }
 
+static unsigned char* init_triangle_down(unsigned char *to, int *_tow, int *_toh) {
+	int tow = *_tow, toh = *_toh;
+	unsigned char *tmp = malloc(tow*toh);
+	init_triangle(tmp, _tow, _toh);
+	for (int i=0; i<toh; i++)
+		memcpy(to+(toh-1-i)*tow, tmp+i*tow, tow);
+	free(tmp);
+	return to;
+}
+
 static unsigned char* init_circle(unsigned char *to, int *_tow, int *_toh) {
 	int tow = *_tow, toh = *_toh;
 	const int size = min(tow, toh);

@@ -82,6 +82,7 @@ static unsigned char* kahto_data_marker_bmap
 			case 'x': initfun = (void*)init_xmarker; break;
 			case '+': initfun = (void*)init_plus; break;
 			case '^': initfun = (void*)init_triangle; break;
+			case 'v': initfun = (void*)init_triangle_down; break;
 			case '*':
 			case '4': initfun = (void*)init_4star; break;
 			default: break;
