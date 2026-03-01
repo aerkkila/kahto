@@ -3,6 +3,7 @@
    Otherwise the animation is shown at runtime.
 
    See also animation_sync.c for a simpler example.
+   See also animation_async.c for an alternative method.
 */
 
 #include <kahto.h>

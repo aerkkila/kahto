@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
 
 	struct kahto_async *async = NULL;
 	if (write_video)
-		async = kahto_async_write_mp4(fig, "async.mp4", 15);
+		async = kahto_async_write_mp4(fig, "async.mp4", 20);
 	else
 		async = kahto_async_show(fig);
 	int ifig = 0;
