@@ -87,7 +87,7 @@ struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis) {
 
 	ticks->rowheight = 1./35;
 	ticks->visible = 1;
-	ticks->have_labels = 1;
+	ticks->visible_labels = 1;
 
 	ticks->linestyle1.style = kahto_line_normal_e;
 	ticks->linestyle1.thickness = 1.0 / 1200;

@@ -18,7 +18,7 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *t
 	xywh[ipar] += inner_margin[ipar];
 	xywh[ipar+2] -= inner_margin[ipar] + inner_margin[ipar+2];
 
-	if (!tk->have_labels) {
+	if (!tk->visible_labels) {
 		double dataval = tk->get_tick(tk, 0, &label, 128);
 		edges_figpx[0] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
 		dataval = tk->get_tick(tk, nlabels-1, &label, 128);
@@ -174,7 +174,7 @@ static void _axis_tick_lines_orthogonal(struct kahto_axis *axis, struct layout_o
 
 static void _axis_ticklabels_orthogonal(struct kahto_axis *axis, struct layout_ort_args *args) {
 	struct kahto_ticks *tk = axis->ticks;
-	if (!tk || !tk->visible || !tk->have_labels)
+	if (!tk || !tk->visible || !tk->visible_labels)
 		return;
 	unpack_args(args);
 	int nlabels = tk->tickerdata.common.nticks,
@@ -313,7 +313,7 @@ static void adjust_addmargin(const int *area, int iort, int side, int *testarea,
 static void set_addmargin_based_on_texts(struct kahto_axis *axis, int *addmargin) {
 	struct kahto_figure *fig = axis->figure;
 	struct kahto_ticks *tk = axis->ticks;
-	if (!tk || !tk->visible || !tk->have_labels)
+	if (!tk || !tk->visible || !tk->visible_labels)
 		return;
 	const int *area = tk->ro_labelarea,
 			   iort = axis->direction == 0, // 1, if x-axis

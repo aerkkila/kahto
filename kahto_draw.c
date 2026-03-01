@@ -129,7 +129,7 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 	struct ttra *ttra = NULL;
 	struct kahto_figure *figure = ticks->axis->figure;
 
-	if (ticks->have_labels) {
+	if (ticks->visible_labels && ticks->visible) {
 		ttra = figure->ttra;
 		ttra->canvas = canvas;
 		ttra->ystride = ystride;
@@ -164,15 +164,17 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 	int tot_area[] = {0, 0, ticks->axis->figure->wh[0], ticks->axis->figure->wh[1]};
 	tot_area[!iort] = ticks->axis->ro_line[!iort];
 	tot_area[!iort+2] = ticks->axis->ro_line[!iort+2];
+	int visible_labels = ttra && ticks->visible && ticks->visible_labels;
 	for (int itick=0; itick<nticks; itick++) {
 		double pos_data = ticks->get_tick(ticks, itick, &tick, 128);
 		double pos_rel = (pos_data - axisdatamin) / axisdatalen;
 		if (!isx)
 			pos_rel = 1 - pos_rel;
 		line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
-		draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, 0);
+		if (ticks->visible)
+			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, 0);
 		int area_text[4] = {0};
-		if (ttra && tick[0])
+		if (tick[0] && visible_labels)
 			put_text(ttra, tick, line_px[side*2], line_px[1+side*2], ticks->xyalign_text[0], ticks->xyalign_text[1], ticks->rotation_grad, area_text, 0);
 		if (ticks->gridstyle.style) {
 			gridline[!iort] = gridline[!iort+2] = line_px[!iort];

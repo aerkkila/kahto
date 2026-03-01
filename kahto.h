@@ -139,7 +139,7 @@ struct kahto_ticks {
 
 	struct kahto_linestyle linestyle, gridstyle, linestyle1, gridstyle1;
 
-	int visible, have_labels;
+	int visible, visible_labels;
 	float xyalign_text[2];
 	float rowheight, rotation_grad;
 
