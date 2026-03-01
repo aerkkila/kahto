@@ -71,14 +71,15 @@ void* käännä(const char *sisälmys) {
 int main(int argc, char **argv) {
 	double alku = -5,
 		   loppu = 5;
-	int n = 512,
-		opt;
+	int n = 512, ylog = 0, xlog = 0, opt;
 
-	while ((opt = getopt(argc, argv, "a:b:n:")) >= 0)
+	while ((opt = getopt(argc, argv, "a:b:n:yx")) >= 0)
 		switch (opt) {
 			case 'a': alku = atof(optarg); break;
 			case 'b': loppu = atof(optarg); break;
 			case 'n': n = atoi(optarg); break;
+			case 'y': ylog = 1; break;
+			case 'x': xlog = 1; break;
 		}
 
 	int käyriä = argc - optind;
@@ -103,5 +104,7 @@ int main(int argc, char **argv) {
 	struct kahto_figure *figure = kahto_figure_new();
 	for (int ikäyrä=0; ikäyrä<käyriä; ikäyrä++)
 		kahto_yx(y[ikäyrä], x, n, kahto_lineargs, .figure=figure);
+	kahto_glx(figure)->logscale = xlog;
+	kahto_gly(figure)->logscale = ylog;
 	kahto_show(figure);
 }
