@@ -37,34 +37,6 @@ extern const unsigned char kahto_sizes[];
 
 #define __kahto_version_in_program 45
 extern const int __kahto_version_in_library;
-#ifndef KAHTO_NO_VERSION_CHECK
-static void __attribute__((constructor)) kahto_check_version() {
-	if (__kahto_version_in_library != __kahto_version_in_program)
-		goto fail;
-	return;
-fail: __attribute__((cold));
-	  /* Using assembly here to avoid including stdio or unistd in this header. */
-	  const char errmsg[] = "The program has to be recompiled (" __FILE__ ").\n";
-	  asm (
-		  "movq $2, %%rdi\n" // stderr
-		  "movq %0, %%rsi\n"
-		  "movq %1, %%rdx\n"
-		  "movq $1, %%rax\n" // write
-		  "syscall\n"
-		  :
-		  : "rm"(errmsg), "rm"(sizeof(errmsg)-1)
-		  : "rdi", "rsi", "rdx", "rax"
-	  );
-	  asm (
-		  "movq $45, %rdi\n" // exit status
-		  "movq $60, %rax\n" // exit
-		  "syscall\n"
-	  );
-}
-#endif
-
-typedef float kahto_f4si __attribute__((vector_size (16)));
-typedef float kahto_f2si __attribute__((vector_size (8)));
 
 extern unsigned *kahto_colorschemes[];
 extern int kahto_ncolors[];
@@ -688,5 +660,31 @@ void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride);
 
 void kahto__sprint_supernum(char *out, int sizeout, int num);
 float __attribute__((malloc))* kahto_f4arr(int n, double terminator, ...);
+
+#ifndef KAHTO_NO_VERSION_CHECK
+static void __attribute__((constructor)) kahto_check_version() {
+	if (__kahto_version_in_library != __kahto_version_in_program)
+		goto fail;
+	return;
+fail: __attribute__((cold));
+	  /* Using assembly here to avoid including stdio or unistd in this header. */
+	  const char errmsg[] = "The program has to be recompiled (" __FILE__ ").\n";
+	  asm (
+		  "movq $2, %%rdi\n" // stderr
+		  "movq %0, %%rsi\n"
+		  "movq %1, %%rdx\n"
+		  "movq $1, %%rax\n" // write
+		  "syscall\n"
+		  :
+		  : "rm"(errmsg), "rm"(sizeof(errmsg)-1)
+		  : "rdi", "rsi", "rdx", "rax"
+	  );
+	  asm (
+		  "movq $45, %rdi\n" // exit status
+		  "movq $60, %rax\n" // exit
+		  "syscall\n"
+	  );
+}
+#endif
 
 #endif
