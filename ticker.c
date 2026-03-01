@@ -141,7 +141,7 @@ int kahto_get_subticks_log(struct kahto_ticks *this, float *pos) {
 		int maj = ilogmin + imaj;
 		double majfrac0 = (maj - minlog) / (maxlog - minlog);
 		double majfrac1 = (maj+1 - minlog) / (maxlog - minlog);
-		for (int isub=1; isub<base; isub++)
+		for (int isub=2; isub<base; isub++)
 			pos[itick++] = min + majfrac0 * (max-min) + lsubfrac[isub] * (majfrac1-majfrac0) * (max-min);
 	}
 
