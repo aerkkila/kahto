@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 43
+#define __kahto_version_in_program 44
 extern const int __kahto_version_in_library;
 #ifndef KAHTO_NO_VERSION_CHECK
 static void __attribute__((constructor)) kahto_check_version() {
@@ -572,14 +572,10 @@ struct kahto_axistext* kahto_add_axistext(struct kahto_axis *axis, struct kahto_
 
 /* Available only if compiled with waylandhelper */
 struct kahto_figure* kahto_show_preserve_(struct kahto_figure *figure, char *name); // returns the input
+struct kahto_figure* kahto_show_preserve(struct kahto_figure *figure); // returns the input
 void kahto_show_(struct kahto_figure *figure, char *name); // destroys the input
+void kahto_show(struct kahto_figure *figure); // destroys the input
 struct kahto_async* kahto_async_show(struct kahto_figure*);
-
-#define kahto_show(...) _kahto_show(__VA_ARGS__, NULL) // kahto_show(figure) OR kahto_show(figure, "name")
-#define _kahto_show(a, b, ...) kahto_show_(a, b)
-
-#define kahto_show_preserve(...) _kahto_show_preserve(__VA_ARGS__, NULL)
-#define _kahto_show_preserve(a, b, ...) kahto_show_preserve_(a, b)
 
 struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *figure, const char *name); // returns the input figure
 void kahto_write_png(struct kahto_figure *figure, const char *name); // destroys the input

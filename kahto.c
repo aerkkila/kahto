@@ -1173,6 +1173,12 @@ struct kahto_figure* kahto_show_preserve_(struct kahto_figure *fig, char *name) 
 	return fig;
 }
 #endif
+struct kahto_figure* kahto_show_preserve(struct kahto_figure *fig) {
+	return kahto_show_preserve_(fig, NULL);
+}
 void kahto_show_(struct kahto_figure *fig, char *name) {
 	kahto_destroy(kahto_show_preserve_(fig, name));
+}
+void kahto_show(struct kahto_figure *fig) {
+	kahto_destroy(kahto_show_preserve_(fig, NULL));
 }
