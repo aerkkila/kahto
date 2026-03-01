@@ -34,6 +34,14 @@ static short get_datapx_inv_@dtype(const void *vdata, long ind, double axismin, 
 	return iround((1-pos) * (axislen-1) - 0.5);
 }
 
+static short get_datapx_log_@dtype(const void *vdata, long ind, double axismin, double axisdiff, int axislen, double multiplier) {
+	const $dtype *data = vdata;
+	if (my_isnan(data[ind]))
+		return NOT_A_PIXEL;
+	float pos = (log(data[ind])*multiplier - axismin) / axisdiff;
+	return iround(pos * (axislen-1) - 0.5);
+}
+
 static short get_datapx_log_inv_@dtype(const void *vdata, long ind, double axismin, double axisdiff, int axislen, double multiplier) {
 	const $dtype *data = vdata;
 	if (my_isnan(data[ind]))

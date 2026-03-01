@@ -138,7 +138,7 @@ void kahto_draw_graph_markers
 			if (iyx == 0)
 				get_yxpx[0] = get_datapx_log_inv[ydata->type];
 			else
-				get_yxpx[1] = get_datapx_inv[xdata->type];
+				get_yxpx[1] = get_datapx_log[xdata->type];
 			yxmin[iyx] = log(yxmin[iyx]) * yxmultiplier[iyx];
 			yxdiff[iyx] = log(graph->yxaxis[iyx]->max) * yxmultiplier[iyx] - yxmin[iyx];
 		}
