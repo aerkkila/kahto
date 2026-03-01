@@ -860,21 +860,6 @@ void kahto_ticklabels(struct kahto_axis *axis, char **names, int howmany) {
 	axis->ticks->rotation_grad = 300;
 }
 
-struct kahto_args* kahto_defaultargs(struct kahto_args *args) {
-	*args = (struct kahto_args) {
-		__kahto_defaultargs
-	};
-	return args;
-}
-
-struct kahto_args* kahto_default_lineargs(struct kahto_args *args) {
-	*args = (struct kahto_args) {
-		__kahto_defaultargs,
-		kahto_lineargs,
-	};
-	return args;
-}
-
 struct kahto_axis* kahto_remove_ticks(struct kahto_axis *axis) {
 	free(axis->ticks);
 	axis->ticks = NULL;
