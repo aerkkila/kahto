@@ -218,16 +218,22 @@ void kahto_draw_graph_markers
 	}
 
 	for (int ipoint=0; ipoint<end; ipoint++) {
-		if (xdata->data)
+		if (xdata->data) {
 			yxz[1] = get_yxpx[1](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], yxmultiplier[1]);
+			if (yxz[1] == NOT_A_PIXEL)
+				continue;
+		}
 		else
 			yxz[1] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
 		yxz[1] += margin[0];
 		if (get_datalevel_fun)
 			yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
-		if (!ysublen)
-			yxz[0] = get_yxpx[0](ydata->data, ipoint*ystride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0])
-				+ margin[1];
+		if (!ysublen) {
+			yxz[0] = get_yxpx[0](ydata->data, ipoint*ystride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
+			if (yxz[0] == NOT_A_PIXEL)
+				continue;
+			yxz[0] += margin[1];
+		}
 		else {
 			/* args->xywh_limits are embedded to coordinates in userfunctions */
 			xzy_[0] = yxz[1] + args->xywh_limits[0];
@@ -244,8 +250,10 @@ void kahto_draw_graph_markers
 			struct kahto_data *edata = edatalist[iedata];
 			if (!edata)
 				continue;
-			int y = get_epx[iedata](edata->data, ipoint*edata->stride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0])
-				+ margin[1] + args->xywh_limits[1];
+			int y = get_epx[iedata](edata->data, ipoint*edata->stride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
+			if (y == NOT_A_PIXEL)
+				continue;
+			y += margin[1] + args->xywh_limits[1];
 			int x = yxz[1] + args->xywh_limits[0];
 			int xyxy[] = {x, yxz[0]+args->xywh_limits[1], x, y};
 			draw_line(args->canvas, args->ystride, xyxy, area, &graph->errstyle, fig, 0);
