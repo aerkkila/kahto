@@ -554,7 +554,8 @@ void kahto_show(struct kahto_figure *figure); // destroys the input
 struct kahto_async* kahto_async_show(struct kahto_figure*);
 
 /* Here, nameformat and optional arguments are formatted with printf-style functions.
-   Hence, literal '%' in filename must be written as %% */
+   To disable formatting, you can do write(fig, "%s", name).
+   Directories in filename are created if necessary. */
 struct kahto_figure* kahto_write_png_preserve(struct kahto_figure *figure, const char *nameformat, ...); // returns the input figure
 void kahto_write_png(struct kahto_figure *figure, const char *nameformat, ...); // destroys the input
 
