@@ -119,7 +119,7 @@ void kahto_draw_graph_markers
 	double yxmultiplier[] = {1, 1};
 	typeof(get_datapx[0]) get_yxpx[] = {
 		get_datapx_inv[ydata->type],
-		get_datapx[ydata->type],
+		get_datapx[xdata->type],
 	};
 
 	double yxmin[] = {

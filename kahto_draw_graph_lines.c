@@ -28,7 +28,7 @@ void kahto_draw_graph_lines
 	double yxmultiplier[] = {1, 1};
 	typeof(get_datapx[0]) get_yxpx[] = {
 		get_datapx_inv[ydata->type],
-		get_datapx[ydata->type],
+		get_datapx[xdata->type],
 	};
 
 	for (int iyx=0; iyx<2; iyx++)
