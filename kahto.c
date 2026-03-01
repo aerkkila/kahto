@@ -186,7 +186,8 @@ static int kahto_visible_marker(const char *str) {
 }
 
 static int kahto_visible_graph(struct kahto_graph *graph) {
-	return kahto_visible_marker(graph->markerstyle.marker) || graph->linestyle.style || graph->errstyle.style;
+	return kahto_visible_marker(graph->markerstyle.marker) || graph->linestyle.style || graph->errstyle.style ||
+		graph->draw_marker_fun;
 }
 
 #include "functions.c"
@@ -458,17 +459,20 @@ int kahto_isubfigure_from_coords(struct kahto_figure *fig0, int x, int y) {
 void kahto_check_dataminmax(struct kahto_data *data, int yxz) {
 	unsigned range_isset = data->have_minmax;
 
+	int sublength = data->sublength;
+	if (!sublength)
+		sublength = 1;
 	switch (range_isset & (kahto_minbit|kahto_maxbit)) {
 		case 0:
-			get_minmax[data->type](data->data, data->length, data->minmax, data->stride);
+			get_minmax[data->type](data->data, data->length*sublength, data->minmax, data->stride);
 			data->have_minmax |= kahto_minbit|kahto_maxbit;
 			break;
 		case kahto_maxbit:
-			data->minmax[0] = get_min[data->type](data->data, data->length, data->stride);
+			data->minmax[0] = get_min[data->type](data->data, data->length*sublength, data->stride);
 			data->have_minmax |= kahto_minbit;
 			break;
 		case kahto_minbit:
-			data->minmax[1] = get_max[data->type](data->data, data->length, data->stride);
+			data->minmax[1] = get_max[data->type](data->data, data->length*sublength, data->stride);
 			data->have_minmax |= kahto_maxbit;
 			break;
 		case kahto_minbit|kahto_maxbit:
@@ -703,6 +707,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 			continue;
 
 		int *type = nth(args->ytype, iyxz);
+		int sublength = iyxz == 0 ? args->ysublength : 0;
 		if (*type == kahto_notype && thedata)
 			*type = args->ytype; // unspecified type equals ytype, useful with errorbars
 
@@ -720,6 +725,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 				if (data->data == thedata &&
 					data->type == *type &&
 					data->length == length &&
+					data->sublength == sublength &&
 					!memcmp(data->minmax, args->minmax[iyxz], sizeof(data->minmax)) &&
 					(data->have_minmax & (kahto_minbit|kahto_maxbit)) == (kahto_minbit|kahto_maxbit)
 				) {
@@ -731,6 +737,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 				if (data->data == thedata &&
 					data->type == *type &&
 					data->length == length &&
+					data->sublength == sublength &&
 					data->stride == *nth(args->ystride, iyxz)
 				) {
 					graph->data.arr[iyxz] = data;
@@ -742,6 +749,7 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 		data->data = thedata;
 		data->type = *nth(args->ytype, iyxz);
 		data->length = length;
+		data->sublength = sublength;
 		data->stride = *nth(args->ystride, iyxz);
 		data->prev = &fig->data;
 		data->next = data->prev->next;
@@ -1001,6 +1009,7 @@ struct kahto_figure* kahto_plot_args(struct kahto_args *args) {
 	struct kahto_graph *graph = add_graph(args);
 
 	/* copy if necessary */
+	/* toteuttamatta sublength-tapauksessa */
 	for (int idim=0; idim<arrlen(graph->data.arr); idim++) {
 		struct kahto_data *data = graph->data.arr[idim];
 		if (!data || data->owner != -1)

@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 42
+#define __kahto_version_in_program 43
 extern const int __kahto_version_in_library;
 #ifndef KAHTO_NO_VERSION_CHECK
 static void __attribute__((constructor)) kahto_check_version() {
@@ -214,12 +214,41 @@ struct kahto_text {
 struct kahto_data {
 	void *data;
 	int type;
-	long length;
+	long length, sublength;
 	short stride;
 	char have_minmax, owner;
 	double minmax[2];
 	int n_users;
 	struct kahto_data *prev, *next;
+};
+
+struct kahto_draw_data_args {
+	uint32_t *canvas;
+	unsigned *canvascount;
+	int ystride;
+	unsigned char alpha;
+	const int *xywh_limits;
+	uint32_t color;
+	uint32_t *colors;
+	int ncolors, ipoint;
+
+	// if sublength, then xz(y[sublength]) instead of yxz,
+	// there should be a user-given drawing function in that case
+	int *yxz, sublength;
+	const unsigned char *cmap;
+	char reverse_cmap;
+
+	unsigned char *bmap;
+	int mapw, maph;
+
+	struct kahto_graph *graph;
+	struct kahto_figure *fig;
+};
+
+/* if draw_marker_fun = kahto_draw_boxmarker_,
+   then this is draw_marker_fun_args */
+struct kahto_draw_boxmarker_args {
+	float boxwidth, linewidth, mlinewidth;
 };
 
 struct kahto_graph {
@@ -235,6 +264,8 @@ struct kahto_graph {
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order
 	/* style */
+	void (*draw_marker_fun)(struct kahto_draw_data_args*);
+	void *draw_marker_fun_args;
 	struct kahto_markerstyle markerstyle;	// fixed order
 	struct kahto_linestyle linestyle, errstyle;	// fixed order
 	unsigned color; // overridden by style.color
@@ -323,6 +354,7 @@ struct kahto_args {
 	int ytype, xtype, ztype, e0type, e1type; // unspecified eXtype is assumed equal to ytype
 	long kahto_len, kahto_ylen, kahto_xlen; // xlen and ylen are for colormesh
 	short ystride, xstride, zstride, e0stride, e1stride;
+	int ysublength; // if given, also draw_marker_fun must be given
 	double minmax[5][2];
 	char have_minmax[5], // bits: kahto_minbit, kahto_maxbit
 		 yxzowner[5];
@@ -333,6 +365,8 @@ struct kahto_args {
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order; Copied, if owner = -1.
 
+	void (*draw_marker_fun)(struct kahto_draw_data_args*);
+	void *draw_marker_fun_args; // will be in kahto_draw_data_args
 	struct kahto_markerstyle markerstyle;
 	struct kahto_linestyle
 		linestyle, errstyle;
@@ -599,6 +633,9 @@ void kahto_init_ticker_datetime(struct kahto_ticks *this, double min, double max
 void kahto_init_ticker_arbitrary_datacoord(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_arbitrary_datacoord_enum(struct kahto_ticks *this, double min, double max);
 void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, double max);
+
+/* can be given by user to graph->draw_marker_fun */
+void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args);
 
 struct kahto_async {
 	struct kahto_figure *figure;

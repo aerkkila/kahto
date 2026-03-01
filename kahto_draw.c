@@ -20,23 +20,7 @@ static inline uint32_t from_cmap(const unsigned char *ptr) {
 		(0xff << 24);
 }
 
-struct draw_data_args {
-	uint32_t *canvas;
-	unsigned *canvascount;
-	int ystride;
-	unsigned char alpha;
-	const int *xywh_limits;
-	uint32_t color;
-	uint32_t *colors;
-	int ncolors, ipoint;
-
-	int *yxz;
-	const unsigned char *cmap;
-	char reverse_cmap;
-
-	unsigned char *bmap;
-	int mapw, maph;
-};
+void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color);
 
 #include "kahto_draw_line.c" // future default method
 #include "kahto_draw_line_more.c" // other methods
@@ -114,7 +98,7 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 
 	if (marker) {
 		int yx[] = {y0, x0};
-		struct draw_data_args args = {
+		struct kahto_draw_data_args args = {
 			.yxz = yx,
 			.canvas = canvas,
 			.ystride = ystride,

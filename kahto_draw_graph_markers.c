@@ -1,4 +1,4 @@
-static void draw_datum_count(struct draw_data_args *ar) {
+static void draw_datum_count(struct kahto_draw_data_args *ar) {
 	unsigned (*count)[ar->xywh_limits[2]] = (void*)ar->canvascount;
 	int x = ar->yxz[1], y = ar->yxz[0];
 	float alfa = ar->alpha;
@@ -20,7 +20,7 @@ static void draw_datum_count(struct draw_data_args *ar) {
 			count[j][i] += bmap[bj0][bi] * alfa;
 }
 
-static void draw_datum(struct draw_data_args *ar) {
+static void draw_datum(struct kahto_draw_data_args *ar) {
 	if (ar->canvascount)
 		draw_datum_count(ar);
 	int *yxz = ar->yxz;
@@ -45,22 +45,22 @@ static void draw_datum(struct draw_data_args *ar) {
 			tocanvas(canvas[y]+x0+i, bmap[j][i]*alfa/255, ar->color);
 }
 
-static void draw_data_xya(struct draw_data_args *restrict ar) {
+static void draw_data_xya(struct kahto_draw_data_args *restrict ar) {
 	ar->alpha = ar->yxz[2];
 	draw_datum(ar);
 }
 
-static void draw_data_xyc_rev(struct draw_data_args *restrict ar) {
+static void draw_data_xyc_rev(struct kahto_draw_data_args *restrict ar) {
 	ar->color = from_cmap(ar->cmap + (255-ar->yxz[2])*3);
 	draw_datum(ar);
 }
 
-static void draw_data_xyc(struct draw_data_args *restrict ar) {
+static void draw_data_xyc(struct kahto_draw_data_args *restrict ar) {
 	ar->color = from_cmap(ar->cmap + ar->yxz[2]*3);
 	draw_datum(ar);
 }
 
-static void draw_data_xyc_list(struct draw_data_args *restrict ar) {
+static void draw_data_xyc_list(struct kahto_draw_data_args *restrict ar) {
 	ar->color = ar->colors[ar->ipoint % ar->ncolors];
 	draw_datum(ar);
 }
@@ -109,7 +109,7 @@ static unsigned char* kahto_data_marker_bmap
 }
 
 void kahto_draw_graph_markers
-(struct kahto_graph *graph, struct kahto_figure *fig, struct draw_data_args *args) {
+(struct kahto_graph *graph, struct kahto_figure *fig, struct kahto_draw_data_args *args) {
 	double yxmin[] = {
 		graph->yxaxis[0]->min,
 		graph->yxaxis[1]->min,
@@ -153,8 +153,10 @@ void kahto_draw_graph_markers
 			get_datalevel[zdata->type] : get_datalevel_with_center[zdata->type];
 	}
 
-	void (*draw_data_fun)(struct draw_data_args*) = draw_datum;
-	if (caxis) {
+	void (*draw_data_fun)(struct kahto_draw_data_args*) = draw_datum;
+	if (graph->draw_marker_fun)
+		draw_data_fun = graph->draw_marker_fun;
+	else if (caxis) {
 		if (caxis->feature == kahto_color_e)
 			if (caxis->reverse_cmap)
 				draw_data_fun = draw_data_xyc_rev;
@@ -177,6 +179,14 @@ void kahto_draw_graph_markers
 	int yxz[3];
 	args->yxz = yxz;
 	long end = graph->data.list.ydata->length;
+	int ysublen = ydata->sublength;
+	int ystride = ydata->stride * (ysublen ? ysublen : 1);
+	int *xzy_ = NULL;
+	if (ysublen) {
+		xzy_ = malloc((ydata->sublength + 2) * sizeof(xzy_[0]));
+		args->yxz = xzy_;
+		args->sublength = ysublen;
+	}
 	for (int ipoint=0; ipoint<end; ipoint++) {
 		if (xdata->data)
 			yxz[1] = get_datapx[xdata->type](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1]);
@@ -185,8 +195,17 @@ void kahto_draw_graph_markers
 		yxz[1] += margin[0];
 		if (get_datalevel_fun)
 			yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
-		yxz[0] = get_datapx_inv[ydata->type](ydata->data, ipoint*ydata->stride, yxmin[0], yxdiff[0], yxlen[0])
-			+ margin[1];
+		if (!ysublen)
+			yxz[0] = get_datapx_inv[ydata->type](ydata->data, ipoint*ystride, yxmin[0], yxdiff[0], yxlen[0])
+				+ margin[1];
+		else {
+			/* args->xywh_limits are embedded to coordinates in userfunctions */
+			xzy_[0] = yxz[1] + args->xywh_limits[0];
+			xzy_[1] = yxz[2];
+			for (int iy=0; iy<ysublen; iy++)
+				xzy_[2+iy] = get_datapx_inv[ydata->type](ydata->data, ipoint*ystride+iy, yxmin[0], yxdiff[0], yxlen[0])
+					+ margin[1] + args->xywh_limits[1];
+		}
 
 		args->ipoint = ipoint;
 		draw_data_fun(args);
@@ -202,6 +221,7 @@ void kahto_draw_graph_markers
 			draw_line(args->canvas, args->ystride, xyxy, area, &graph->errstyle, fig, 0);
 		}
 	}
+	free(xzy_);
 
 	if (args->bmap != bmap_buff)
 		free(args->bmap);
