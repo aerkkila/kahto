@@ -1076,8 +1076,12 @@ void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride
 static void connect_x(struct kahto_figure **figs, int nconnected) {
 	int area[4], a[4];
 	fig_inner_area(figs[0], area);
+	area[0] += figs[0]->ro_corner[0];
+	area[2] += figs[0]->ro_corner[0];
 	for (int i=1; i<nconnected; i++) {
 		fig_inner_area(figs[i], a);
+		a[0] += figs[i]->ro_corner[0];
+		a[2] += figs[i]->ro_corner[0];
 		if (a[0] > area[0])
 			area[0] = a[0];
 		if (a[2] < area[2])
@@ -1085,6 +1089,8 @@ static void connect_x(struct kahto_figure **figs, int nconnected) {
 	}
 	for (int i=0; i<nconnected; i++) {
 		fig_inner_area(figs[i], a);
+		a[0] += figs[i]->ro_corner[0];
+		a[2] += figs[i]->ro_corner[0];
 		int diff = area[0] - a[0];
 		figs[i]->ro_inner_xywh[0] += diff;
 		figs[i]->ro_inner_xywh[2] -= diff;
