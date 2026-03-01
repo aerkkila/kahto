@@ -80,6 +80,36 @@ jump_found:
 	return -closest;
 }
 
+static int get_spaceleft(int jpos, int ipos, int rwidth, int rheight, const short (*right)[], int w) {
+	const short (*spaceright)[w] = right;
+	int result = 2*w;
+	for (int jj=0; jj<rheight; jj++) {
+		int left = 0;
+		while (spaceright[jpos+jj][ipos-left] >= rwidth)
+			if (++left > ipos)
+				break;
+		if (left == 0)
+			left = -spaceright[jpos+jj][ipos];
+		update_min(result, left);
+	}
+	return result;
+}
+
+static int get_spaceup(int jpos, int ipos, int rwidth, int rheight, const short (*down)[], int w, int h) {
+	const short (*spacedown)[w] = down;
+	int result = 2*h;
+	for (int ii=0; ii<rwidth; ii++) {
+		int up = 0;
+		while (spacedown[jpos-up][ipos+ii] >= rheight)
+			if (++up > jpos)
+				break;
+		if (up == 0)
+			up = -spacedown[jpos][ipos+ii];
+		update_min(result, up);
+	}
+	return result;
+}
+
 /* Return negative if does not fit to image.
    Return positive if no empty slot is available.
    Return zero on success. */
@@ -125,12 +155,41 @@ int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rhei
 	int jpos, ipos, nextpos;
 
 	/* Corners */
-	for (int n=0; n<4; n++) {
-		jpos = !!(n/2) * (h - rheight);
-		ipos = !!(n%2) * (w - rwidth);
-		if (rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h) < 0)
-			goto found;
-	}
+	switch (method) {
+		case kahto_placement_first:
+			for (int n=0; n<4; n++) {
+				jpos = !!(n/2) * (h - rheight);
+				ipos = !!(n%2) * (w - rwidth);
+				if (rectangle_nexti(jpos, ipos, rwidth, rheight, spaceright, spacedown, w, h) < 0)
+					goto found;
+			}
+			break;
+		default:
+		case kahto_placement_singlemaxdist:
+			int save[3] = {-1};
+			for (int n=0; n<4; n++) {
+				jpos = !!(n/2) * (h - rheight);
+				ipos = !!(n%2) * (w - rwidth);
+				int ispace, jspace;
+				if (ipos)
+					ispace = get_spaceleft(jpos, ipos, rwidth, rheight, spaceright, w);
+				else
+					ispace = -rectangle_closest_i(jpos, ipos, rwidth, rheight, spaceright, w) - rwidth;
+				if (jpos)
+					jspace = get_spaceup(jpos, ipos, rwidth, rheight, spacedown, w, h);
+				else
+					jspace = -rectangle_closest_j(jpos, ipos, rwidth, rheight, spacedown,  w, h) - rheight;
+				int space = min(ispace, jspace);
+				if (space > save[0])
+					save[0]=space, save[1]=ipos, save[2]=jpos;
+			}
+			if (save[0] >= 0) {
+				ipos = save[1];
+				jpos = save[2];
+				goto found;
+			}
+			break;
+	} // switch method corners
 
 	/* Edges */
 	switch (method) {
@@ -178,8 +237,8 @@ int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rhei
 					else
 						jpos = nextpos;
 			if (save[0] >= 0) {
-				ipos = save[1] + (save[3]==0) * save[0] / 2;
-				jpos = save[2] + (save[3]==1) * save[0] / 2;
+				ipos = save[1] + (save[3]==0) * save[0] / 2; // move to the middle of free space
+				jpos = save[2] + (save[3]==1) * save[0] / 2; // move to the middle of free space
 				goto found;
 			}
 			break;
