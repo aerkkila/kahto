@@ -26,7 +26,7 @@ int main() {
 
 	shift(data, len);
 	kahto_y(data, len, .yxzowner[0]=-1, .figure=fig, .label="second",
-		.markerstyle.marker="o", .linestyle.style=kahto_line_normal_e);
+		.markerstyle.marker="o", .linestyle.style=kahto_line_normal_e, .markerstyle.color=0xff00ffff);
 
 	shift(data, len);
 	kahto_y(data, len, .yxzowner[0]=-1, .figure=fig, .label="third",

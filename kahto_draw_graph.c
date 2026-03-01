@@ -57,14 +57,15 @@ void kahto_draw_graph(struct kahto_graph *graph, uint32_t *canvas, int ystride, 
 		.xywh_limits = xywh0,
 		.cmap = caxis ? caxis->cmap : NULL,
 		.reverse_cmap = caxis ? caxis->reverse_cmap : 0,
-		.color = graph->color,
+		.color = graph->markerstyle.color,
 		.alpha = graph->alpha,
 		.colors = graph->colors,
 		.ncolors = graph->ncolors,
 		.graph = graph,
 		.fig = fig,
 	};
-
 	kahto_draw_graph_markers(graph, fig, &args);
+
+	args.color = graph->linestyle.color;
 	kahto_draw_graph_lines(graph, fig, &args);
 }
