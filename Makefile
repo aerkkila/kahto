@@ -1,6 +1,5 @@
 include config.mk
 
-CFLAGS += -Wall -g3 -gdwarf-2 -Wno-unused-result -O0
 CFLAGS_OBJ = $(CFLAGS) -c
 CFLAGS_LIB = $(CFLAGS) -shared -fpic
 LDLIBS += -lm -lpng

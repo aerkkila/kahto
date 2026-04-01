@@ -4,7 +4,7 @@ See examples/ for more information.
 
 Installation
 ------------
-| ./configure.sh
+| [release=1] ./configure.sh
 | make
 | make install
 |
@@ -12,6 +12,7 @@ Installation
 | make uninstall
 
 After running configure.sh, you can edit config.mk, which the command generated. When running it, you can use non-default installation directory and c-compiler using environment variables 'prefix' and 'CC' respectively.
+To build release version (with optimizations and not debug info), run ./configure.sh with "release" environment variable set.
 
 Other make commands
 -------------------

@@ -66,11 +66,15 @@ compiler_flag_works() {
 }
 
 found=
-cflags=
+cflags="-Wall -Wno-unused-result"
+if [ "$release" ]; then
+	cflags="$cflags -O2"
+else
+	cflags="$cflags -g3 -gdwarf-2"
+fi
 for std in gnu23 gnu2x; do
 	if compiler_flag_works "--std=$std"; then
-		[ "$cflags" = "" ] && space="" || space=" "
-		cflags="${cflags}${space}--std=$std"
+		cflags="$cflags --std=$std"
 		found=1
 		break
 	fi
