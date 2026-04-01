@@ -3,7 +3,7 @@
 static int mkdir_file(const char *restrict name) {
 	int len = strlen(name);
 	char k1[len+1];
-	strcpy(k1, name);
+	memcpy(k1, name, len+1);
 	char k2[len+2];
 	if (name[0] == '/')
 		k2[0] = '/', len = 1;
