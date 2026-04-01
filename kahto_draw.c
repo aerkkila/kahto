@@ -1,4 +1,6 @@
 static inline void tocanvas(uint32_t *ptr, int value, uint32_t color) {
+	if (!value)
+		return;
 	int eulav = 255 - value;
 	int fg2 = color >> 16 & 0xff,
 		fg1 = color >> 8 & 0xff,
@@ -273,7 +275,9 @@ void _draw_coloraxis(struct kahto_axis *axis, unsigned *canvas, int figurewidth,
 }
 
 void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
-	if (!axis || axis->direction < 0 || !axis->visible)
+	if (!axis || axis->direction < 0 || !axis->visible ||
+		my_isnan(axis->min) || my_isnan(axis->max)
+	)
 		return;
 	int isx = axis->direction == 0;
 

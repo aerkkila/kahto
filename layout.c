@@ -39,6 +39,8 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *t
 }
 
 static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
+	if (!axis->visible || my_isnan(axis->min) || my_isnan(axis->max))
+		return;
 	const int *xywh = axis->figure->ro_inner_xywh;
 	int ipar = axis->direction == 1;
 	axis->ro_line[ipar] = axis->ro_area[ipar] = xywh[ipar];
@@ -274,6 +276,8 @@ void kahto_make_inner_margin(struct kahto_figure *fig) {
 			struct kahto_axis *axis = graph->yxaxis[iaxis];
 			struct kahto_data *data = graph->data.arr[iaxis];
 			double axisrange = axis->max - axis->min;
+			if (my_isnan(axisrange))
+				continue;
 			int axislen = fig->ro_inner_xywh[2+axis->direction];
 			/* This was derived using pen and paper. Reading this code might be challenging. */
 			float s0 = (max(axis->min, data->minmax[0]) - axis->min) / axisrange;
@@ -381,6 +385,8 @@ break0:
 	/* tick initialization */
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
 		struct kahto_axis *axis = fig->axis[iaxis];
+		if (my_isnan(axis->min) || my_isnan(axis->max))
+			continue;
 		if (axis->ticks && axis->ticks->init)
 			axis->ticks->init(axis->ticks, axis->min, axis->max);
 	}
@@ -389,6 +395,8 @@ break0:
 	for (int outside=1; outside>=0; outside--)
 		for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
 			struct kahto_axis *axis = fig->axis[iaxis];
+			if (my_isnan(axis->min) || my_isnan(axis->max))
+				continue;
 			if (axis->pos == (int)axis->pos && axis->outside == outside)
 				kahto_axis_get_orthogonal(axis, imargin_xyxy);
 		}
@@ -411,6 +419,8 @@ break0:
 	struct kahto_axis *axis_xyxy[4] = {0};
 	for (int i=0; i<fig->naxis; i++) {
 		int ipos = fig->axis[i]->pos != 0;
+		if (my_isnan(fig->axis[i]->min) || my_isnan(fig->axis[i]->max))
+			continue;
 		if (!fig->axis[i]->outside && ipos == fig->axis[i]->pos)
 			axis_xyxy[!!fig->axis[i]->direction + ipos*2] = fig->axis[i];
 	}

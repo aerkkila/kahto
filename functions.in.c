@@ -78,7 +78,13 @@ static double get_floating_@dtype(const void *vdata, long ind) {
 static double get_min_@dtype(const void *vdata, long length, int stride) {
 	const $dtype *data = vdata;
 	double min = DBL_MAX;
-	for (long i=0; i<length; i++) {
+	long i=0;
+	for (; i<length; i++)
+		if (!my_isnan(data[i*stride]))
+			goto a;
+	return NAN;
+a:
+	for (; i<length; i++) {
 		$dtype val = data[i*stride];
 		if (!my_isnan(val) && val < min)
 			min = val;
@@ -89,7 +95,13 @@ static double get_min_@dtype(const void *vdata, long length, int stride) {
 static double get_max_@dtype(const void *vdata, long length, int stride) {
 	const $dtype *data = vdata;
 	double max = -DBL_MAX;
-	for (long i=0; i<length; i++) {
+	long i=0;
+	for (; i<length; i++)
+		if (!my_isnan(data[i*stride]))
+			goto a;
+	return NAN;
+a:
+	for (; i<length; i++) {
 		$dtype val = data[i*stride];
 		if (!my_isnan(val) && val > max)
 			max = val;
@@ -101,7 +113,14 @@ static void get_minmax_@dtype(const void *vdata, long length, double *minmax, in
 	const $dtype *data = vdata;
 	minmax[0] = DBL_MAX;
 	minmax[1] = -DBL_MAX;
-	for (long i=0; i<length; i++) {
+	long i=0;
+	for (; i<length; i++)
+		if (!my_isnan(data[i*stride]))
+			goto a;
+	minmax[0] = minmax[1] = NAN;
+	return;
+a:
+	for (; i<length; i++) {
 		long ind = i*stride;
 		if (my_isnan(data[ind]))
 			continue;
