@@ -81,7 +81,7 @@ void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
 	uint32_t *canvas, int ystride, int x0, int y0, int igraph, int borderwidth)
 {
-	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
+	int *xywh = graph->figure->ro_inner_xywh;
 	x0 -= xywh[0];
 	y0 -= xywh[1];
 	int text_left = fig->legend.ro_text_left;
@@ -306,7 +306,8 @@ void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth,
 }
 
 void kahto_draw_legend(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
-	if (!fig->legend.visible || no_room_for_legend(fig) || (fig->legend.visible < 0 && fig->legend.ro_place_err))
+	if (!fig->legend.visible || fig->legend.ro_cannot_draw==1 ||
+		(fig->legend.visible < 0 && fig->legend.ro_cannot_draw==3))
 		return;
 	uint32_t fillcolor = fig->background;
 	switch (fig->legend.fill) {
@@ -353,12 +354,6 @@ void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystrid
 	if (!figure->ro_colors_set)
 		kahto_set_colors(figure);
 
-	for (int i=0; i<figure->naxis; i++)
-		kahto_draw_axis(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
-	for (int i=0; i<figure->ngraph; i++)
-		kahto_draw_graph(figure->graph[i], canvas, ystride, figure, 0);
-	kahto_draw_legend(figure, canvas, ystride);
-
 	struct ttra *ttra = figure->ttra;
 	ttra->canvas = canvas;
 	ttra->ystride = ystride;
@@ -367,6 +362,13 @@ void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystrid
 	ttra->fg_default = 0xff<<24;
 	ttra->bg_default = -1;
 	ttra_printf(ttra, "\e[0m");
+
+	for (int i=0; i<figure->naxis; i++)
+		kahto_draw_axis(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
+	for (int i=0; i<figure->ngraph; i++)
+		kahto_draw_graph(figure->graph[i], canvas, ystride, figure, 0);
+	kahto_draw_legend(figure, canvas, ystride);
+
 	if (figure->title.text) {
 		struct kahto_text *text = &figure->title;
 		set_fontheight(figure, text->rowheight);

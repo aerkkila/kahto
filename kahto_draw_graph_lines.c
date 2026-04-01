@@ -5,6 +5,8 @@ static inline char set_bit(char num, int ibit, int val) {
 
 void kahto_draw_graph_lines
 (struct kahto_graph *graph, struct kahto_figure *fig, struct kahto_draw_data_args *args) {
+	if (!graph->data.list.ydata->length)
+		return;
 	double yxmin[] = {
 		graph->yxaxis[0]->min,
 		graph->yxaxis[1]->min,

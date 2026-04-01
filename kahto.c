@@ -99,6 +99,8 @@ static inline float __attribute__((pure)) _tofpixels(float size, struct kahto_fi
 			return size * (float)get_toplevel_figure(figure)->wh[0];
 		case kahto_this_width:
 			return size * (float)figure->wh[0];
+		case kahto_fixed_size:
+			return size * figure->topixels_fixed_size;
 	}
 }
 
@@ -142,12 +144,9 @@ void inner_without_margin(int *xywh, struct kahto_figure *fig) {
 	xywh[3] = inner[3] - margin[1] - margin[3];
 }
 
-#define no_room_for_legend(figure) (!!(figure)->legend.ro_place_err)
-
 void kahto_get_legend_dims_chars(struct kahto_figure *figure, int *lines, int *cols);
 void kahto_get_legend_dims_px(struct kahto_figure *figure, int *y, int *x);
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement);
-int kahto_get_axisarea(struct kahto_figure *fig, int area[4]);
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
 static void align_inner_area(struct kahto_figure **figs, int naligned, int xy);
@@ -324,39 +323,6 @@ float __attribute__((malloc))* kahto_f4arr(int n, double terminator, ...) {
 	return list;
 }
 
-void update_maxarea(int *a, int *b) {
-	if (b[0] < a[0]) a[0] = b[0];
-	if (b[1] < a[1]) a[1] = b[1];
-	if (b[2] > a[2]) a[2] = b[2];
-	if (b[3] > a[3]) a[3] = b[3];
-}
-
-void kahto_get_axisarea1(struct kahto_axis *ax, int area[4]) {
-	memcpy(area, ax->ro_area, 4*sizeof(int));
-	if (ax->ticks)
-		update_maxarea(area, ax->ticks->ro_labelarea);
-	for (int i=0; i<ax->ntexts; i++)
-		update_maxarea(area, ax->text[i]->ro_area);
-}
-
-int kahto_get_axisarea(struct kahto_figure *fig, int area[4]) {
-	int iaxis = 0;
-	int help[4];
-	for (; iaxis<fig->naxis; iaxis++)
-		if (fig->axis[iaxis]) {
-			kahto_get_axisarea1(fig->axis[iaxis], area);
-			goto other_axis;
-		}
-	return 1;
-other_axis:
-	for (; iaxis<fig->naxis; iaxis++)
-		if (fig->axis[iaxis]) {
-			kahto_get_axisarea1(fig->axis[iaxis], help);
-			update_maxarea(area, help);
-		}
-	return 0;
-}
-
 struct kahto_figure* kahto_add_subfigures(struct kahto_figure *fig, int n) {
 	int nnew = fig->nsubfigures + n;
 	if (fig->memsubfigures < nnew) {
@@ -493,6 +459,8 @@ int kahto_get_iaxis(struct kahto_axis *axis) {
 }
 
 void kahto_make_range(struct kahto_figure *figure) {
+	if (!figure->naxis)
+		return;
 	unsigned char minmax = kahto_minbit | kahto_maxbit;
 	char used_axis[figure->naxis];
 	memset(used_axis, 0, sizeof(used_axis));
@@ -538,10 +506,10 @@ void kahto_make_range(struct kahto_figure *figure) {
 
 static void set_icolor(struct kahto_graph *graph) {
 	if (graph->icolor != kahto_automatic) {
-		graph->yxaxis[0]->figure->ro_colors_set = 0;
+		graph->figure->ro_colors_set = 0;
 		return;
 	}
-	struct kahto_figure *figure = graph->yxaxis[0]->figure;
+	struct kahto_figure *figure = graph->figure;
 	graph->icolor = figure->icolor;
 	if (graph->color)
 		return;
@@ -551,6 +519,13 @@ static void set_icolor(struct kahto_graph *graph) {
 		figure->icolor++;
 	else if (!graph->errstyle.color && graph->errstyle.style && (graph->data.list.e0data || graph->data.list.e1data))
 		figure->icolor++;
+}
+
+static int figure_has_data(struct kahto_figure *figure) {
+	for (int i=figure->ngraph-1; i>=0; i--)
+		if (figure->graph[i]->data.list.ydata->length)
+			return 1;
+	return 0;
 }
 
 void kahto_get_legend_dims_chars(struct kahto_figure *figure, int *lines, int *cols) {
@@ -596,6 +571,7 @@ void kahto_get_legend_dims_px(struct kahto_figure *figure, int *Height, int *Wid
 static void legend_placement(struct kahto_figure *figure) {
 	if (!figure->legend.visible)
 		return;
+	figure->legend.ro_cannot_draw = 0;
 	float coeff = 1.f / figure->legend.scale;
 	figure->legend.borderstyle.thickness *= coeff;
 	figure->legend.rowheight *= coeff;
@@ -605,8 +581,16 @@ try:
 	kahto_get_legend_dims_px(figure, &height, &width);
 	if (!height || !width)
 		return;
+	if (height > figure->wh[1] || width > figure->wh[0]) {
+		figure->legend.ro_cannot_draw = 1;
+		return;
+	}
 	figure->legend.ro_xywh[2] = width;
 	figure->legend.ro_xywh[3] = height;
+	if (!figure_has_data(figure)) {
+		memset(figure->legend.ro_xywh, 0, 2*sizeof(figure->legend.ro_xywh[0]));
+		return;
+	}
 	figure->legend.ro_xywh[0] =
 		figure->ro_inner_xywh[0] + figure->legend.posx * figure->ro_inner_xywh[2] +
 		figure->legend.ro_xywh[2] * figure->legend.hvalign[0];
@@ -616,8 +600,8 @@ try:
 	if (!figure->legend.placement)
 		return;
 	int iplace=0, jplace=0;
-	figure->legend.ro_place_err = kahto_find_empty_rectangle(figure, width, height, &iplace, &jplace, figure->legend.placement);
-	if (no_room_for_legend(figure) && figure->legend.scale > figure->legend.minscale) {
+	figure->legend.ro_cannot_draw = kahto_find_empty_rectangle(figure, width, height, &iplace, &jplace, figure->legend.placement);
+	if (figure->legend.ro_cannot_draw && figure->legend.scale > figure->legend.minscale) {
 		float diff = figure->legend.scale - figure->legend.minscale;
 		float newscale;
 		if (diff >= 0.1)
@@ -696,10 +680,9 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 		fig->graph = realloc(fig->graph,
 			(fig->mem_graph = fig->ngraph+3) * sizeof(void*));
 
-	struct kahto_graph *graph;
-	fig->graph[fig->ngraph++] = graph = calloc(1, sizeof(struct kahto_graph));
+	struct kahto_graph *graph = fig->graph[fig->ngraph++] = calloc(1, sizeof(struct kahto_graph));
 	/* copy to kahto_graph the part which is shared with kahto_args */
-	memcpy(&graph->yxaxis, &args->yaxis, sizeof(struct kahto_graph) - ((char*)graph->yxaxis - (char*)graph));
+	memcpy(&graph->figure, &args->figure, sizeof(struct kahto_graph) - ((char*)&graph->figure - (char*)graph));
 
 	/* find or create a data object for the graph */
 #define nth(ptr, n) (&(ptr) + (n))
@@ -778,7 +761,11 @@ found:
 	}
 #undef nth
 
-	/* add yaxis and xaxis */
+	if (!(args->kahto_len + args->kahto_ylen + args->kahto_xlen))
+		// Don't add axes if there is no data.
+		// A use case for plotting nothing (length == 0) is legend customization.
+		goto axes_added;
+
 	for (int iaxis=0; iaxis<2; iaxis++)
 		if (!graph->yxaxis[iaxis]) {
 			if (fig->ngraph > 1)
@@ -818,6 +805,8 @@ found1:
 	for (int i=0; i<arrlen(graph->yxaxis); i++)
 		if (graph->yxaxis[i])
 			graph->yxaxis[i]->range_isset = 0;
+
+axes_added:
 	set_icolor(graph); // tämä pitäisi ohittaa, jos käytetään väriakselia
 	return graph;
 }

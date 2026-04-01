@@ -110,6 +110,8 @@ static unsigned char* kahto_data_marker_bmap
 
 void kahto_draw_graph_markers
 (struct kahto_graph *graph, struct kahto_figure *fig, struct kahto_draw_data_args *args) {
+	if (!graph->data.list.ydata->length)
+		return;
 	struct kahto_data
 		*xdata = graph->data.list.xdata,
 		*ydata = graph->data.list.ydata,

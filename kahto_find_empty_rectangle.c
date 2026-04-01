@@ -110,8 +110,8 @@ static int get_spaceup(int jpos, int ipos, int rwidth, int rheight, const short 
 	return result;
 }
 
-/* Return negative if does not fit to image.
-   Return positive if no empty slot is available.
+/* Return -1 if does not fit to image.
+   Return 1 if no empty slot is available.
    Return zero on success. */
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement method) {
 	int x0 = figure->ro_inner_xywh[0],

@@ -4,6 +4,38 @@
 #include "kahto.h"
 #include <ttra.h>
 
+static void update_maxarea(int *a, int *b) {
+	if (b[0] < a[0]) a[0] = b[0];
+	if (b[1] < a[1]) a[1] = b[1];
+	if (b[2] > a[2]) a[2] = b[2];
+	if (b[3] > a[3]) a[3] = b[3];
+}
+
+static void get_axisarea(struct kahto_axis *ax, int area[4]) {
+	memcpy(area, ax->ro_area, 4*sizeof(int));
+	if (ax->ticks)
+		update_maxarea(area, ax->ticks->ro_labelarea);
+	for (int i=0; i<ax->ntexts; i++)
+		update_maxarea(area, ax->text[i]->ro_area);
+}
+
+/* Usually this returns the size of the whole figure.
+   Smaller, if e.g. a standalone coloraxis or a standalone legend is drawn,
+   because there is nothing which can expand to fill the whole figure.
+   Does not check subfigures. */
+static void get_used_area(struct kahto_figure *fig, int area[4]) {
+	memcpy(area, fig->legend.ro_xywh, sizeof(fig->legend.ro_xywh));
+	area[2] += area[0];
+	area[3] += area[1];
+
+	int help[4];
+	for (int iaxis=0; iaxis<fig->naxis; iaxis++)
+		if (fig->axis[iaxis]) {
+			get_axisarea(fig->axis[iaxis], help);
+			update_maxarea(area, help);
+		}
+}
+
 static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *tk, int ipar, int *edges_figpx) {
 	int nlabels = tk->tickerdata.common.nticks, area[4];
 	char labelbuff[128];
@@ -274,6 +306,8 @@ void kahto_make_inner_margin(struct kahto_figure *fig) {
 			continue;
 		for (int iaxis=0; iaxis<2; iaxis++) {
 			struct kahto_axis *axis = graph->yxaxis[iaxis];
+			if (!axis)
+				continue;
 			struct kahto_data *data = graph->data.arr[iaxis];
 			double axisrange = axis->max - axis->min;
 			if (my_isnan(axisrange))
@@ -436,8 +470,7 @@ break0:
 
 	/* This loop adjusts fig->ro_inner_margin so that axes and ticklabels etc.
 	   fit in the figure without overlapping. */
-	/* while (1) but avoid halting when something goes wrong */
-	for (int iloop=0; iloop<30; iloop++) {
+	for (int iloop=0; iloop<30; iloop++) { // while (1) but avoid halting when something goes wrong
 		/* parallel size */
 		for (int i=0; i<fig->naxis; i++)
 			axis_set_parallel_sizes(fig->axis[i], iloop==0);
@@ -511,28 +544,33 @@ next:
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
 
-	if (!fig->data.next) {
-		/* Could be a standalone coloraxis.
-		   There is nothing which fills the whole figure without the data area,
-		   so let us adjust the size. */
-		int area[4];
-		if (!kahto_get_axisarea(fig, area)) {
-			int w = area[2] - area[0],
-				h = area[3] - area[1];
-			void *jmp = &&nowhere;
-			if (w < fig->wh[0])
-				fig->wh[0] = w,
-					jmp = &&start;
-			if (h < fig->wh[1])
-				fig->wh[1] = h,
-					jmp = &&start;
-			goto *jmp;
-nowhere:
-		}
-	}
-
 	legend_placement(fig);
 	texts_placement(fig);
+
+	/* If the whole figure could not be used, it is made smaller. */
+	int area[4];
+	get_used_area(fig, area);
+	if (!memcmp(area, (static int[4]){0}, sizeof(area)))
+		goto nowhere; // the figure was probably a container for subfigures
+	int w = area[2] - area[0],
+		h = area[3] - area[1];
+	int wh_change = 0;
+
+	float reference_size = -tofpixels(-1, fig); // minus because size>=1 is taken as pixelsize, not fraction
+	if (w < fig->wh[0])
+		fig->wh[0] = w,
+			wh_change = 1;
+	if (h < fig->wh[1])
+		fig->wh[1] = h,
+			wh_change = 1;
+	if (wh_change) {
+		fig->topixels_fixed_size = reference_size; // size of object stays the same
+		fig->topixels_reference = kahto_fixed_size;
+		if (area[0] > 0 || area[1] > 0)
+			goto start; // to move items to top left
+	}
+nowhere:
+
 	return 0;
 }
 

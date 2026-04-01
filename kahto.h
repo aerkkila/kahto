@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 47
+#define __kahto_version_in_program 48
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -243,6 +243,7 @@ struct kahto_graph {
 		struct kahto_data *arr[5];
 	} data;
 	/* the rest must match with kahto_args */
+	struct kahto_figure *figure;
 	struct kahto_axis *yxaxis[3], *countaxis;
 	char cmap_owner;
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
@@ -264,7 +265,8 @@ struct kahto_graph {
 
 enum kahto_fill {kahto_no_fill_e, kahto_fill_bg_e, kahto_fill_color_e};
 enum kahto_placement {kahto_placement_none, kahto_placement_first, kahto_placement_singlemaxdist};
-enum kahto_topixels_reference {kahto_total_height, kahto_total_width, kahto_this_height, kahto_this_width};
+enum kahto_topixels_reference {kahto_total_height, kahto_total_width,
+	kahto_this_height, kahto_this_width, kahto_fixed_size};
 
 /* fixed order */
 struct kahto_colorscheme {
@@ -314,27 +316,26 @@ struct kahto_figure {
 	void (*revert_fixes)(struct kahto_figure*);
 	float fontheightmul; // multiply all fontheights (rowheight) with this number
 	float fracsizemul; // multiply all fractional sizes with this number
+	float topixels_fixed_size; // used if topixels_reference == kahto_fixed_size
 
 	struct legend {
 		/* if legend would cover some data, its size is multiplied with scale in range [minscale,1] */
 		float rowheight, symbolspace_per_rowheight, scale, minscale;
-		/* if visible = -1, legend is drawn only if it doesn't cover any data */
-		int ro_xywh[4], ro_text_left, ro_place_err, *ro_datay, ro_datay_len, visible;
+		int ro_xywh[4], ro_text_left,  *ro_datay, ro_datay_len;
 		float posx, posy, hvalign[2];
 		struct kahto_linestyle borderstyle;
 		enum kahto_fill fill;
 		unsigned fillcolor;
 		enum kahto_placement placement;
-		unsigned char coloronly:1;
+		/* if visible == 3 (can be set as -1), legend is drawn only if it doesn't cover any data
+		   ro_cannot_draw == 3: covers data */
+		unsigned char coloronly:1, visible:2, ro_cannot_draw:2;
 	} legend;
 
 	struct kahto_async *async;
 };
 
 struct kahto_args {
-	struct kahto_figure *figure;
-	struct kahto_figure **figureptr;
-
 	void *ydata, *xdata, *zdata, *edata0, *edata1;
 	int ytype, xtype, ztype, e0type, e1type; // unspecified eXtype is assumed equal to ytype
 	long kahto_len, kahto_ylen, kahto_xlen; // xlen and ylen are for colormesh
@@ -344,7 +345,9 @@ struct kahto_args {
 	char have_minmax[5], // bits: kahto_minbit, kahto_maxbit
 		 yxzowner[5];
 	enum kahto_feature zfeature; // = color
+	struct kahto_figure **figureptr;
 	/* below must match with kahto_graph */
+	struct kahto_figure *figure;
 	struct kahto_axis *yaxis, *xaxis, *caxis, *countaxis; // yaxis must stay first
 	char cmap_owner;
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
