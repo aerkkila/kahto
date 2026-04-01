@@ -77,22 +77,23 @@ void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig
 }
 
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
-	uint32_t *canvas, int ystride, int x0, int y0, int igraph)
+	uint32_t *canvas, int ystride, int x0, int y0, int igraph, int borderwidth)
 {
 	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
 	x0 -= xywh[0];
 	y0 -= xywh[1];
 	int text_left = fig->legend.ro_text_left;
+	int rowheight = topixels(fig->legend.rowheight, fig);
 
 	if (fig->legend.coloronly || graph->legend_coloronly) {
 		int xypixels[] = {
-			x0 - (text_left+1)/3 + fig->legend.ro_xywh[0],
+			fig->legend.ro_xywh[0] + borderwidth + 1,
 			fig->legend.ro_datay[igraph] + fig->legend.ro_xywh[1],
-			x0 + (text_left+1)/3 + fig->legend.ro_xywh[0],
+			0,
 			fig->legend.ro_datay[igraph+1] + fig->legend.ro_xywh[1],
 		};
 		kahto_fill_u4(canvas + xypixels[1]*ystride + xypixels[0], graph->color,
-			xypixels[2]-xypixels[0], xypixels[3]-xypixels[1], ystride);
+			text_left-rowheight*0.3, xypixels[3]-xypixels[1], ystride);
 		return;
 	}
 
@@ -102,9 +103,9 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
 
 	if (graph->linestyle.style) {
-		int xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
-		for (int i=0; i<4; i++)
-			xypixels[i] += xywh[i%2];
+		int xypixels[] = {fig->legend.ro_xywh[0]+borderwidth+1, y0, fig->legend.ro_xywh[0]+text_left-rowheight*0.3, y0};
+		xypixels[1] += xywh[1];
+		xypixels[3] += xywh[1];
 		int area[] = xywh_to_area(fig->ro_inner_xywh);
 		draw_line(canvas, ystride, xypixels, area, &graph->linestyle, fig, 0);
 	}
@@ -328,7 +329,7 @@ void kahto_draw_legend(struct kahto_figure *fig, uint32_t *canvas, int ystride) 
 			fig, fig->graph[i], canvas, ystride,
 			leg_x0 + fig->legend.ro_text_left/2,
 			fig->legend.ro_xywh[1] + (fig->legend.ro_datay[i] + fig->legend.ro_datay[i+1]) / 2 + linewidth + 1,
-			i);
+			i, linewidth);
 		/* drawing a literal marker changes fontheight */
 		if (fig->graph[i]->label) {
 			set_fontheight(fig, fig->legend.rowheight);
