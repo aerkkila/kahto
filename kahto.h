@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 46
+#define __kahto_version_in_program 47
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -80,7 +80,8 @@ struct kahto_tickerdata_linear {
 	int nticks, // must be first
 		baseten;
 	double step, min, base, target_nticks;
-	int omit_coef, out_omitted_coef, nsubticks;
+	short nsubticks;
+	char coef_omit, coef_newline;
 };
 
 struct kahto_tickerdata_log {
@@ -664,7 +665,6 @@ void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride
 void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride);
 
-void kahto__sprint_supernum(char *out, int sizeout, int num);
 float __attribute__((malloc))* kahto_f4arr(int n, double terminator, ...);
 
 #ifndef KAHTO_NO_VERSION_CHECK

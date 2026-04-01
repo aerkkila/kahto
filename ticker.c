@@ -3,8 +3,6 @@
 
 /* get_tick should return the data value on the axis */
 
-const char *kahto_supernum[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
-
 static inline long ifloor_ticker(double a) {
 	a += 1e-7;
 	long r = a;
@@ -17,21 +15,6 @@ static inline long iceil_ticker(double a) {
 	return r + (r < a);
 }
 
-void kahto__sprint_supernum(char *out, int sizeout, int num) {
-	char buff[20];
-	int len;
-	sprintf(buff, "%i%n", num, &len);
-	int slen = 0;
-	for (int i=0; i<len; i++) {
-		const char *str = (buff[i] == '-' ? "⁻" : kahto_supernum[buff[i] - '0']);
-		int slen1 = strlen(str);
-		if (slen+slen1+1 >= sizeout)
-			break;
-		strcpy(out + slen, str);
-		slen += slen1;
-	}
-}
-
 double kahto_get_tick_linear(struct kahto_ticks *this, int ind, char **label, int sizelabel) {
 	double step = this->tickerdata.lin.step,
 		   base = this->tickerdata.lin.base,
@@ -40,17 +23,14 @@ double kahto_get_tick_linear(struct kahto_ticks *this, int ind, char **label, in
 	if (!sizelabel)
 		return val;
 	int baseten = this->tickerdata.lin.baseten;
-	this->tickerdata.lin.out_omitted_coef = 0;
 
 	if (baseten <= -4  || baseten >= 6) {
 		const char *form = (step == (long)step ? "%.0f" : "%.1f");
 		int nprinted = snprintf(*label, sizelabel, form, val/base, base);
-		if (!this->tickerdata.lin.omit_coef) {
-			nprinted += snprintf(*label+nprinted, sizelabel-nprinted, "\n10");
-			kahto__sprint_supernum(*label+nprinted, sizelabel-nprinted, this->tickerdata.lin.baseten);
+		if (!this->tickerdata.lin.coef_omit) {
+			char sep = this->tickerdata.lin.coef_newline ? '\n' : ' ';
+			nprinted += snprintf(*label+nprinted, sizelabel-nprinted, "\e$%c10^%i$", sep, this->tickerdata.lin.baseten);
 		}
-		else
-			this->tickerdata.lin.out_omitted_coef = 1;
 	}
 	else if (base < 1) {
 		char buff[20];

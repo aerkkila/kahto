@@ -77,6 +77,7 @@ struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis) {
 	ticks->length = 1.0 / 80;
 	ticks->xyalign_text[ipar] = -0.5;
 	ticks->xyalign_text[!ipar] = -1 * (axis->pos < 0.5);
+	ticks->tickerdata.lin.coef_newline = ipar;
 
 	ticks->linestyle.thickness = 1.0 / 1200;
 	ticks->linestyle.color = RGB(0, 0, 0);
