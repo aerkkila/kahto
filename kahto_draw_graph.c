@@ -43,6 +43,8 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 
 /* start is unused */
 void kahto_draw_graph(struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start) {
+	if (!graph->data.list.ydata->length)
+		return;
 	if (is_colormesh(graph))
 		return kahto_colormesh_render(graph, canvas, ystride, fig, start);
 

@@ -23,7 +23,7 @@ static unsigned char* init_plus(unsigned char *to, int *_tow, int *_toh) {
 static unsigned char* init_xmarker(unsigned char *to, int *_tow, int *_toh) {
 	int tow = *_tow, toh = *_toh;
 	float halfthickness = min(tow, toh) / 12.0;
-	float a0 = (toh-1) / (tow-1);
+	float a0 = (toh-1.) / (tow-1.);
 	float a1 = -a0;
 	float b0 = 0;
 	float b1 = toh-1;

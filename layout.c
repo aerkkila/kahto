@@ -27,6 +27,7 @@ static void get_used_area(struct kahto_figure *fig, int area[4]) {
 	memcpy(area, fig->legend.ro_xywh, sizeof(fig->legend.ro_xywh));
 	area[2] += area[0];
 	area[3] += area[1];
+	update_maxarea(area, fig->title.ro_area);
 
 	int help[4];
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++)
@@ -410,7 +411,7 @@ break0:
 		ttra_init(fig->ttra);
 	if (fig->title.text) {
 		set_fontheight(fig, fig->title.rowheight);
-		put_text(fig->ttra, fig->title.text, fig->wh[0]*0.5, 0, -0.5, 0.1, fig->title.rotation_grad, fig->title.ro_area, 1);
+		put_text(fig->ttra, fig->title.text, fig->wh[0]*0.5, 0, -0.5, 0, fig->title.rotation_grad, fig->title.ro_area, 1);
 		imargin_xyxy[1] += fig->title.ro_area[3];
 	}
 
@@ -548,15 +549,21 @@ loop_done:
 	texts_placement(fig);
 
 	/* If the whole figure could not be used, it is made smaller. */
+	// For normal figures (containing data), don't do the size check.
+	// The main reason is that it is unnecessary.
+	// I am also not sure that it would always work correctly.
+	for (int i=fig->ngraph-1; i>=0; i--)
+		if (fig->graph[i]->data.list.ydata->length)
+			goto end;
 	int area[4];
 	get_used_area(fig, area);
 	if (!memcmp(area, (static int[4]){0}, sizeof(area)))
-		goto nowhere; // the figure was probably a container for subfigures
+		goto end; // the figure was probably a container for subfigures
 	int w = area[2] - area[0],
 		h = area[3] - area[1];
 	int wh_change = 0;
 
-	float reference_size = -tofpixels(-1, fig); // minus because size>=1 is taken as pixelsize, not fraction
+	float reference_size = _tofpixels(1, fig);
 	if (w < fig->wh[0])
 		fig->wh[0] = w,
 			wh_change = 1;
@@ -569,8 +576,8 @@ loop_done:
 		if (area[0] > 0 || area[1] > 0)
 			goto start; // to move items to top left
 	}
-nowhere:
 
+end:
 	return 0;
 }
 
