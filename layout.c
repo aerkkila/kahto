@@ -37,6 +37,25 @@ static void get_used_area(struct kahto_figure *fig, int area[4]) {
 		}
 }
 
+static int get_subfigures_area(struct kahto_figure *fig, int area[4]) {
+	int first = 1;
+	int help[4];
+	for (int ifig=0; ifig<fig->nsubfigures; ifig++) {
+		if (!fig->subfigures[ifig])
+			continue;
+		memcpy(help, fig->subfigures[ifig]->ro_corner, 2*sizeof(int));
+		help[2] = help[0] + fig->subfigures[ifig]->wh[0];
+		help[3] = help[1] + fig->subfigures[ifig]->wh[1];
+		if (first) {
+			memcpy(area, help, sizeof(help));
+			first = 0;
+		}
+		else
+			update_maxarea(area, help);
+	}
+	return first;
+}
+
 static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *tk, int ipar, int *edges_figpx) {
 	int nlabels = tk->tickerdata.common.nticks, area[4];
 	char labelbuff[128];
@@ -575,6 +594,7 @@ loop_done:
 		fig->topixels_reference = kahto_fixed_size;
 		if (area[0] > 0 || area[1] > 0)
 			goto start; // to move items to top left
+						// could we just adjust fig->ro_corner instead?
 	}
 
 end:
@@ -584,6 +604,7 @@ end:
 #undef return
 
 void kahto_layout(struct kahto_figure *fig) {
+start:
 	/* this figure first because ro_inner_xywh and other things are needed in subfigures */
 	if (kahto_figure_layout(fig) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
@@ -598,4 +619,29 @@ void kahto_layout(struct kahto_figure *fig) {
 		align_inner_area(fig->aligned_x, fig->naligned_x, 0);
 	if (fig->naligned_y)
 		align_inner_area(fig->aligned_y, fig->naligned_y, 1); // this may cause a segfault
+
+	int area[4];
+	if (get_subfigures_area(fig, area))
+		return;
+	int area1[4];
+	get_used_area(fig, area1);
+	if (area1[2] || area1[3])
+		update_maxarea(area, area1);
+	int change = 0;
+	if (area[0] > 0) {
+		fig->wh[0] -= area[0];
+		change = 1;
+	}
+	if (area[1] > 0) {
+		fig->wh[1] -= area[1];
+		change = 1;
+	}
+	if (area[2] - area[0] < fig->wh[0])
+		fig->wh[0] = area[2] - area[0];
+	if (area[3] - area[1] < fig->wh[1])
+		fig->wh[1] = area[3] - area[1];
+	if (change)
+		// to move items to top left
+		// could we just adjust fig->ro_corner instead?
+		goto start;
 }
