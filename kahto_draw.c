@@ -77,16 +77,29 @@ void kahto_draw_box_xywh(uint32_t *canvas, int ystride, struct kahto_figure *fig
 }
 
 static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *graph,
-	uint32_t *canvas, int ystride, int x0, int y0, int text_left)
+	uint32_t *canvas, int ystride, int x0, int y0, int igraph)
 {
+	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
+	x0 -= xywh[0];
+	y0 -= xywh[1];
+	int text_left = fig->legend.ro_text_left;
+
+	if (fig->legend.coloronly || graph->legend_coloronly) {
+		int xypixels[] = {
+			x0 - (text_left+1)/3 + fig->legend.ro_xywh[0],
+			fig->legend.ro_datay[igraph] + fig->legend.ro_xywh[1],
+			x0 + (text_left+1)/3 + fig->legend.ro_xywh[0],
+			fig->legend.ro_datay[igraph+1] + fig->legend.ro_xywh[1],
+		};
+		kahto_fill_u4(canvas + xypixels[1]*ystride + xypixels[0], graph->color,
+			xypixels[2]-xypixels[0], xypixels[3]-xypixels[1], ystride);
+		return;
+	}
+
 	int width, height, marker;
 	width = height = topixels(graph->markerstyle.size, fig);
 	unsigned char bmap_buff[width*height];
 	unsigned char *bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
-	int *xywh = graph->yxaxis[0]->figure->ro_inner_xywh;
-	x0 -= xywh[0];
-	y0 -= xywh[1];
-	struct kahto_axis *caxis = graph->yxaxis[2];
 
 	if (graph->linestyle.style) {
 		int xypixels[] = {x0 - (text_left+1)/3, y0, x0 + (text_left+1)/3, y0};
@@ -96,6 +109,7 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 		draw_line(canvas, ystride, xypixels, area, &graph->linestyle, fig, 0);
 	}
 
+	struct kahto_axis *caxis = graph->yxaxis[2];
 	if (marker) {
 		int yx[3] = {y0, x0};
 		struct kahto_draw_data_args args = {
@@ -307,15 +321,14 @@ void kahto_draw_legend(struct kahto_figure *fig, uint32_t *canvas, int ystride) 
 	int linewidth = topixels(fig->legend.borderstyle.thickness, fig);
 	/* +1 to y to leave empty space between the letter and the borderline */
 	ttra_set_xy0(fig->ttra, leg_x0 + fig->legend.ro_text_left + linewidth, leg_y0 + linewidth + 1);
-	int text_left = fig->legend.ro_text_left;
 	for (int i=0; i<fig->ngraph; i++) {
 		if (!fig->graph[i]->label)
 			continue;
 		legend_draw_marker(
 			fig, fig->graph[i], canvas, ystride,
-			leg_x0 + text_left/2,
+			leg_x0 + fig->legend.ro_text_left/2,
 			fig->legend.ro_xywh[1] + (fig->legend.ro_datay[i] + fig->legend.ro_datay[i+1]) / 2 + linewidth + 1,
-			text_left);
+			i);
 		/* drawing a literal marker changes fontheight */
 		if (fig->graph[i]->label) {
 			set_fontheight(fig, fig->legend.rowheight);
