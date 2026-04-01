@@ -465,6 +465,9 @@ struct kahto_figure* kahto_subfigures_new(int nrows, int ncols);
  * xyowner: (xowner<<0) | (yowner<<1)
  */
 struct kahto_figure* kahto_subfigures_grid_new(int nrows, int ncols, float *ysizes, float *xsizes, unsigned xyowner);
+/* Add xmarg and ymarg between all subfigures, but not to outer borders of superfigure.
+   If ymarg < 0, it becomes the same as xmarg. */
+struct kahto_figure* kahto_subfigures_margin(struct kahto_figure *fig, float xmarg, float ymarg);
 
 /* Calling:
  *     kahto_subfigures_xyarr_new(4, (0.1, 0.1), 3, (0., 0.5, 0.2))

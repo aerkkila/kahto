@@ -244,6 +244,30 @@ struct kahto_figure* kahto_subfigures_put_rows_and_cols(struct kahto_figure *fig
 	return fig;
 }
 
+struct kahto_figure* kahto_subfigures_margin(struct kahto_figure *fig, float xmarg, float ymarg) {
+	if (ymarg < 0)
+		ymarg = xmarg;
+	xmarg *= 0.5;
+	ymarg *= 0.5;
+	for (int ifig=fig->nsubfigures-1; ifig>=0; ifig--) {
+		float *xywh = fig->subfigures_xywh[ifig];
+		if (xywh[0] > 0) {
+			xywh[0] += xmarg;
+			xywh[2] -= xmarg;
+		}
+		if (xywh[0] + xywh[2] < 0.999999)
+			xywh[2] -= xmarg;
+
+		if (xywh[1] > 0) {
+			xywh[1] += ymarg;
+			xywh[1] -= ymarg;
+		}
+		if (xywh[1] + xywh[3] < 0.999999)
+			xywh[3] -= ymarg;
+	}
+	return fig;
+}
+
 static void _kahto_make_grid_1d(float (*xywh)[4], int which, int stride, int n, float *arr, float space) {
 	float left = 1.0;
 	int nfree = 0;
