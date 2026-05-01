@@ -128,8 +128,8 @@ static void motioncallback(struct waylandhelper *wlh, int xmove, int ymove) {
 		y -= fig->ro_corner[1];
 fig_test:
 		if (fig->legend.visible &&
-			x >= fig->legend.ro_xywh[0] && x < intsum_02(fig->legend.ro_xywh+0) &&
-			y >= fig->legend.ro_xywh[1] && y < intsum_02(fig->legend.ro_xywh+1))
+			x >= fig->legend.ro_xywh[0] && x < intsum(fig->legend.ro_xywh+0, 2) &&
+			y >= fig->legend.ro_xywh[1] && y < intsum(fig->legend.ro_xywh+1, 2))
 			goto fig_found;
 	}
 	goto turn_off_highlight;

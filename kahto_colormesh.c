@@ -2,8 +2,14 @@ void kahto_colormesh_render
 (struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start) {
 	int xdatalen = graph->data.list.xdata->length;
 	int ydatalen = graph->data.list.ydata->length;
-	int xywh[4];
-	inner_without_margin(xywh, graph->yxaxis[0]->figure);
+	int xywh[4] = {
+		graph->yxaxis[1]->ro_minmaxpos[0],
+		graph->yxaxis[0]->ro_minmaxpos[0],
+		graph->yxaxis[1]->ro_minmaxpos[1] + 1,
+		graph->yxaxis[0]->ro_minmaxpos[1] + 1,
+	};
+	xywh[2] -= xywh[0];
+	xywh[3] -= xywh[1];
 	struct kahto_axis *caxis = graph->yxaxis[2];
 	const unsigned char *cmap = caxis->cmap;
 	const int reverse_cmap = caxis->reverse_cmap;

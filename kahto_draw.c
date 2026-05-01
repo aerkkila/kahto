@@ -82,8 +82,6 @@ static void legend_draw_marker(struct kahto_figure *fig, struct kahto_graph *gra
 	uint32_t *canvas, int ystride, int x0, int y0, int igraph, int borderwidth)
 {
 	int *xywh = graph->figure->ro_inner_xywh;
-	x0 -= xywh[0];
-	y0 -= xywh[1];
 	int text_left = fig->legend.ro_text_left;
 	int rowheight = topixels(fig->legend.rowheight, fig);
 
@@ -165,29 +163,26 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 	line_px[iort+0] = ticks->ro_lines[0];
 	line_px[iort+2] = ticks->ro_lines[1];
 	int nticks = ticks->tickerdata.common.nticks;
-	int gridline[4], xywh[4], *margin=ticks->axis->figure->ro_inner_margin, *xywh_out=ticks->axis->figure->ro_inner_xywh;
-	memcpy(xywh, xywh_out, sizeof(xywh));
-	xywh[0] += margin[0];
-	xywh[1] += margin[1];
-	xywh[2] -= margin[0] + margin[2];
-	xywh[3] -= margin[1] + margin[3];
-	gridline[iort] = xywh_out[iort];
-	gridline[iort+2] = xywh_out[iort] + xywh_out[iort+2];
-	int inner_area[] = xywh_to_area(xywh_out);
+	int gridline[4], startlen[2], *xywh_frame=ticks->axis->figure->ro_inner_xywh;
+	startlen[0] = ticks->axis->ro_minmaxpos[0];
+	startlen[1] = ticks->axis->ro_minmaxpos[1] + 1 - startlen[0];
+	gridline[iort] = xywh_frame[iort];
+	gridline[iort+2] = xywh_frame[iort] + xywh_frame[iort+2];
+	int inner_area[] = xywh_to_area(xywh_frame);
 	int side = ticks->axis->pos >= 0.5;
 
 	const double axisdatamin = ticks->axis->min;
 	const double axisdatalen = ticks->axis->max - axisdatamin;
 	int tot_area[] = {0, 0, ticks->axis->figure->wh[0], ticks->axis->figure->wh[1]};
-	tot_area[!iort] = ticks->axis->ro_line[!iort];
-	tot_area[!iort+2] = ticks->axis->ro_line[!iort+2];
+	tot_area[!iort] = ticks->axis->ro_area[!iort];
+	tot_area[!iort+2] = ticks->axis->ro_area[!iort+2];
 	int visible_labels = ttra && ticks->visible && ticks->visible_labels;
 	for (int itick=0; itick<nticks; itick++) {
 		double pos_data = ticks->get_tick(ticks, itick, &tick, 128);
 		double pos_rel = (pos_data - axisdatamin) / axisdatalen;
 		if (!isx)
 			pos_rel = 1 - pos_rel;
-		line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iround(pos_rel * xywh[!iort+2]);
+		line_px[!iort] = line_px[!iort+2] = startlen[0] + iround(pos_rel * startlen[1]);
 		if (ticks->visible && ticks->length)
 			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, 0);
 		int area_text[4] = {0};
@@ -209,7 +204,7 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 			double pos_rel = (posdata[i] - axisdatamin) / axisdatalen;
 			if (!isx)
 				pos_rel = 1 - pos_rel;
-			line_px[!iort] = line_px[!iort+2] = xywh[!iort] + iroundpos(pos_rel * xywh[!iort+2]);
+			line_px[!iort] = line_px[!iort+2] = startlen[0] + iroundpos(pos_rel * startlen[1]);
 			if (ticks->visible && ticks->length1)
 				draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, figure, 0);
 			if (ticks->gridstyle1.style) {

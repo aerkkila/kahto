@@ -30,6 +30,7 @@ static void draw_datum(struct kahto_draw_data_args *ar) {
 		/* alfaa ei ole toteutettu tähän */
 		return;
 	}
+#if 0
 	int x0_ = ar->xywh_limits[0],       y0_ = ar->xywh_limits[1];
 	int x1_ = x0_ + ar->xywh_limits[2], y1_ = y0_ + ar->xywh_limits[3];
 	int x0  = x0_ + ar->yxz[1] - ar->mapw/2,      y0 = y0_ + yxz[0] - ar->maph/2;
@@ -37,6 +38,16 @@ static void draw_datum(struct kahto_draw_data_args *ar) {
 	int j1  = min(ar->maph, y1_ - y0);
 	int i0  = max(0, x0_ - x0);
 	int i1  = min(ar->mapw, x1_ - x0);
+#endif
+
+	int x0 = yxz[1] - ar->mapw/2;
+	int y0 = yxz[0] - ar->maph/2;
+	int j0 = max(0, -y0);
+	int i0 = max(0, -x0);
+	int y1 = min(ar->xywh_limits[3] + ar->xywh_limits[1], y0 + ar->maph);
+	int j1 = y1 - y0;
+	int x1 = min(ar->xywh_limits[2] + ar->xywh_limits[0], x0 + ar->mapw);
+	int i1 = x1 - x0;
 	uint32_t (*canvas)[ar->ystride] = (void*)ar->canvas;
 	const unsigned char (*bmap)[ar->mapw] = (void*)ar->bmap;
 	int alfa = ar->alpha;
@@ -112,6 +123,17 @@ void kahto_draw_graph_markers
 (struct kahto_graph *graph, struct kahto_figure *fig, struct kahto_draw_data_args *args) {
 	if (!graph->data.list.ydata->length)
 		return;
+
+	int width, height, marker;
+	width = height = topixels_marker(graph);
+	unsigned char bmap_buff[width*height];
+	args->bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
+	if (!marker)
+		return;
+	args->mapw = width;
+	args->maph = height;
+	/* args->bmap points to bmap_buff or is NULL or a malloced pointer */
+
 	struct kahto_data
 		*xdata = graph->data.list.xdata,
 		*ydata = graph->data.list.ydata,
@@ -145,20 +167,12 @@ void kahto_draw_graph_markers
 			yxdiff[iyx] = log(graph->yxaxis[iyx]->max) * yxmultiplier[iyx] - yxmin[iyx];
 		}
 
-	const int *margin = fig->ro_inner_margin;
-	int yxlen[] = {fig->ro_inner_xywh[3]-margin[1]-margin[3], fig->ro_inner_xywh[2]-margin[0]-margin[2]};
+	int startpos_yx[2], yxlen[2];
+	for (int i=0; i<2; i++) {
+		yxlen[i] = graph->yxaxis[i]->ro_minmaxpos[1] - graph->yxaxis[i]->ro_minmaxpos[0] + 1;
+		startpos_yx[i] = graph->yxaxis[i]->ro_minmaxpos[0];
+	}
 	struct kahto_axis *caxis = graph->yxaxis[2];
-
-	int width, height, marker;
-	width = height = topixels_marker(graph);
-	unsigned char bmap_buff[width*height];
-	args->bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
-	args->mapw = width;
-	args->maph = height;
-	/* args->bmap points to bmap_buff or is NULL or a malloced pointer */
-
-	if (graph->markerstyle.count)
-		args->canvascount = calloc(fig->ro_inner_xywh[2] * fig->ro_inner_xywh[3], sizeof(unsigned));
 
 	/* help for xdata */
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
@@ -174,6 +188,9 @@ void kahto_draw_graph_markers
 		get_datalevel_fun = my_isnan(caxislim[1]) ?
 			get_datalevel[zdata->type] : get_datalevel_with_center[zdata->type];
 	}
+
+	if (graph->markerstyle.count)
+		args->canvascount = calloc(fig->ro_inner_xywh[2] * fig->ro_inner_xywh[3], sizeof(unsigned));
 
 	void (*draw_data_fun)(struct kahto_draw_data_args*) = draw_datum;
 	if (graph->draw_marker_fun)
@@ -227,7 +244,7 @@ void kahto_draw_graph_markers
 		}
 		else
 			yxz[1] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_step);
-		yxz[1] += margin[0];
+		yxz[1] += startpos_yx[1];
 		if (get_datalevel_fun && (
 				yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255)) == NOT_A_PIXEL)
 			continue;
@@ -235,15 +252,14 @@ void kahto_draw_graph_markers
 			yxz[0] = get_yxpx[0](ydata->data, ipoint*ystride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
 			if (yxz[0] == NOT_A_PIXEL)
 				continue;
-			yxz[0] += margin[1];
+			yxz[0] += startpos_yx[0];
 		}
 		else {
-			/* args->xywh_limits are embedded to coordinates in userfunctions */
-			xzy_[0] = yxz[1] + args->xywh_limits[0];
+			xzy_[0] = yxz[1];
 			xzy_[1] = yxz[2];
 			for (int iy=0; iy<ysublen; iy++)
 				xzy_[2+iy] = get_yxpx[0](ydata->data, ipoint*ystride+iy, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0])
-					+ margin[1] + args->xywh_limits[1];
+					+ startpos_yx[0];
 		}
 
 		args->ipoint = ipoint;
@@ -256,9 +272,9 @@ void kahto_draw_graph_markers
 			int y = get_epx[iedata](edata->data, ipoint*edata->stride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
 			if (y == NOT_A_PIXEL)
 				continue;
-			y += margin[1] + args->xywh_limits[1];
-			int x = yxz[1] + args->xywh_limits[0];
-			int xyxy[] = {x, yxz[0]+args->xywh_limits[1], x, y};
+			y += startpos_yx[0];
+			int x = yxz[1];
+			int xyxy[] = {x, yxz[0], x, y};
 			draw_line(args->canvas, args->ystride, xyxy, area, &graph->errstyle, fig, 0);
 		}
 	}

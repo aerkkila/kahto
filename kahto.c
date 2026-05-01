@@ -130,14 +130,7 @@ static int set_fontheight(struct kahto_figure *figure, float size) {
 	return ttra_set_fontheight(figure->ttra, topixels(size*figure->fontheightmul, figure));
 }
 
-static inline int intsum_02(const int *a) { return a[0] + a[2]; }
-
-static void fig_inner_area(struct kahto_figure *fig, int *area) {
-	area[0] = fig->ro_inner_xywh[0] + fig->ro_inner_margin[0];
-	area[1] = fig->ro_inner_xywh[1] + fig->ro_inner_margin[1];
-	area[2] = area[0] + fig->ro_inner_xywh[2] - intsum_02(fig->ro_inner_margin+0);
-	area[3] = area[1] + fig->ro_inner_xywh[3] - intsum_02(fig->ro_inner_margin+1);
-}
+static inline int intsum(const int *a, int step) { return a[0] + a[step]; }
 
 static int is_colormesh(struct kahto_graph *g) {
 	return
@@ -147,21 +140,11 @@ static int is_colormesh(struct kahto_graph *g) {
 		g->data.list.xdata->length;
 }
 
-void inner_without_margin(int *xywh, struct kahto_figure *fig) {
-	int *inner = fig->ro_inner_xywh;
-	int *margin = fig->ro_inner_margin;
-	xywh[0] = inner[0] + margin[0];
-	xywh[1] = inner[1] + margin[1];
-	xywh[2] = inner[2] - margin[0] - margin[2];
-	xywh[3] = inner[3] - margin[1] - margin[3];
-}
-
 void kahto_get_legend_dims_chars(struct kahto_figure *figure, int *lines, int *cols);
 void kahto_get_legend_dims_px(struct kahto_figure *figure, int *y, int *x);
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement);
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
-static void align_inner_area(struct kahto_figure **figs, int naligned, int xy);
 static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargin_xyxy[4]);
 
 static double __attribute__((unused)) get_time() {
@@ -230,6 +213,30 @@ unsigned* kahto_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *
 struct kahto_figure* kahto_set_wh(struct kahto_figure *fig, int w, int h) {
 	fig->wh[0] = fig->ro_wh0[0] = w;
 	fig->wh[1] = fig->ro_wh0[1] = h;
+	return fig;
+}
+
+struct kahto_figure* kahto_align_min(struct kahto_figure *fig, struct kahto_axis **axes, int n, int owner) {
+	struct kahto_align *a = malloc(sizeof(*a));
+	*a = (struct kahto_align) {
+		.axes = axes,
+		.naxes = n,
+		.next = fig->ro_internal->align_min,
+		.owner = owner,
+	};
+	fig->ro_internal->align_min = a;
+	return fig;
+}
+
+struct kahto_figure* kahto_align_max(struct kahto_figure *fig, struct kahto_axis **axes, int n, int owner) {
+	struct kahto_align *a = malloc(sizeof(*a));
+	*a = (struct kahto_align) {
+		.axes = axes,
+		.naxes = n,
+		.next = fig->ro_internal->align_max,
+		.owner = owner,
+	};
+	fig->ro_internal->align_max = a;
 	return fig;
 }
 
@@ -660,13 +667,6 @@ static void text_placement(struct kahto_figure *fig, struct kahto_text *text) {
 		case kahto_dataarea_e:
 			memcpy(ref_xywh, fig->ro_inner_xywh, sizeof(ref_xywh));
 			break;
-		case kahto_dataarea_inner_e:
-			memcpy(ref_xywh, fig->ro_inner_xywh, sizeof(ref_xywh));
-			ref_xywh[0] += fig->ro_inner_margin[0];
-			ref_xywh[1] += fig->ro_inner_margin[1];
-			ref_xywh[2] -= fig->ro_inner_margin[0] + fig->ro_inner_margin[2];
-			ref_xywh[3] -= fig->ro_inner_margin[1] + fig->ro_inner_margin[3];
-			break;
 	}
 	area[0] = ref_xywh[0] + text->xy[0] * ref_xywh[2] + move_xy[0];
 	area[1] = ref_xywh[1] + text->xy[1] * ref_xywh[3] + move_xy[1];
@@ -909,11 +909,20 @@ void kahto_destroy_graph(struct kahto_graph *graph) {
 	free(graph);
 }
 
+static void destroy_align(struct kahto_align *a) {
+	while (a) {
+		if (a->owner)
+			free(a->axes);
+		void *b = a->next;
+		free(a);
+		a = b;
+	}
+}
+
 struct kahto_figure* kahto_destroy_single(struct kahto_figure *fig) {
 	/* Subfigures must be destroyed already or referenced by other pointers. */
 	free(fig->subfigures);
 	free(fig->subfigures_xywh);
-	free(fig->ro_internal);
 
 	for (int i=0; i<fig->naxis; i++)
 		kahto_destroy_axis(fig->axis[i]);
@@ -939,6 +948,10 @@ struct kahto_figure* kahto_destroy_single(struct kahto_figure *fig) {
 	if (fig->colorscheme.owner)
 		free(fig->colorscheme.colors);
 
+	destroy_align(fig->ro_internal->align_min);
+	destroy_align(fig->ro_internal->align_max);
+
+	free(fig->ro_internal);
 	memset(fig, 0, sizeof(*fig));
 	return fig;
 }
@@ -1110,31 +1123,6 @@ void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride
 	int ystart = figure->ro_inner_xywh[1];
 	int xstart = figure->ro_inner_xywh[0];
 	kahto_fill_u4(canvas+ystride*ystart+xstart, figure->background, figure->ro_inner_xywh[2], figure->ro_inner_xywh[3], ystride);
-}
-
-static void align_inner_area(struct kahto_figure **figs, int naligned, int xy) {
-	int area[4], a[4];
-	fig_inner_area(figs[0], area);
-	area[0+xy] += figs[0]->ro_corner[xy];
-	area[2+xy] += figs[0]->ro_corner[xy];
-	for (int i=1; i<naligned; i++) {
-		fig_inner_area(figs[i], a);
-		a[0+xy] += figs[i]->ro_corner[xy];
-		a[2+xy] += figs[i]->ro_corner[xy];
-		if (a[0+xy] > area[0+xy])
-			area[0+xy] = a[0+xy];
-		if (a[2+xy] < area[2+xy])
-			area[2+xy] = a[2+xy];
-	}
-	for (int i=0; i<naligned; i++) {
-		fig_inner_area(figs[i], a);
-		a[0+xy] += figs[i]->ro_corner[xy];
-		a[2+xy] += figs[i]->ro_corner[xy];
-		int diff = area[0] - a[0];
-		figs[i]->ro_inner_xywh[0+xy] += diff;
-		figs[i]->ro_inner_xywh[2+xy] -= diff;
-		figs[i]->ro_inner_xywh[2+xy] -= a[2+xy] - area[2+xy];
-	}
 }
 
 void kahto_same_range(struct kahto_axis **axs, int naxs) {

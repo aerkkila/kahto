@@ -87,16 +87,19 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *t
 	int textloc[2] = {0};
 	set_fontheight(tk->axis->figure, tk->rowheight);
 
-	int xywh[4], *inner_margin = tk->axis->figure->ro_inner_margin;
-	memcpy(xywh, tk->axis->figure->ro_inner_xywh, sizeof(xywh));
-	xywh[ipar] += inner_margin[ipar];
-	xywh[ipar+2] -= inner_margin[ipar] + inner_margin[ipar+2];
+	int *axmargin = tk->axis->ro_margin_minmax;
+	int startlen[] = {
+		tk->axis->figure->ro_inner_xywh[ipar+0],
+		tk->axis->figure->ro_inner_xywh[ipar+2],
+	};
+	startlen[0] += axmargin[0];
+	startlen[1] -= axmargin[0] + axmargin[1];
 
 	if (!tk->visible_labels) {
 		double dataval = tk->get_tick(tk, 0, &label, 128);
-		edges_figpx[0] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
+		edges_figpx[0] = (dataval - min) / range * startlen[1] + startlen[0];
 		dataval = tk->get_tick(tk, nlabels-1, &label, 128);
-		edges_figpx[1] = (dataval - min) / range * xywh[ipar+2] + xywh[ipar];
+		edges_figpx[1] = (dataval - min) / range * startlen[1] + startlen[0];
 		return;
 	}
 
@@ -105,28 +108,26 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *t
 		double relval = (dataval - min) / range;
 		if (ipar)
 			relval = 1 - relval;
-		textloc[ipar] = iround(relval*xywh[ipar+2]) + xywh[ipar];
+		textloc[ipar] = iround(relval*startlen[1]) + startlen[0];
 		put_text(ttra, label, textloc[0], textloc[1], tk->xyalign_text[0], tk->xyalign_text[1], tk->rotation_grad, area, 1);
 		update_min(edges_figpx[0], area[ipar]);
 		update_max(edges_figpx[1], area[ipar+2]);
 	}
 }
 
-static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
+static int axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
 	if (my_isnan(axis->min) || my_isnan(axis->max))
-		return;
+		return 0;
 	const int *xywh = axis->figure->ro_inner_xywh;
 	int ipar = axis->direction == 'y';
-	axis->ro_line[ipar] = axis->ro_area[ipar] = xywh[ipar];
-	axis->ro_line[ipar+2] = axis->ro_area[ipar+2] = xywh[ipar] + xywh[ipar+2];
+	axis->ro_area[ipar] = xywh[ipar];
+	axis->ro_area[ipar+2] = xywh[ipar] + xywh[ipar+2];
+	axis->ro_minmaxpos[0] = axis->ro_area[ipar] + axis->ro_margin_minmax[0];
+	axis->ro_minmaxpos[1] = axis->ro_area[ipar+2] - 1 - axis->ro_margin_minmax[1];
+	if (axis->ro_minmaxpos[0] >= axis->ro_minmaxpos[1])
+		return 1;
 
-	{
-		const int *margin = axis->figure->ro_inner_margin;
-		int isx = axis->direction == 'x';
-		int len = xywh[2+!isx] - margin[!isx] - margin[2+!isx];
-		double diff = axis->max - axis->min;
-		axis->ro_pix_per_unit = len / diff;
-	}
+	axis->ro_pix_per_unit = (axis->ro_minmaxpos[1] - axis->ro_minmaxpos[1]) / (axis->max - axis->min);
 
 	/* text->ro_area[parallel] already contains the limits around the zero point
 	   or further has been moved to correct place */
@@ -140,11 +141,12 @@ static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
 	struct kahto_figure *fig = axis->figure;
 	struct kahto_ticks *tk = axis->ticks;
 	if (!axis->visible || !tk || !tk->visible)
-		return;
+		return 0;
 	int edges_figpx[] = {xywh[2+ipar], -xywh[2+ipar]};
 	get_ticklabel_parallel_area(fig->ttra, tk, ipar, edges_figpx);
 	tk->ro_labelarea[ipar+0] = edges_figpx[0];
 	tk->ro_labelarea[ipar+2] = edges_figpx[1];
+	return 0;
 }
 
 static void get_parallel_limits(struct kahto_axis *axis, int *limits) {
@@ -158,7 +160,7 @@ static void get_parallel_limits(struct kahto_axis *axis, int *limits) {
 	}
 	const int *area = axis->ticks->ro_labelarea;
 
-	if (ipar == 1)
+	if (axis->direction == 'y')
 		update_max(limits[0], fig->title.ro_area[3]);
 
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
@@ -212,14 +214,13 @@ struct layout_ort_args {
 	iside = a->iside
 
 static void _axis_line_orthogonal(struct kahto_axis *axis, struct layout_ort_args *args) {
+	if (!axis->visible)
+		return;
 	float fw;
-	if (axis->linestyle.style == kahto_line_none_e) {
-		if (!axis->po[1])
-			return;
-		fw = axis->po[1]; // coloraxis
-	}
-	else
+	if (!axis->po[1])
 		fw = axis->linestyle.thickness; // regular axis
+	else
+		fw = axis->po[1]; // coloraxis
 
 	unpack_args(args);
 	int iw = topixels(fw, args->fig);
@@ -232,7 +233,6 @@ static void _axis_line_orthogonal(struct kahto_axis *axis, struct layout_ort_arg
 		axis->ro_area[iinner] = axis->ro_area[iouter] + iw;
 	}
 	imargin_xyxy[iouter] += iw;
-	axis->ro_line[iort] = axis->ro_line[iort+2] = axis->ro_area[iinner];
 }
 
 static void _axis_tick_lines_orthogonal(struct kahto_axis *axis, struct layout_ort_args *args) {
@@ -324,6 +324,8 @@ static void _axis_texts_orthogonal(struct kahto_axis *axis, struct layout_ort_ar
 	imargin_xyxy[iouter] += imaxtext;
 }
 
+#undef unpack_args
+
 void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
 	if (axis->direction < 0)
 		return;
@@ -347,7 +349,7 @@ void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
 }
 
 /* add room for markers whose value is in the axis area but which are clipped partially */
-static void markers_on_edge(struct kahto_figure *fig) {
+static int room_for_markers_on_edge(struct kahto_figure *fig) {
 	for (int i=0; i<fig->ngraph; i++) {
 		struct kahto_graph *graph = fig->graph[i];
 		int yxyx[4];
@@ -387,21 +389,27 @@ static void markers_on_edge(struct kahto_figure *fig) {
 			float m0_axis = (float)yxyx[iaxis] / axislen - innerfraction[0] * s0;
 			float m1_axis = 1 - (m0_axis + innerfraction[1]);
 			int backwards = axis->direction == 'y';
+			char change = 0;
 			if (m0_axis > 0) {
 				int m0 = iroundpos(m0_axis * axislen);
-				update_max(fig->ro_inner_margin[(axis->direction=='y') + 2*backwards], m0);
+				if (m0 > axis->ro_margin_minmax[backwards]) {
+					axis->ro_margin_minmax[backwards] = m0;
+					change = 1;
+				}
 			}
 			if (m1_axis > 0) {
 				int m1 = iroundpos(m1_axis * axislen);
-				update_max(fig->ro_inner_margin[(axis->direction=='y') + 2*!backwards], m1);
+				if (m1 > axis->ro_margin_minmax[!backwards]) {
+					axis->ro_margin_minmax[!backwards] = m1;
+					change = 1;
+				}
 			}
+			if (change)
+				if (axis_set_parallel_sizes(axis, 0))
+					return 1;
 		}
 	}
-}
-
-/* x0y0x1y1 -> 0123; side 0 affects axis 1 and 3 */
-static int addmargincoord(int ixyxy, int side) {
-	return ixyxy%2 + side*2;
+	return 0;
 }
 
 static void adjust_addmargin(const int *area, int iort, int side, int *testarea, int *addmargin) {
@@ -409,46 +417,75 @@ static void adjust_addmargin(const int *area, int iort, int side, int *testarea,
 		return;
 	int ipar = !iort;
 	if (testarea[ipar] < area[ipar])
-		update_max(addmargin[addmargincoord(ipar, 0)], testarea[ipar+2]-area[ipar]);
+		update_max(addmargin[0], testarea[ipar+2]-area[ipar]);
 	else
-		update_max(addmargin[addmargincoord(ipar, 1)], area[ipar+2]-testarea[ipar]);
+		update_max(addmargin[1], area[ipar+2]-testarea[ipar]);
 }
 
-static void set_addmargin_based_on_texts(struct kahto_axis *axis, int *addmargin) {
-	struct kahto_figure *fig = axis->figure;
-	struct kahto_ticks *tk = axis->ticks;
-	if (!tk || !tk->visible || !tk->visible_labels)
-		return;
-	const int *area = tk->ro_labelarea,
-			   iort = axis->direction == 'x',
-			   ipar = axis->direction == 'y',
-			   side = axis->pos >= 0.5;
-
-	/* y-axis labels might overlap with the title */
-	if (ipar == 1 && fig->title.text && fig->title.text[0])
-		adjust_addmargin(area, iort, side, fig->title.ro_area, addmargin);
-
-	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
-		struct kahto_axis *ax1 = fig->axis[iaxis];
-		if (ax1->direction == axis->direction)
+static int add_margin_based_on_texts(struct kahto_axis **axis_xyxy) {
+	int ret = 0;
+	for (int iaxis=0; iaxis<4; iaxis++) {
+		int addmargin[2] = {0};
+		struct kahto_axis *axis = axis_xyxy[iaxis];
+		if (!axis)
 			continue;
-		for (int i=0; i<ax1->ntexts; i++)
-			adjust_addmargin(area, iort, side, ax1->text[i]->ro_area, addmargin);
+		struct kahto_figure *fig = axis->figure;
+		struct kahto_ticks *tk = axis->ticks;
+		if (!tk || !tk->visible || !tk->visible_labels)
+			continue;
+
+		const int *area = tk->ro_labelarea,
+			  iort = axis->direction == 'x',
+			  side = axis->pos >= 0.5;
+
+		/* y-axis labels might overlap with the title */
+		if (axis->direction == 'y' && fig->title.text && fig->title.text[0])
+			adjust_addmargin(area, iort, side, fig->title.ro_area, addmargin);
+
+		for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
+			struct kahto_axis *ax1 = fig->axis[iaxis];
+			if (ax1->direction == axis->direction)
+				continue;
+			for (int i=0; i<ax1->ntexts; i++)
+				adjust_addmargin(area, iort, side, ax1->text[i]->ro_area, addmargin);
+		}
+
+		if (addmargin[0] || addmargin[1]) {
+			axis->ro_margin_minmax[0] += addmargin[0];
+			axis->ro_margin_minmax[1] += addmargin[1];
+			if (axis_set_parallel_sizes(axis, 0))
+				return -1;
+			ret = 1;
+		}
 	}
+	return ret;
 }
 
-static void fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2], int *addmargin) {
+static int fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2]) {
+	int ret = 0;
 	for (int iaxis=0; iaxis<4; iaxis++) {
 		if (!axis_xyxy[iaxis])
 			continue;
 		struct kahto_ticks *tk = axis_xyxy[iaxis]->ticks;
 		if (!tk || !tk->visible)
 			continue;
-		int try = limits[iaxis][0] - tk->ro_labelarea[iaxis%2 + 0];
-		update_max(addmargin[addmargincoord(iaxis, 0)], try);
-		try = tk->ro_labelarea[iaxis%2 + 2] - limits[iaxis][1];
-		update_max(addmargin[addmargincoord(iaxis, 1)], try);
+		int add[] = {
+			limits[iaxis][0] - tk->ro_labelarea[iaxis%2 + 0],
+			tk->ro_labelarea[iaxis%2 + 2] - limits[iaxis][1],
+		};
+		char change = 0;
+		for (int iside=0; iside<2; iside++)
+			if (add[iside] > 0) {
+				axis_xyxy[iaxis]->ro_margin_minmax[iside] += add[iside];
+				change = 1;
+			}
+		if (change) {
+			if (axis_set_parallel_sizes(axis_xyxy[iaxis], 0))
+				return -1;
+			ret = 1;
+		}
 	}
+	return ret;
 }
 
 /* This will make people freak out. */
@@ -462,7 +499,8 @@ static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
 
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
-	memset(fig->ro_inner_margin, 0, sizeof(fig->ro_inner_margin));
+	for (int i=0; i<fig->naxis; i++)
+		memset(fig->axis[i]->ro_margin_minmax, 0, sizeof(fig->axis[i]->ro_margin_minmax));
 	if (!fig->ttra) {
 		struct kahto_figure *super = fig;
 		while (super->super) {
@@ -536,18 +574,15 @@ break0:
 	};
 
 	for (int i=0; i<fig->naxis; i++)
-		axis_set_parallel_sizes(fig->axis[i], 1); // may be needed in markers_on_edge
-	markers_on_edge(fig);
+		if (axis_set_parallel_sizes(fig->axis[i], 1)) // may be needed in room_for_markers_on_edge
+			return 1;
+
+	if (room_for_markers_on_edge(fig))
+		return 1;
 
 	/* This loop adjusts fig->ro_inner_margin so that axes and ticklabels etc.
 	   fit in the figure without overlapping. */
-	for (int iloop=0; iloop<30; iloop++) { // while (1) but avoid halting when something goes wrong
-		/* parallel size */
-		for (int i=0; i<fig->naxis; i++)
-			axis_set_parallel_sizes(fig->axis[i], 0);
-		/* if markertyle->size_in_[xy]axisunit, needed inner margin may have changed */
-		markers_on_edge(fig);
-
+	for (int iloop=0; iloop<300; iloop++) { // while (1) but avoid halting when something goes wrong
 		/*      ⁰⁰              ⁰¹
 		 *      ¹⁰    0 (x0)    ³⁰
 		 *        ┌────────────┐
@@ -561,22 +596,27 @@ break0:
 		 * Then it is converted to show, how many pixels the labelarea conflicts with other stuff
 		 * in the parallel directions.
 		 */
-
 		int limits[4][2] = {
 			{imargin0[0], fig->wh[0]-imargin0[2]},
 			{imargin0[1], fig->wh[1]-imargin0[3]},
 			{imargin0[0], fig->wh[0]-imargin0[2]},
 			{imargin0[1], fig->wh[1]-imargin0[3]},
-		},
-			addmargin[4] = {0};
-		/* Make sure everything fits into the figure. */
-		fit_to_figure(axis_xyxy, limits, addmargin);
+		};
 
-		for (int i=0; i<4; i++)
-			if (axis_xyxy[i])
-				set_addmargin_based_on_texts(axis_xyxy[i], addmargin);
+		/* Make sure everything fits to the figure. */
+		switch (fit_to_figure(axis_xyxy, limits)) {
+			case 0: break;
+			case 1: continue;
+			case -1: return 1;
+		}
 
-		/* These make sure that two axis do not conflict. */
+		/* Why not use limits here? Does this even have to be a separate function? */
+		switch (add_margin_based_on_texts(axis_xyxy)) {
+			case 0: break;
+			case 1: continue;
+			case -1: return 1;
+		}
+
 		for (int i=0; i<4; i++)
 			if (axis_xyxy[i])
 				get_parallel_limits(axis_xyxy[i], limits[i]);
@@ -585,41 +625,43 @@ break0:
 		for (int i=0; i<4; i++)
 			if (axis_xyxy[i])
 				limits_to_conflicts(axis_xyxy[i], limits[i]);
-		int margleft = 0, margright = 2, margtop = 1, margbottom = 3;
-		if (limits[0][0] || limits[0][0] < limits[1][0]) // top left
-			update_max(addmargin[margleft], limits[0][0]);
-		else update_max(addmargin[margtop], limits[1][0]);
 
-		if (limits[0][1] || limits[0][1] < limits[3][0]) // top right
-			update_max(addmargin[margright], limits[0][1]);
-		else update_max(addmargin[margtop], limits[3][0]);
+		/* in conflicting corners increase only that margin which needs less adjustment */
+		if (limits[0][0] > limits[1][0]) // top left
+			limits[0][0] = 0;
+		else limits[1][0] = 0;
 
-		if (limits[2][0] || limits[2][0] < limits[1][1]) // bottom left
-			update_max(addmargin[margleft], limits[2][0]);
-		else update_max(addmargin[margbottom], limits[1][1]);
+		if (limits[0][1] > limits[3][0]) // top right
+			limits[0][1] = 0;
+		else limits[3][0] = 0;
 
-		if (limits[2][1] || limits[2][1] < limits[3][1]) // bottom right
-			update_max(addmargin[margright], limits[2][1]);
-		else update_max(addmargin[margbottom], limits[3][1]);
+		if (limits[2][0] > limits[1][1]) // bottom left
+			limits[2][0] = 0;
+		else limits[1][1] = 0;
 
+		if (limits[2][1] > limits[3][1]) // bottom right
+			limits[2][1] = 0;
+		else limits[3][1] = 0;
+
+		char done = 1;
 		for (int i=0; i<4; i++)
-			if (addmargin[i]) {
-				for (; i<4; i++)
-					fig->ro_inner_margin[i] += addmargin[i];
-				goto next;
-			}
-		goto loop_done;
-next:
-		if (fig->ro_inner_margin[0] + fig->ro_inner_margin[2] >= axis_xywh[2] ||
-			fig->ro_inner_margin[1] + fig->ro_inner_margin[3] >= axis_xywh[3])
+			for (int ii=0; ii<2; ii++)
+				if (limits[i][ii]) {
+					done = 0;
+					axis_xyxy[i]->ro_margin_minmax[ii] += limits[i][ii];
+					if (axis_set_parallel_sizes(axis_xyxy[i], 0))
+						return 1;
+				}
+		if (done)
+			goto loop_done;
+
+		/* if markertyle->size_in_[xy]axisunit, needed inner margin may have changed */
+		if (room_for_markers_on_edge(fig))
 			return 1;
-	}
+
+	} // for iloop < maxloops
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
-
-	/* one more time now when inner_margin won't change anymore */
-	for (int i=0; i<fig->naxis; i++)
-		axis_set_parallel_sizes(fig->axis[i], 0);
 
 	legend_placement(fig);
 	texts_placement(fig);
@@ -648,6 +690,28 @@ end:
 
 #undef return
 
+static void align_axis_min(struct kahto_align *restrict a) {
+	int pos = 0;
+	for (int i=a->naxes-1; i>=0; i--)
+		update_max(a->axes[i]->ro_minmaxpos[0], pos);
+	for (int i=a->naxes-1; i>=0; i--)
+		if (a->axes[i]->ro_minmaxpos[0] < pos) {
+			a->axes[i]->ro_margin_minmax[0] += pos - a->axes[i]->ro_minmaxpos[0];
+			axis_set_parallel_sizes(a->axes[i], 0);
+		}
+}
+
+static void align_axis_max(struct kahto_align *restrict a) {
+	int pos = 0;
+	for (int i=a->naxes-1; i>=0; i--)
+		update_min(a->axes[i]->ro_minmaxpos[1], pos);
+	for (int i=a->naxes-1; i>=0; i--)
+		if (a->axes[i]->ro_minmaxpos[1] > pos) {
+			a->axes[i]->ro_margin_minmax[0] += a->axes[i]->ro_minmaxpos[0] - pos;
+			axis_set_parallel_sizes(a->axes[i], 0);
+		}
+}
+
 void kahto_layout(struct kahto_figure *fig) {
 	int pxmargin_xyxy[4];
 	/* first this figure because title and outside axes etc. affect subfigure sizes */
@@ -662,10 +726,17 @@ void kahto_layout(struct kahto_figure *fig) {
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((fig->subfigures[i]))
 			kahto_layout(fig->subfigures[i]);
-	if (fig->naligned_x)
-		align_inner_area(fig->aligned_x, fig->naligned_x, 0);
-	if (fig->naligned_y)
-		align_inner_area(fig->aligned_y, fig->naligned_y, 1); // this may cause a segfault
+
+	struct kahto_align *a = fig->ro_internal->align_min;
+	while (a) {
+		align_axis_min(a);
+		a = a->next;
+	}
+	a = fig->ro_internal->align_max;
+	while (a) {
+		align_axis_max(a);
+		a = a->next;
+	}
 
 	/* this figure again because subfigure sizes may change affecting this figure too */
 	if (kahto_figure_layout(fig, pxmargin_xyxy) && fig->fix_too_little_space) {

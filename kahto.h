@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 50
+#define __kahto_version_in_program 51
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -156,7 +156,7 @@ struct kahto_axis {
 	float pos;
 	double min, max,
 		   center; // works only for coloraxis
-	int range_isset, ro_line[4];
+	int range_isset;
 	enum kahto_feature feature;
 	struct kahto_ticks *ticks;
 	struct kahto_axistext **text;
@@ -167,8 +167,15 @@ struct kahto_axis {
 	float po[2]; // parallel and orthogonal lengths if this is a coloraxis
 	unsigned char *cmap;
 	int reverse_cmap;
+	/* │ <----------------ro_area[]----------------> │
+	   ┝━━━━━━━━━━━━━━━━━━┯━━━━━━━┯━━━━━━━━━━━━━━━━━━┥
+	   │  ro_margin_   minmax   minmax  ro_margin_   │
+	   │  minmax[0]    pos[0]   pos[1]  minmax[1]    │
+	   */
 	int ro_area[4]; // area of the finitely thick line
-	double ro_pix_per_unit; // How many pixels from 0 to 1. Only defined on linear scale, not e.g. logscale.
+	int ro_margin_minmax[2];
+	int ro_minmaxpos[2];
+	double ro_pix_per_unit; // Linear scale only. How many pixels from 0 to 1.
 };
 
 enum axistext_type {kahto_axistext_other, kahto_axistext_label, kahto_axistext_tickmul};
@@ -186,7 +193,7 @@ struct kahto_axistext {
 	int ro_area[4];
 };
 
-enum kahto_coords_reference {kahto_dataarea_e, kahto_figurearea_e, kahto_dataarea_inner_e};
+enum kahto_coords_reference {kahto_dataarea_e, kahto_figurearea_e};
 enum kahto_fill {kahto_no_fill_e, kahto_fill_bg_e, kahto_fill_color_e};
 enum kahto_placement {kahto_placement_none, kahto_placement_first, kahto_placement_singlemaxdist};
 enum kahto_topixels_reference {
@@ -298,6 +305,11 @@ struct kahto_colorscheme {
 
 struct ro_internal {
 	char subfiguresize_ready;
+	struct kahto_align {
+		struct kahto_axis **axes;
+		int naxes, owner;
+		struct kahto_align *next;
+	} *align_min, *align_max; // kahto_align_min
 };
 
 struct kahto_figure {
@@ -323,11 +335,9 @@ struct kahto_figure {
 	int naxis, mem_axis;
 	/* these figures share the same x- or y-coordinates
 	   after computing the layout, each size is changed according to the smallest x- or y-axis */
-	struct kahto_figure **aligned_x; int naligned_x;
-	struct kahto_figure **aligned_y; int naligned_y;
 	struct ttra *ttra;
 	char ttra_owner;
-	int ro_inner_xywh[4], ro_inner_margin[4], ro_corner[2];
+	int ro_inner_xywh[4], ro_corner[2];
 	float margin[4];
 	struct kahto_graph **graph;
 	int ngraph, mem_graph, icolor;
@@ -587,6 +597,9 @@ void kahto_destroy(struct kahto_figure *figure);
 void kahto_destroy_axis(struct kahto_axis *axis);
 void kahto_destroy_graph(struct kahto_graph*);
 struct kahto_axistext* kahto_add_axistext(struct kahto_axis *axis, struct kahto_axistext *text);
+/* figure must contain all axes in subfigures or directly */
+struct kahto_figure* kahto_align_min(struct kahto_figure*, struct kahto_axis **axes, int n, int listowner);
+struct kahto_figure* kahto_align_max(struct kahto_figure*, struct kahto_axis **axes, int n, int listowner);
 
 /* Available only if compiled with waylandhelper */
 struct kahto_figure* kahto_show_preserve_(struct kahto_figure *figure, char *name); // returns the input
