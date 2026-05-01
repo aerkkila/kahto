@@ -488,10 +488,9 @@ struct kahto_args {
 	.kahto_ylen=__VA_ARGS__	    \
 	})
 
-/* Manual call is needed, if parameters in ttra such as ttra->fonttype are modified before calling
-   the drawing or layout function which calls this automatically if necessary.
-   Manual call is also needed, if the ttra instance should not be shared with fig->super. */
-struct ttra* kahto_figure_ttra_new(struct kahto_figure *fig);
+/* If necessary, initializes a new fig->ttra or sets it from an ancestor if possible. */
+struct ttra* kahto_get_ttra(struct kahto_figure *fig);
+struct kahto_figure* kahto_darktheme(struct kahto_figure *fig);
 
 struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis);
 struct kahto_axis* kahto_axis_new(struct kahto_figure *figure, int x_or_y, float position);

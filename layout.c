@@ -502,18 +502,7 @@ everything_again_except_wh:
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	for (int i=0; i<fig->naxis; i++)
 		memset(fig->axis[i]->ro_margin_minmax, 0, sizeof(fig->axis[i]->ro_margin_minmax));
-	if (!fig->ttra) {
-		struct kahto_figure *super = fig;
-		while (super->super) {
-			super = super->super;
-			if (super->ttra) {
-				fig->ttra = super->ttra;
-				goto break0;
-			}
-		}
-		kahto_figure_ttra_new(fig);
-break0:
-	}
+	kahto_get_ttra(fig);
 	if (!fig->ttra->initialized)
 		ttra_init(fig->ttra);
 	if (fig->title.text) {

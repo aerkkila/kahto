@@ -210,6 +210,30 @@ unsigned* kahto_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *
 	return dest;
 }
 
+struct ttra* kahto_get_ttra(struct kahto_figure *fig) {
+	if (fig->ttra)
+		return fig->ttra;
+	struct kahto_figure *super = fig;
+	while (super->super) {
+		super = super->super;
+		if (super->ttra)
+			return fig->ttra = super->ttra;
+	}
+	return kahto_figure_ttra_new(fig);
+}
+
+struct kahto_figure* kahto_darktheme(struct kahto_figure *fig) {
+	fig->background = 0xff000000;
+	struct ttra *ttra = kahto_get_ttra(fig);
+	ttra->bg_default = 0xff000000;
+	ttra->fg_default = 0xffffffff;
+	for (int i=fig->naxis-1; i>=0; i--) {
+		fig->axis[i]->ticks->color = 0xffffffff;
+		fig->axis[i]->ticks->color1 = 0xffffffff;
+	}
+	return fig;
+}
+
 struct kahto_figure* kahto_set_wh(struct kahto_figure *fig, int w, int h) {
 	fig->wh[0] = fig->ro_wh0[0] = w;
 	fig->wh[1] = fig->ro_wh0[1] = h;
