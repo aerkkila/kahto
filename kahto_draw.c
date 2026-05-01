@@ -150,11 +150,11 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 		ttra->ystride = ystride;
 		ttra->x1 = figurewidth;
 		ttra->y1 = figureheight;
+		unsigned mem = ttra->fg_default;
 		ttra->fg_default = ticks->color;
-		ttra->bg_default = -1;
 		ttra_print(ttra, "\033[0m");
 		set_fontheight(figure, ticks->rowheight);
-		ttra->fg_default = 0xff<<24;
+		ttra->fg_default = mem;
 	}
 
 	int iort = ticks->axis->direction == 'x';
@@ -221,13 +221,13 @@ void kahto_draw_axistext(struct kahto_axistext *axistext, unsigned *canvas, int 
 	ttra->ystride = ystride;
 	ttra->x1 = figw;
 	ttra->y1 = figh;
+	unsigned mem = ttra->fg_default;
 	ttra->fg_default = axistext->axis->linestyle.color;
-	ttra->bg_default = -1;
 	ttra_print(ttra, "\033[0m");
 	set_fontheight(axistext->axis->figure, axistext->rowheight);
 	int *area = axistext->ro_area;
 	put_text(ttra, axistext->text.c, area[0], area[1], 0, 0, axistext->rotation_grad, area, 0);
-	ttra->fg_default = 0xff<<24;
+	ttra->fg_default = mem;
 }
 
 void _draw_coloraxis(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
@@ -354,8 +354,6 @@ void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystrid
 	ttra->ystride = ystride;
 	ttra->x1 = figure->wh[0];
 	ttra->y1 = figure->wh[1];
-	ttra->fg_default = 0xff<<24;
-	ttra->bg_default = -1;
 	ttra_printf(ttra, "\e[0m");
 
 	for (int i=0; i<figure->naxis; i++)

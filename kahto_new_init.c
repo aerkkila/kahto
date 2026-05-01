@@ -102,6 +102,8 @@ struct ttra* kahto_figure_ttra_new(struct kahto_figure *figure) {
 	figure->ttra = calloc(1, sizeof(struct ttra));
 	figure->ttra->fonttype = ttra_sans_e;
 	figure->ttra->chop_lines = 1;
+	figure->ttra->fg_default = 0xff000000;
+	figure->ttra->bg_default = 0;
 	figure->ttra_owner = 1;
 	return figure->ttra;
 }

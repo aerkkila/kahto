@@ -22,31 +22,48 @@ static int put_text(struct ttra *ttra, const char *text, int x, int y, float xal
 	if (area_out[0] < 0 || area_out[1] < 0)
 		return -1;
 
+	int ret = 0;
 	if (iround(rot*100'000) % (400*100'000)) {
-		uint32_t *canvas0 = ttra->canvas;
-		int ystride0 = ttra->ystride,
-			x10 = ttra->x1,
-			y10 = ttra->y1;
-
-		if (!(ttra->canvas = malloc(wh[0]*wh[1] * sizeof(uint32_t)))) {
-			warn("malloc %i * %i * %zu epäonnistui", wh[0], wh[1], sizeof(uint32_t));
-			return 1;
+		struct ttra ttra0 = *ttra;
+		unsigned *colors = malloc(wh[0]*wh[1] * 4);
+		unsigned char *alpha = NULL;
+		if (!colors) {
+			warn("malloc %i * %i * 4 epäonnistui", wh[0], wh[1]);
+			ret = 1;
+			goto done;
 		}
 		ttra_set_xy0(ttra, 0, 0);
 		ttra->ystride = ttra->x1 = wh[0];
 		ttra->y1 = wh[1];
 		ttra->clean_line = 1;
+		ttra->fullcolormode = 1;
+		ttra->canvas = colors;
+		ttra_print(ttra, text);
+		ttra->fullcolormode = 0;
+
+		alpha = calloc(1, wh[0]*wh[1]);
+		if (!alpha) {
+			warn("malloc %i * %i epäonnistui", wh[0], wh[1]);
+			*ttra = ttra0;
+			ret = 1;
+			goto done;
+		}
+		ttra_set_xy0(ttra, 0, 0);
+		ttra->ystride = ttra->x1 = wh[0];
+		ttra->y1 = wh[1];
+		ttra->clean_line = 1;
+		ttra->alphamode = 1;
+		ttra->canvas = (void*)alpha;
 		ttra_print(ttra, text);
 
-		rotate(canvas0, ystride0, area_out[0], area_out[1], x10-area_out[0], y10-area_out[1], ttra->canvas, wh[0], wh[1], rot);
+		rotate(ttra0.canvas, ttra0.ystride, area_out[0], area_out[1],
+			ttra0.x1-area_out[0], ttra0.y1-area_out[1], colors, alpha, wh[0], wh[1], rot);
 
-		free(ttra->canvas);
-		ttra->canvas = canvas0;
-		ttra->ystride = ystride0;
-		ttra->x1 = x10;
-		ttra->y1 = y10;
-		ttra->clean_line = 0;
-		return 0;
+done:
+		*ttra = ttra0;
+		free(colors);
+		free(alpha);
+		return ret;
 	}
 
 	ttra_set_xy0(ttra, area_out[0], area_out[1]);

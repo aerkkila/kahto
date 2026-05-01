@@ -1,22 +1,28 @@
-void rotate100(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
-	int tcpw = min(tw, fh),
-		tcph = min(th, fw);
-	for (int j=0; j<tcph; j++)
-		for (int i=0; i<tcpw; i++)
-			to[j*tostride+i] = from[(tcpw-i-1)*fw + j];
-}
-
-void rotate300(unsigned *to, int tostride, int tw, int th, const unsigned *from, int fw, int fh) {
-	int tcpw = min(tw, fh),
-		tcph = min(th, fw);
-	for (int j=0; j<tcph; j++)
-		for (int i=0; i<tcpw; i++)
-			to[j*tostride+i] = from[i*fw + tcph-j-1];
-}
-
 static inline void tocanvas(unsigned *ptr, int value, unsigned color);
 
-void get_rotated_area(float w, float h, float *restrict area, float rot_grad) {
+static void rotate100
+(unsigned *to, int tostride, int tw, int th, const unsigned *color, const unsigned char *alpha, int fw, int fh) {
+	int tcpw = min(tw, fh),
+		tcph = min(th, fw);
+	for (int j=0; j<tcph; j++)
+		for (int i=0; i<tcpw; i++) {
+			int ifrom = (tcpw-i-1)*fw + j;
+			tocanvas(to+j*tostride+i, alpha[ifrom], color[ifrom]);
+		}
+}
+
+static void rotate300
+(unsigned *to, int tostride, int tw, int th, const unsigned *color, const unsigned char *alpha, int fw, int fh) {
+	int tcpw = min(tw, fh),
+		tcph = min(th, fw);
+	for (int j=0; j<tcph; j++)
+		for (int i=0; i<tcpw; i++) {
+			int ifrom = i*fw + tcph-j-i;
+			tocanvas(to+j*tostride+i, alpha[ifrom], color[ifrom]);
+		}
+}
+
+static void get_rotated_area(float w, float h, float *restrict area, float rot_grad) {
 	if (iround(rot_grad*1000) % 400000 == 0) {
 		area[0] = 0;
 		area[1] = 0;
@@ -42,7 +48,29 @@ void get_rotated_area(float w, float h, float *restrict area, float rot_grad) {
 	}
 }
 
-static void laita(unsigned *to, int length, int tw, float y, float x, unsigned color) {
+static void update_alpha(unsigned char *to, unsigned char value) {
+	//value = value < 128 ? value*2 : 255;
+	float opacity0 = 1 - to[0]/255.0;
+	float opacity = opacity0 * (1 - value/255.0);
+	to[0] = iroundpos((1 - opacity) * 255);
+}
+
+static void update_color_and_alpha
+(unsigned *tocolor, unsigned color, unsigned char *toalpha, unsigned char alpha, int ind) {
+	if (toalpha[ind]) {
+		unsigned relative_alpha = alpha * 255 / toalpha[ind];
+		tocanvas(tocolor+ind, relative_alpha, color);
+		update_alpha(toalpha+ind, alpha);
+	}
+	else {
+		toalpha[ind] = alpha;
+		tocolor[ind] = color;
+	}
+}
+
+static void put_tmp_rot
+(unsigned *tocolor, unsigned color, unsigned char *toalpha, unsigned char alpha,
+ int length, int tw, float y, float x) {
 	float yx[] = {y, x};
 	int yxind0[2], yxind1[2];
 	float yxlength0[2], yxlength1[2];
@@ -62,35 +90,32 @@ static void laita(unsigned *to, int length, int tw, float y, float x, unsigned c
 
 	int ind = yxind0[0]*tw + yxind0[1];
 	if (ind >= 0 && ind < length) {
-		int value = round(255 * yxlength0[0] * yxlength0[1]);
-		value = value < 128 ? value*2 : 255;
-		tocanvas(to+ind, value, color);
+		unsigned char a = iroundpos(alpha * yxlength0[0] * yxlength0[1]);
+		update_color_and_alpha(tocolor, color, toalpha, a, ind);
 	}
 
 	ind = yxind0[0]*tw + yxind1[1];
 	if (ind >= 0 && ind < length) {
-		int value = round(255 * yxlength0[0] * yxlength1[1]);
-		value = value < 128 ? value*2 : 255;
-		tocanvas(to+ind, value, color);
+		unsigned char a = iroundpos(alpha * yxlength0[0] * yxlength1[1]);
+		update_color_and_alpha(tocolor, color, toalpha, a, ind);
 	}
 
 	ind = yxind1[0]*tw + yxind0[1];
 	if (ind >= 0 && ind < length) {
-		int value = round(255 * yxlength1[0] * yxlength0[1]);
-		value = value < 128 ? value*2 : 255;
-		tocanvas(to+ind, value, color);
+		unsigned char a = iroundpos(alpha * yxlength1[0] * yxlength0[1]);
+		update_color_and_alpha(tocolor, color, toalpha, a, ind);
 	}
 
 	ind = yxind1[0]*tw + yxind1[1];
 	if (ind >= 0 && ind < length) {
-		int value = round(255 * yxlength1[0] * yxlength1[1]);
-		tocanvas(to+ind, value, color);
+		unsigned char a = iroundpos(alpha * yxlength1[0] * yxlength1[1]);
+		update_color_and_alpha(tocolor, color, toalpha, a, ind);
 	}
 }
 
-void rotate(
+static void rotate(
 	unsigned *to, int ystride, int tox, int toy, int tw, int th,
-	const unsigned *from, int fw, int fh,
+	const unsigned *color, const unsigned char *alpha, int fw, int fh,
 	float rot_grad)
 {
 	to += toy*ystride + tox; // move the corner
@@ -100,8 +125,8 @@ void rotate(
 			irot += 400 * (-irot/400 + !!(irot%400));
 		else if (irot >= 400)
 			irot -= irot/400 * 400;
-		if (irot == 100) return rotate100(to, ystride, tw, th, from, fw, fh);
-		if (irot == 300) return rotate300(to, ystride, tw, th, from, fw, fh);
+		if (irot == 100) return rotate100(to, ystride, tw, th, color, alpha, fw, fh);
+		if (irot == 300) return rotate300(to, ystride, tw, th, color, alpha, fw, fh);
 	}
 
 	float si = sinf(rot_grad * 3.14159265358979 / 200);
@@ -111,27 +136,33 @@ void rotate(
 	get_rotated_area(fw, fh, area, rot_grad);
 	int new_w = area[2] - area[0] + 2;
 	int new_h = area[3] - area[1] + 2;
-	int apulen = new_w * new_h;
-	unsigned *apu = malloc(apulen * sizeof(unsigned));
-	memset(apu, -1, apulen * sizeof(unsigned)); // XXX -1 is wrong
+	int newlen = new_w * new_h;
 	int xshift = round(-area[0]);
 	int yshift = round(-area[1]);
-	/*int shift = round(-area[0]) + round(-area[1])*new_w; // tärkeä pyöristää erikseen
-	  apu += shift;*/
-	for (int y0=0; y0<fh; y0++) {
-		for (int x0=0; x0<fw; x0++) {
-			float x1 = (x0+0.5)*co - (y0+0.5)*si;
-			float y1 = (x0+0.5)*si + (y0+0.5)*co;
-			laita(apu, apulen, new_w, y1+yshift, x1+xshift, from[y0*fw + x0]);
-		}
-	}
+
+	unsigned char *alpharot = malloc(newlen);
+	memset(alpharot, 0, newlen);
+	unsigned *colorrot = malloc(newlen * sizeof(colorrot[0]));
+	for (int y0=0; y0<fh; y0++)
+		for (int x0=0; x0<fw; x0++)
+			if (alpha[y0*fw + x0]) {
+				float x1 = (x0+0.5)*co - (y0+0.5)*si;
+				float y1 = (x0+0.5)*si + (y0+0.5)*co;
+				put_tmp_rot(
+					colorrot, color[y0*fw + x0], alpharot, alpha[y0*fw + x0],
+					newlen, new_w, y1+yshift, x1+xshift);
+			}
 
 	int cpw = min(tw, new_w),
 		cph = min(th, new_h);
 	for (int j=0; j<cph; j++)
 		for (int i=0; i<cpw; i++)
-			if (apu[j*new_w+i] != -1)
-				to[j*ystride+i] = apu[j*new_w+i];
+			if (alpharot[j*new_w+i]) {
+				unsigned char a = alpharot[j*new_w+i];
+				a = a >= 128 ? 255 : 2*a;
+				tocanvas(to+j*ystride+i, a, colorrot[j*new_w+i]);
+			}
 
-	free(apu);
+	free(alpharot);
+	free(colorrot);
 }
