@@ -857,7 +857,7 @@ struct kahto_axistext* kahto_axislabel(struct kahto_axis *axis, const char *labe
 		.hvalign = {-0.5, -1.2 * (axis->pos < 0.5)},
 		.rowheight = (axis->ticks ? axis->ticks->rowheight : 2.4/80) * 1.3,
 		.axis = axis,
-		.rotation_grad = 300 * (axis->direction == 1),
+		.rotation_grad = 300 * (axis->direction == 'y'),
 		.type = kahto_axistext_label,
 	};
 	return kahto_add_axistext(axis, text);

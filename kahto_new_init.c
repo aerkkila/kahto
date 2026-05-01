@@ -21,7 +21,7 @@ struct kahto_axis* kahto_axis_init(struct kahto_axis *axis, int x_or_y, float po
 		.pos = pos,
 		.min = 0,
 		.max = 1,
-		.direction = x_or_y != 'x',
+		.direction = x_or_y,
 		.center = 0.0 / 0.0,
 	};
 	axis->ticks = kahto_ticks_new(axis);
@@ -39,7 +39,7 @@ struct kahto_axis* kahto_coloraxis_init(struct kahto_axis *axis, int x_or_y) {
 		.max = 1,
 		.cmap = cmh_colormaps[default_colormap].map,
 		.feature = kahto_color_e,
-		.direction = x_or_y != 'x',
+		.direction = x_or_y,
 		.outside = 1,
 		.pos = 1,
 		.po[0] = 1,
@@ -63,21 +63,21 @@ struct kahto_axis* kahto_featureaxis_new(struct kahto_figure *figure, int x_or_y
 	struct kahto_axis *axis = kahto_axis_void_new(figure);
 	axis->min = 0;
 	axis->max = 1;
-	axis->direction = x_or_y != 'x';
+	axis->direction = x_or_y,
 	axis->feature = feature;
 	return axis;
 }
 
 struct kahto_ticks* kahto_ticks_new(struct kahto_axis *axis) {
 	struct kahto_ticks *ticks = calloc(1, sizeof(struct kahto_ticks));
-	int ipar = axis->direction == 1;
+	int isy = axis->direction == 'y';
 	ticks->axis = axis;
 	ticks->color = 0xff<<24;
 	ticks->init = kahto_init_ticker_default;
 	ticks->length = 1.0 / 80;
-	ticks->xyalign_text[ipar] = -0.5;
-	ticks->xyalign_text[!ipar] = -1 * (axis->pos < 0.5);
-	ticks->tickerdata.lin.coef_newline = ipar;
+	ticks->xyalign_text[isy] = -0.5;
+	ticks->xyalign_text[!isy] = -1 * (axis->pos < 0.5);
+	ticks->tickerdata.lin.coef_newline = isy;
 
 	ticks->linestyle.thickness = 1.0 / 1200;
 	ticks->linestyle.color = RGB(0, 0, 0);

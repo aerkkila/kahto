@@ -159,7 +159,7 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 		ttra->fg_default = 0xff<<24;
 	}
 
-	int iort = ticks->axis->direction == 0;
+	int iort = ticks->axis->direction == 'x';
 	int isx = iort;
 	int line_px[4];
 	line_px[iort+0] = ticks->ro_lines[0];
@@ -237,7 +237,7 @@ void kahto_draw_axistext(struct kahto_axistext *axistext, unsigned *canvas, int 
 
 void _draw_coloraxis(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
 	const unsigned char *cmap = axis->cmap;
-	int isx = axis->direction == 0;
+	int isx = axis->direction == 'x';
 	int len = axis->ro_area[2+!isx] - axis->ro_area[0+!isx];
 	int len1 = axis->ro_area[2+isx] - axis->ro_area[0+isx];
 	unsigned char levels[len];
@@ -279,7 +279,7 @@ void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth,
 		my_isnan(axis->min) || my_isnan(axis->max)
 	)
 		return;
-	int isx = axis->direction == 0;
+	int isx = axis->direction == 'x';
 
 	if (axis->cmap)
 		_draw_coloraxis(axis, canvas, figurewidth, figureheight, ystride);
@@ -411,7 +411,7 @@ void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride)
 		if (!ticks || !ticks->gridstyle.style)
 			continue;
 		int nticks = ticks->tickerdata.common.nticks;
-		int isx = axis->direction == 0;
+		int isx = axis->direction == 'x';
 		const double axisdatamin = axis->min;
 		const double axisdatalen = axis->max - axisdatamin;
 		int gridline[4];

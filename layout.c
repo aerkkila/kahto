@@ -116,13 +116,13 @@ static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
 	if (my_isnan(axis->min) || my_isnan(axis->max))
 		return;
 	const int *xywh = axis->figure->ro_inner_xywh;
-	int ipar = axis->direction == 1;
+	int ipar = axis->direction == 'y';
 	axis->ro_line[ipar] = axis->ro_area[ipar] = xywh[ipar];
 	axis->ro_line[ipar+2] = axis->ro_area[ipar+2] = xywh[ipar] + xywh[ipar+2];
 
 	{
 		const int *margin = axis->figure->ro_inner_margin;
-		int isx = !axis->direction;
+		int isx = axis->direction == 'x';
 		int len = xywh[2+!isx] - margin[!isx] - margin[2+!isx];
 		double diff = axis->max - axis->min;
 		axis->ro_pix_per_unit = len / diff;
@@ -148,7 +148,7 @@ static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
 }
 
 static void get_parallel_limits(struct kahto_axis *axis, int *limits) {
-	int iort = axis->direction == 0;
+	int iort = axis->direction == 'x';
 	int ipar = !iort;
 	struct kahto_figure *fig = axis->figure;
 	int side = axis->pos >= 0.5;
@@ -192,7 +192,7 @@ void limits_to_conflicts(struct kahto_axis *axis, int *limits) {
 		limits[0] = limits[1] = 0;
 		return;
 	}
-	int a, ipar = axis->direction==1;
+	int a, ipar = axis->direction=='y';
 	a = limits[0] - axis->ticks->ro_labelarea[ipar];
 	limits[0] = a < 0 ? 0 : a;
 	a = axis->ticks->ro_labelarea[ipar+2] - limits[1];
@@ -327,7 +327,7 @@ static void _axis_texts_orthogonal(struct kahto_axis *axis, struct layout_ort_ar
 void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
 	if (axis->direction < 0)
 		return;
-	int isx = axis->direction == 0;
+	int isx = axis->direction == 'x';
 	int iort = isx;
 
 	struct layout_ort_args args = {
@@ -347,7 +347,7 @@ void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
 }
 
 /* add room for markers whose value is in the axis area but which are clipped partially */
-void kahto_make_inner_margin(struct kahto_figure *fig) {
+static void markers_on_edge(struct kahto_figure *fig) {
 	for (int i=0; i<fig->ngraph; i++) {
 		struct kahto_graph *graph = fig->graph[i];
 		int yxyx[4];
@@ -375,7 +375,7 @@ void kahto_make_inner_margin(struct kahto_figure *fig) {
 			double axisrange = axis->max - axis->min;
 			if (my_isnan(axisrange))
 				continue;
-			int axislen = fig->ro_inner_xywh[2+axis->direction];
+			int axislen = fig->ro_inner_xywh[2+(axis->direction=='y')];
 			/* This was derived using pen and paper. Reading this code might be challenging. */
 			float s0 = (max(axis->min, data->minmax[0]) - axis->min) / axisrange;
 			float s1 = (min(axis->max, data->minmax[1]) - axis->min) / axisrange;
@@ -386,14 +386,14 @@ void kahto_make_inner_margin(struct kahto_figure *fig) {
 			}
 			float m0_axis = (float)yxyx[iaxis] / axislen - innerfraction[0] * s0;
 			float m1_axis = 1 - (m0_axis + innerfraction[1]);
-			int backwards = axis->direction == 1; // y-axis
+			int backwards = axis->direction == 'y';
 			if (m0_axis > 0) {
 				int m0 = iroundpos(m0_axis * axislen);
-				update_max(fig->ro_inner_margin[axis->direction + 2*backwards], m0);
+				update_max(fig->ro_inner_margin[(axis->direction=='y') + 2*backwards], m0);
 			}
 			if (m1_axis > 0) {
 				int m1 = iroundpos(m1_axis * axislen);
-				update_max(fig->ro_inner_margin[axis->direction + 2*!backwards], m1);
+				update_max(fig->ro_inner_margin[(axis->direction=='y') + 2*!backwards], m1);
 			}
 		}
 	}
@@ -420,8 +420,8 @@ static void set_addmargin_based_on_texts(struct kahto_axis *axis, int *addmargin
 	if (!tk || !tk->visible || !tk->visible_labels)
 		return;
 	const int *area = tk->ro_labelarea,
-			   iort = axis->direction == 0, // 1, if x-axis
-			   ipar = axis->direction == 1, // 1, if y-axis
+			   iort = axis->direction == 'x',
+			   ipar = axis->direction == 'y',
 			   side = axis->pos >= 0.5;
 
 	/* y-axis labels might overlap with the title */
@@ -525,7 +525,7 @@ break0:
 		if (my_isnan(fig->axis[i]->min) || my_isnan(fig->axis[i]->max))
 			continue;
 		if (!fig->axis[i]->outside && ipos == fig->axis[i]->pos)
-			axis_xyxy[!!fig->axis[i]->direction + ipos*2] = fig->axis[i];
+			axis_xyxy[(fig->axis[i]->direction=='y') + ipos*2] = fig->axis[i];
 	}
 
 	int imargin0[] = {
@@ -536,8 +536,8 @@ break0:
 	};
 
 	for (int i=0; i<fig->naxis; i++)
-		axis_set_parallel_sizes(fig->axis[i], 1); // may be needed in kahto_make_inner_margin
-	kahto_make_inner_margin(fig);
+		axis_set_parallel_sizes(fig->axis[i], 1); // may be needed in markers_on_edge
+	markers_on_edge(fig);
 
 	/* This loop adjusts fig->ro_inner_margin so that axes and ticklabels etc.
 	   fit in the figure without overlapping. */
@@ -546,7 +546,7 @@ break0:
 		for (int i=0; i<fig->naxis; i++)
 			axis_set_parallel_sizes(fig->axis[i], 0);
 		/* if markertyle->size_in_[xy]axisunit, needed inner margin may have changed */
-		kahto_make_inner_margin(fig);
+		markers_on_edge(fig);
 
 		/*      ⁰⁰              ⁰¹
 		 *      ¹⁰    0 (x0)    ³⁰

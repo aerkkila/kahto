@@ -152,7 +152,7 @@ enum kahto_feature {kahto_position_e, kahto_color_e, kahto_alpha_e};
 
 struct kahto_axis {
 	struct kahto_figure *figure;
-	char direction, outside, visible, logscale; // direction: x=0, y=1
+	char direction, outside, visible, logscale; // direction: 'x' or 'y'
 	float pos;
 	double min, max,
 		   center; // works only for coloraxis
