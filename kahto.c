@@ -215,7 +215,7 @@ unsigned* kahto_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *
 	return dest;
 }
 
-struct kahto_figure* kahto_resize(struct kahto_figure *fig, int w, int h) {
+struct kahto_figure* kahto_set_wh(struct kahto_figure *fig, int w, int h) {
 	fig->wh[0] = fig->ro_wh0[0] = w;
 	fig->wh[1] = fig->ro_wh0[1] = h;
 	return fig;

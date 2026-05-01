@@ -53,7 +53,7 @@ static short get_datapx_log_inv_@dtype(const void *vdata, long ind, double axism
 static short get_datalevel_@dtype(const void *vdata, long ind, double *axislim, int axislen) {
 	const $dtype *data = vdata;
 	if (my_isnan(data[ind]))
-		return -1;
+		return NOT_A_PIXEL;
 	float pos = (data[ind]-axislim[0]) / (axislim[2]-axislim[0]);
 	if (pos < 0) pos = 0;
 	if (pos > 1) pos = 1;
@@ -63,7 +63,7 @@ static short get_datalevel_@dtype(const void *vdata, long ind, double *axislim, 
 static short get_datalevel_with_center_@dtype(const void *vdata, long ind, double *axislim, int axislen) {
 	const $dtype *data = vdata;
 	if (my_isnan(data[ind]))
-		return -1;
+		return NOT_A_PIXEL;
 	int side = data[ind] >= axislim[1];
 	float pos = (data[ind]-axislim[side]) / (axislim[side+1]-axislim[side]) + 0.5*side;
 	if (pos < 0) pos = 0;

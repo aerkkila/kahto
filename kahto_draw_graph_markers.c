@@ -228,8 +228,9 @@ void kahto_draw_graph_markers
 		else
 			yxz[1] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
 		yxz[1] += margin[0];
-		if (get_datalevel_fun)
-			yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255);
+		if (get_datalevel_fun && (
+				yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255)) == NOT_A_PIXEL)
+			continue;
 		if (!ysublen) {
 			yxz[0] = get_yxpx[0](ydata->data, ipoint*ystride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
 			if (yxz[0] == NOT_A_PIXEL)

@@ -517,6 +517,13 @@ struct kahto_figure* kahto_subfigures_margin(struct kahto_figure *fig, float xma
 struct kahto_figure* kahto_subfigures_text_new(const char *txt);
 
 struct kahto_figure* kahto_add_subfigures(struct kahto_figure *fig, int n);
+#define kahto_for_subfigures(super, sub, action) \
+	do for (int _ikahto=0; _ikahto<super->nsubfigures; _ikahto++) { \
+		if (super->subfigures[_ikahto]) { \
+			struct kahto_figure *sub = super->subfigures[_ikahto]; \
+			action; \
+		} \
+	} while(0)
 
 struct kahto_figure* kahto_plot_args(struct kahto_args *args);
 static inline struct kahto_figure* kahto_plot_inl(struct kahto_args args) {
@@ -657,7 +664,7 @@ void kahto_async_join(struct kahto_async **async, int n);
 
 /* To be used if figure is resized after the layout function is called (included in kahto_show, etc.)
    Earlier fig->wh can be adjusted straightly. */
-struct kahto_figure* kahto_resize(struct kahto_figure *fig, int width, int height);
+struct kahto_figure* kahto_set_wh(struct kahto_figure *fig, int width, int height);
 
 void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_make_range(struct kahto_figure *);

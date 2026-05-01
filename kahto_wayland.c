@@ -221,7 +221,7 @@ struct kahto_figure* kahto_show_preserve_(struct kahto_figure *fig, char *name) 
 
 		if (!wlh.can_redraw)
 			goto next;
-		kahto_resize(fig, wlh.xres, wlh.yres);
+		kahto_set_wh(fig, wlh.xres, wlh.yres);
 		int should_commit = 0;
 		if (wlh.redraw) {
 			kahto_draw(fig, wlh.data, fig->wh[0]);
