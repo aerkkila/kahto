@@ -119,7 +119,7 @@ static inline double __attribute__((pure)) tofpixels_marker(struct kahto_graph *
 		return graph->markerstyle.size * graph->yxaxis[1]->ro_pix_per_unit;
 	if (graph->markerstyle.size_in_yaxisunit)
 		return graph->markerstyle.size * graph->yxaxis[0]->ro_pix_per_unit;
-	return tofpixels(graph->markerstyle.size, graph->yxaxis[0]->figure);
+	return tofpixels(graph->markerstyle.size, graph->figure);
 }
 
 static inline int __attribute__((pure)) topixels_marker(struct kahto_graph *graph) {
