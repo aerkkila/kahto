@@ -19,24 +19,6 @@ static void get_axisarea(struct kahto_axis *ax, int area[4]) {
 		update_maxarea(area, ax->text[i]->ro_area);
 }
 
-/* Usually this returns the size of the whole figure.
-   Smaller, if e.g. a standalone coloraxis or a standalone legend is drawn,
-   because there is nothing which can expand to fill the whole figure.
-   Does not check subfigures. */
-static void get_used_area(struct kahto_figure *fig, int area[4]) {
-	memcpy(area, fig->legend.ro_xywh, sizeof(fig->legend.ro_xywh));
-	area[2] += area[0];
-	area[3] += area[1];
-	update_maxarea(area, fig->title.ro_area);
-
-	int help[4];
-	for (int iaxis=0; iaxis<fig->naxis; iaxis++)
-		if (fig->axis[iaxis]) {
-			get_axisarea(fig->axis[iaxis], help);
-			update_maxarea(area, help);
-		}
-}
-
 static int get_subfigures_area(struct kahto_figure *fig, int area[4]) {
 	int first = 1;
 	int help[4];
@@ -54,6 +36,43 @@ static int get_subfigures_area(struct kahto_figure *fig, int area[4]) {
 			update_maxarea(area, help);
 	}
 	return first;
+}
+
+/* Usually returned area is the size of the whole figure.
+   Smaller, if e.g. a standalone coloraxis or a standalone legend is drawn,
+   because there is nothing which can expand to fill the whole figure.
+   Returns whether the figure size should be changed to match returned area. */
+static int get_used_area(struct kahto_figure *fig, int area[4]) {
+	int cmp[4] = {0};
+	int adjust_size = !!fig->naxis; // adjust size if there is an axis
+	memcpy(area, fig->legend.ro_xywh, sizeof(fig->legend.ro_xywh));
+	if (memcmp(cmp, area, sizeof(cmp))) {
+		area[2] += area[0];
+		area[3] += area[1];
+		adjust_size = 1; // adjust size if there is a legend
+	}
+	update_maxarea(area, fig->title.ro_area); // don't adjust size for standalone titles
+
+	int help[4];
+	for (int iaxis=0; iaxis<fig->naxis; iaxis++)
+		if (fig->axis[iaxis]) {
+			get_axisarea(fig->axis[iaxis], help);
+			update_maxarea(area, help);
+		}
+
+	int areasub[4];
+	if (get_subfigures_area(fig, areasub))
+		return adjust_size;
+	adjust_size = 1; // adjust size according to the subfigures
+
+	if (!(area[2] || area[3])) {
+		memcpy(area, areasub, sizeof(areasub));
+		return adjust_size;
+	}
+
+	if (areasub[2] || areasub[3])
+		update_maxarea(area, areasub);
+	return adjust_size;
 }
 
 static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *tk, int ipar, int *edges_figpx) {
@@ -408,9 +427,8 @@ static void fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2], int *
 /* This will make people freak out. */
 #define return return fig->ro_cannot_draw =
 
-int kahto_figure_layout(struct kahto_figure *fig) {
+static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
 start:
-	int imargin_xyxy[4];
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	memset(fig->ro_inner_margin, 0, sizeof(fig->ro_inner_margin));
@@ -575,9 +593,8 @@ loop_done:
 		if (fig->graph[i]->data.list.ydata->length)
 			goto end;
 	int area[4];
-	get_used_area(fig, area);
-	if (!memcmp(area, (static int[4]){0}, sizeof(area)))
-		goto end; // the figure was probably a container for subfigures
+	if (!get_used_area(fig, area)) // returns false if size should not be changed
+		goto end;
 	int w = area[2] - area[0],
 		h = area[3] - area[1];
 	int wh_change = 0;
@@ -604,14 +621,15 @@ end:
 #undef return
 
 void kahto_layout(struct kahto_figure *fig) {
-start:
-	/* this figure first because ro_inner_xywh and other things are needed in subfigures */
-	if (kahto_figure_layout(fig) && fig->fix_too_little_space) {
+	int pxmargin_xyxy[4];
+	/* first this figure because title and outside axes etc. affect subfigure sizes */
+	if (kahto_figure_layout(fig, pxmargin_xyxy) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
-		kahto_figure_layout(fig);
+		kahto_figure_layout(fig, pxmargin_xyxy);
 	}
+	kahto_xywh_to_subfigures(fig, pxmargin_xyxy);
+
 	/* then subfigures */
-	kahto_xywh_to_subfigures(fig);
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((fig->subfigures[i]))
 			kahto_layout(fig->subfigures[i]);
@@ -620,28 +638,9 @@ start:
 	if (fig->naligned_y)
 		align_inner_area(fig->aligned_y, fig->naligned_y, 1); // this may cause a segfault
 
-	int area[4];
-	if (get_subfigures_area(fig, area))
-		return;
-	int area1[4];
-	get_used_area(fig, area1);
-	if (area1[2] || area1[3])
-		update_maxarea(area, area1);
-	int change = 0;
-	if (area[0] > 0) {
-		fig->wh[0] -= area[0];
-		change = 1;
+	/* this figure again because subfigure sizes may change affecting this figure too */
+	if (kahto_figure_layout(fig, pxmargin_xyxy) && fig->fix_too_little_space) {
+		fig->fix_too_little_space(fig);
+		kahto_figure_layout(fig, pxmargin_xyxy);
 	}
-	if (area[1] > 0) {
-		fig->wh[1] -= area[1];
-		change = 1;
-	}
-	if (area[2] - area[0] < fig->wh[0])
-		fig->wh[0] = area[2] - area[0];
-	if (area[3] - area[1] < fig->wh[1])
-		fig->wh[1] = area[3] - area[1];
-	if (change)
-		// to move items to top left
-		// could we just adjust fig->ro_corner instead?
-		goto start;
 }

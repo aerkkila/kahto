@@ -150,6 +150,7 @@ int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rhei
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
 static void align_inner_area(struct kahto_figure **figs, int naligned, int xy);
+static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargin_xyxy[4]);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -1056,23 +1057,26 @@ void kahto_grid_halfway_on_arbitrary(struct kahto_axis *ax) {
 	ax->ticks->length1 = 0;
 }
 
-static void subfigures_xywh_to_pixels(struct kahto_figure *fig, int islot, int px[4]) {
-	px[0] = iroundpos(fig->subfigures_xywh[islot][0] * fig->ro_inner_xywh[2]) + fig->ro_inner_xywh[0];
-	px[1] = iroundpos(fig->subfigures_xywh[islot][1] * fig->ro_inner_xywh[3]) + fig->ro_inner_xywh[1];
-	px[2] = iroundpos(fig->ro_inner_xywh[2] * fig->subfigures_xywh[islot][2]);
-	px[3] = iroundpos(fig->ro_inner_xywh[3] * fig->subfigures_xywh[islot][3]);
+static void subfigures_xywh_to_pixels(struct kahto_figure *fig, int islot, int px[4], const int *xywh) {
+	px[0] = iroundpos(fig->subfigures_xywh[islot][0] * xywh[2]) + xywh[0];
+	px[1] = iroundpos(fig->subfigures_xywh[islot][1] * xywh[3]) + xywh[1];
+	px[2] = iroundpos(fig->subfigures_xywh[islot][2] * xywh[2]);
+	px[3] = iroundpos(fig->subfigures_xywh[islot][3] * xywh[3]);
 	if (px[0] + px[2] > fig->wh[0])
 		px[2] = fig->wh[0] - px[0];
 	if (px[1] + px[3] > fig->wh[1])
 		px[3] = fig->wh[1] - px[1];
 }
 
-void kahto_xywh_to_subfigures(struct kahto_figure *fig) {
+static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargin_xyxy[4]) {
+	int xywh[4] = {pxmargin_xyxy[0], pxmargin_xyxy[1]};
+	xywh[2] = fig->wh[0] - pxmargin_xyxy[0] - pxmargin_xyxy[2];
+	xywh[3] = fig->wh[1] - pxmargin_xyxy[1] - pxmargin_xyxy[3];
 	for (int isub=0; isub<fig->nsubfigures; isub++) {
 		if (!fig->subfigures[isub])
 			continue;
 		int xywh_px[4];
-		subfigures_xywh_to_pixels(fig, isub, xywh_px);
+		subfigures_xywh_to_pixels(fig, isub, xywh_px, xywh);
 		fig->subfigures[isub]->wh[0] = xywh_px[2];
 		fig->subfigures[isub]->wh[1] = xywh_px[3];
 		fig->subfigures[isub]->ro_corner[0] = xywh_px[0];

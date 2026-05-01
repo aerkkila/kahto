@@ -651,12 +651,10 @@ void kahto_async_stop(struct kahto_async *async); // destroy without stop is eno
 void kahto_async_join(struct kahto_async **async, int n);
 
 void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride);
-int  kahto_figure_layout(struct kahto_figure *figure);
 void kahto_make_range(struct kahto_figure *);
 /* Figure is re-initialized as in kahto_figure_new(), except that ttra is preserved.
    This increases performance because initializing ttra is slow. */
 struct kahto_figure* kahto_clean(struct kahto_figure*);
-void kahto_xywh_to_subfigures(struct kahto_figure*);
 
 /* These are used automatically when necessary
    but user might need these in user-defined drawing functions, e.g. figure->update. */
