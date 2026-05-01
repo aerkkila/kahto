@@ -72,7 +72,8 @@ struct kahto_markerstyle {
 	const char* marker;	// 1. fixed order
 	float size;		// 2. fixed order
 	float nofill;	// 3. fixed order
-	int literal:1, count:1;
+	int literal:1, count:1,
+		size_in_xaxisunit:1, size_in_yaxisunit:1; // size x equals the distance from 0 to x in the axis
 	unsigned color;
 };
 
@@ -167,6 +168,7 @@ struct kahto_axis {
 	unsigned char *cmap;
 	int reverse_cmap;
 	int ro_area[4]; // area of the finitely thick line
+	double ro_pix_per_unit; // How many pixels from 0 to 1. Only defined on linear scale, not e.g. logscale.
 };
 
 enum axistext_type {kahto_axistext_other, kahto_axistext_label, kahto_axistext_tickmul};

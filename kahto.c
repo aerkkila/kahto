@@ -114,6 +114,18 @@ static inline int __attribute__((pure)) topixels(float size, struct kahto_figure
 	return iroundpos(tofpixels(size, figure));
 }
 
+static inline double __attribute__((pure)) tofpixels_marker(struct kahto_graph *graph) {
+	if (graph->markerstyle.size_in_xaxisunit)
+		return graph->markerstyle.size * graph->yxaxis[1]->ro_pix_per_unit;
+	if (graph->markerstyle.size_in_yaxisunit)
+		return graph->markerstyle.size * graph->yxaxis[0]->ro_pix_per_unit;
+	return tofpixels(graph->markerstyle.size, graph->yxaxis[0]->figure);
+}
+
+static inline int __attribute__((pure)) topixels_marker(struct kahto_graph *graph) {
+	return iroundpos(tofpixels_marker(graph));
+}
+
 static int set_fontheight(struct kahto_figure *figure, float size) {
 	return ttra_set_fontheight(figure->ttra, topixels(size*figure->fontheightmul, figure));
 }

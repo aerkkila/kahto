@@ -150,7 +150,7 @@ void kahto_draw_graph_markers
 	struct kahto_axis *caxis = graph->yxaxis[2];
 
 	int width, height, marker;
-	width = height = topixels(graph->markerstyle.size, fig);
+	width = height = topixels_marker(graph);
 	unsigned char bmap_buff[width*height];
 	args->bmap = kahto_data_marker_bmap(graph, bmap_buff, &marker, &width, &height);
 	args->mapw = width;
@@ -162,7 +162,7 @@ void kahto_draw_graph_markers
 
 	/* help for xdata */
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
-	double xpix_per_unit = yxlen[1] / yxdiff[1] * xstep;
+	double xpix_per_step = yxlen[1] / yxdiff[1] * xstep;
 	double x0data_axis = xdata->minmax[0] - yxmin[1];
 	/* help for zdata */
 	double caxislim[3] = {0/0.0, 0/0.0, 0/0.0};
@@ -226,7 +226,7 @@ void kahto_draw_graph_markers
 				continue;
 		}
 		else
-			yxz[1] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_unit);
+			yxz[1] = xoffset + iroundpos((x0data_axis + ipoint*xstep) *  xpix_per_step);
 		yxz[1] += margin[0];
 		if (get_datalevel_fun && (
 				yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255)) == NOT_A_PIXEL)

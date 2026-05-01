@@ -113,12 +113,21 @@ static void get_ticklabel_parallel_area(struct ttra *ttra, struct kahto_ticks *t
 }
 
 static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
-	if (!axis->visible || my_isnan(axis->min) || my_isnan(axis->max))
+	if (my_isnan(axis->min) || my_isnan(axis->max))
 		return;
 	const int *xywh = axis->figure->ro_inner_xywh;
 	int ipar = axis->direction == 1;
 	axis->ro_line[ipar] = axis->ro_area[ipar] = xywh[ipar];
 	axis->ro_line[ipar+2] = axis->ro_area[ipar+2] = xywh[ipar] + xywh[ipar+2];
+
+	{
+		const int *margin = axis->figure->ro_inner_margin;
+		int isx = !axis->direction;
+		int len = xywh[2+!isx] - margin[!isx] - margin[2+!isx];
+		double diff = axis->max - axis->min;
+		axis->ro_pix_per_unit = len / diff;
+	}
+
 	/* text->ro_area[parallel] already contains the limits around the zero point
 	   or further has been moved to correct place */
 	if (firsttime)
@@ -130,7 +139,7 @@ static void axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
 
 	struct kahto_figure *fig = axis->figure;
 	struct kahto_ticks *tk = axis->ticks;
-	if (!tk || !tk->visible)
+	if (!axis->visible || !tk || !tk->visible)
 		return;
 	int edges_figpx[] = {xywh[2+ipar], -xywh[2+ipar]};
 	get_ticklabel_parallel_area(fig->ttra, tk, ipar, edges_figpx);
@@ -344,15 +353,19 @@ void kahto_make_inner_margin(struct kahto_figure *fig) {
 		int yxyx[4];
 		if (graph->draw_marker_fun) {
 			struct kahto_draw_data_args args = {.yxyx_oversize_out=yxyx, .fig=fig, .graph=graph};
-			graph->draw_marker_fun(&args);
+			graph->draw_marker_fun(&args); // fills yxyx_oversize_out
 		}
 		else {
-			float size_marker = graph->markerstyle.size * !!kahto_visible_marker(graph->markerstyle.marker);
-			float size_line = graph->linestyle.thickness * (graph->linestyle.style != kahto_line_none_e);
-			float size = max(size_marker, size_line);
-			if (size <= 0)
+			int isize = 0;
+			if (graph->linestyle.style != kahto_line_none_e)
+				isize = topixels(graph->linestyle.thickness, fig);
+			if (kahto_visible_marker(graph->markerstyle.marker)) {
+				int a = topixels_marker(graph);
+				update_max(isize, a);
+			}
+			if (isize <= 0)
 				continue;
-			yxyx[0] = yxyx[1] = yxyx[2] = yxyx[3] = topixels(size/2, fig);
+			yxyx[0] = yxyx[1] = yxyx[2] = yxyx[3] = isize/2;
 		}
 		for (int iaxis=0; iaxis<2; iaxis++) {
 			struct kahto_axis *axis = graph->yxaxis[iaxis];
@@ -522,6 +535,8 @@ break0:
 		topixels(fig->margin[3], fig),
 	};
 
+	for (int i=0; i<fig->naxis; i++)
+		axis_set_parallel_sizes(fig->axis[i], 1); // may be needed in kahto_make_inner_margin
 	kahto_make_inner_margin(fig);
 
 	/* This loop adjusts fig->ro_inner_margin so that axes and ticklabels etc.
@@ -529,7 +544,9 @@ break0:
 	for (int iloop=0; iloop<30; iloop++) { // while (1) but avoid halting when something goes wrong
 		/* parallel size */
 		for (int i=0; i<fig->naxis; i++)
-			axis_set_parallel_sizes(fig->axis[i], iloop==0);
+			axis_set_parallel_sizes(fig->axis[i], 0);
+		/* if markertyle->size_in_[xy]axisunit, needed inner margin may have changed */
+		kahto_make_inner_margin(fig);
 
 		/*      ⁰⁰              ⁰¹
 		 *      ¹⁰    0 (x0)    ³⁰
@@ -599,6 +616,10 @@ next:
 	}
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
+
+	/* one more time now when inner_margin won't change anymore */
+	for (int i=0; i<fig->naxis; i++)
+		axis_set_parallel_sizes(fig->axis[i], 0);
 
 	legend_placement(fig);
 	texts_placement(fig);
