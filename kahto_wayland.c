@@ -190,7 +190,7 @@ new_copy:
 	copy.linestyle.thickness *= 3;
 	copy.markerstyle.size *= 3;
 	copy.errstyle.thickness *= 3;
-	uint32_t *canvas = wlh->data + hl->canvascopy_start;//kahto_get_startcanvas(hl->fig, cookie->fig, wlh->xres);
+	uint32_t *canvas = wlh->data + hl->canvascopy_start;
 	kahto_draw_graph(&copy, canvas, wlh->xres, hl->fig, 0);
 }
 
@@ -221,8 +221,7 @@ struct kahto_figure* kahto_show_preserve_(struct kahto_figure *fig, char *name) 
 
 		if (!wlh.can_redraw)
 			goto next;
-		fig->wh[0] = wlh.xres;
-		fig->wh[1] = wlh.yres;
+		kahto_resize(fig, wlh.xres, wlh.yres);
 		int should_commit = 0;
 		if (wlh.redraw) {
 			kahto_draw(fig, wlh.data, fig->wh[0]);

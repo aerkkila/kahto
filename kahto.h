@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 48
+#define __kahto_version_in_program 49
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -275,8 +275,12 @@ struct kahto_colorscheme {
 	char without_ends, owner;
 };
 
+struct ro_internal {
+	char subfiguresize_ready;
+};
+
 struct kahto_figure {
-	int draw_counter, wh[2];
+	int draw_counter, wh[2], ro_wh0[2];
 	unsigned background;
 	struct waylandhelper *wlh;
 	char *name; /* window title (kahto_show) or filename (kahto_write_png) */
@@ -333,6 +337,7 @@ struct kahto_figure {
 	} legend;
 
 	struct kahto_async *async;
+	struct ro_internal *ro_internal;
 };
 
 struct kahto_args {
@@ -649,6 +654,10 @@ int kahto_async_running(struct kahto_async *async);
 void kahto_async_stop(struct kahto_async *async); // destroy without stop is enough
 /* waits for all n threads to terminate and destroys them */
 void kahto_async_join(struct kahto_async **async, int n);
+
+/* To be used if figure is resized after the layout function is called (included in kahto_show, etc.)
+   Earlier fig->wh can be adjusted straightly. */
+struct kahto_figure* kahto_resize(struct kahto_figure *fig, int width, int height);
 
 void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_make_range(struct kahto_figure *);

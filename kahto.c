@@ -92,13 +92,13 @@ static inline float __attribute__((pure)) _tofpixels(float size, struct kahto_fi
 	switch (figure->topixels_reference) {
 		default:
 		case kahto_total_height:
-			return size * (float)get_toplevel_figure(figure)->wh[1];
+			return size * (float)get_toplevel_figure(figure)->ro_wh0[1];
 		case kahto_this_height:
-			return size * (float)figure->wh[1];
+			return size * (float)figure->ro_wh0[1];
 		case kahto_total_width:
-			return size * (float)get_toplevel_figure(figure)->wh[0];
+			return size * (float)get_toplevel_figure(figure)->ro_wh0[0];
 		case kahto_this_width:
-			return size * (float)figure->wh[0];
+			return size * (float)figure->ro_wh0[0];
 		case kahto_fixed_size:
 			return size * figure->topixels_fixed_size;
 	}
@@ -213,6 +213,12 @@ unsigned* kahto_make_colorscheme_from_cmap(unsigned *dest, const unsigned char *
 		indf += step;
 	}
 	return dest;
+}
+
+struct kahto_figure* kahto_resize(struct kahto_figure *fig, int w, int h) {
+	fig->wh[0] = fig->ro_wh0[0] = w;
+	fig->wh[1] = fig->ro_wh0[1] = h;
+	return fig;
 }
 
 long kahto_get_startcanvas(struct kahto_figure *fig, struct kahto_figure *dest, int ystride) {
@@ -895,6 +901,7 @@ struct kahto_figure* kahto_destroy_single(struct kahto_figure *fig) {
 	/* Subfigures must be destroyed already or referenced by other pointers. */
 	free(fig->subfigures);
 	free(fig->subfigures_xywh);
+	free(fig->ro_internal);
 
 	for (int i=0; i<fig->naxis; i++)
 		kahto_destroy_axis(fig->axis[i]);
@@ -1070,8 +1077,8 @@ static void subfigures_xywh_to_pixels(struct kahto_figure *fig, int islot, int p
 
 static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargin_xyxy[4]) {
 	int xywh[4] = {pxmargin_xyxy[0], pxmargin_xyxy[1]};
-	xywh[2] = fig->wh[0] - pxmargin_xyxy[0] - pxmargin_xyxy[2];
-	xywh[3] = fig->wh[1] - pxmargin_xyxy[1] - pxmargin_xyxy[3];
+	xywh[2] = fig->ro_wh0[0] - pxmargin_xyxy[0] - pxmargin_xyxy[2];
+	xywh[3] = fig->ro_wh0[1] - pxmargin_xyxy[1] - pxmargin_xyxy[3];
 	for (int isub=0; isub<fig->nsubfigures; isub++) {
 		if (!fig->subfigures[isub])
 			continue;
@@ -1082,7 +1089,9 @@ static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargi
 		fig->subfigures[isub]->ro_corner[0] = xywh_px[0];
 		fig->subfigures[isub]->ro_corner[1] = xywh_px[1];
 		fig->subfigures[isub]->super = fig;
+		memcpy(fig->subfigures[isub]->ro_wh0, fig->subfigures[isub]->wh, sizeof(fig->wh));
 	}
+	fig->ro_internal->subfiguresize_ready = 1;
 }
 
 void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride) {

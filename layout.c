@@ -60,18 +60,21 @@ static int get_used_area(struct kahto_figure *fig, int area[4]) {
 			update_maxarea(area, help);
 		}
 
-	int areasub[4];
-	if (get_subfigures_area(fig, areasub))
-		return adjust_size;
-	adjust_size = 1; // adjust size according to the subfigures
+	if (fig->ro_internal->subfiguresize_ready) {
+		int areasub[4];
+		if (get_subfigures_area(fig, areasub))
+			return adjust_size;
+		adjust_size = 1; // adjust size according to the subfigures
 
-	if (!(area[2] || area[3])) {
-		memcpy(area, areasub, sizeof(areasub));
-		return adjust_size;
+		if (!(area[2] || area[3])) {
+			memcpy(area, areasub, sizeof(areasub));
+			return adjust_size;
+		}
+
+		if (areasub[2] || areasub[3])
+			update_maxarea(area, areasub);
 	}
 
-	if (areasub[2] || areasub[3])
-		update_maxarea(area, areasub);
 	return adjust_size;
 }
 
@@ -428,7 +431,11 @@ static void fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2], int *
 #define return return fig->ro_cannot_draw =
 
 static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
-start:
+	if (*(long*)fig->ro_wh0)
+		memcpy(fig->wh, fig->ro_wh0, sizeof(fig->wh));
+	else
+		memcpy(fig->ro_wh0, fig->wh, sizeof(fig->wh));
+
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	memset(fig->ro_inner_margin, 0, sizeof(fig->ro_inner_margin));
@@ -597,22 +604,11 @@ loop_done:
 		goto end;
 	int w = area[2] - area[0],
 		h = area[3] - area[1];
-	int wh_change = 0;
 
-	float reference_size = _tofpixels(1, fig);
 	if (w < fig->wh[0])
-		fig->wh[0] = w,
-			wh_change = 1;
+		fig->wh[0] = w;
 	if (h < fig->wh[1])
-		fig->wh[1] = h,
-			wh_change = 1;
-	if (wh_change) {
-		fig->topixels_fixed_size = reference_size; // size of object stays the same
-		fig->topixels_reference = kahto_fixed_size;
-		if (area[0] > 0 || area[1] > 0)
-			goto start; // to move items to top left
-						// could we just adjust fig->ro_corner instead?
-	}
+		fig->wh[1] = h;
 
 end:
 	return 0;
@@ -623,6 +619,7 @@ end:
 void kahto_layout(struct kahto_figure *fig) {
 	int pxmargin_xyxy[4];
 	/* first this figure because title and outside axes etc. affect subfigure sizes */
+	fig->ro_internal->subfiguresize_ready = 0;
 	if (kahto_figure_layout(fig, pxmargin_xyxy) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
 		kahto_figure_layout(fig, pxmargin_xyxy);

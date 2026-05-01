@@ -60,7 +60,7 @@ kahto.o: kahto.c $(kahto_sources) config.mk
 libkahto.so: kahto.c $(kahto_sources) $(OBJECTS) config.mk
 	$(CC) $(CFLAGS_LIB) -o $@ $< $(OBJECTS) $(LDLIBS)
 
-libkahto-ffmpeg.so: kahto_ffmpeg.c kahto_mkdir.c config.mk
+libkahto-ffmpeg.so: kahto_ffmpeg.c kahto_mkdir.c kahto.h config.mk
 	$(CC) $(CFLAGS_LIB) -o $@ $< -lavcodec -lavutil -lavformat
 
 functions.c: make_functions.pl functions.in.c
