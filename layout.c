@@ -341,11 +341,19 @@ void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
 void kahto_make_inner_margin(struct kahto_figure *fig) {
 	for (int i=0; i<fig->ngraph; i++) {
 		struct kahto_graph *graph = fig->graph[i];
-		float size_marker = graph->markerstyle.size * !!kahto_visible_marker(graph->markerstyle.marker);
-		float size_line = graph->linestyle.thickness * (graph->linestyle.style != kahto_line_none_e);
-		float size = max(size_marker, size_line);
-		if (size <= 0)
-			continue;
+		int yxyx[4];
+		if (graph->draw_marker_fun) {
+			struct kahto_draw_data_args args = {.yxyx_oversize_out=yxyx, .fig=fig, .graph=graph};
+			graph->draw_marker_fun(&args);
+		}
+		else {
+			float size_marker = graph->markerstyle.size * !!kahto_visible_marker(graph->markerstyle.marker);
+			float size_line = graph->linestyle.thickness * (graph->linestyle.style != kahto_line_none_e);
+			float size = max(size_marker, size_line);
+			if (size <= 0)
+				continue;
+			yxyx[0] = yxyx[1] = yxyx[2] = yxyx[3] = topixels(size/2, fig);
+		}
 		for (int iaxis=0; iaxis<2; iaxis++) {
 			struct kahto_axis *axis = graph->yxaxis[iaxis];
 			if (!axis)
@@ -358,10 +366,13 @@ void kahto_make_inner_margin(struct kahto_figure *fig) {
 			/* This was derived using pen and paper. Reading this code might be challenging. */
 			float s0 = (max(axis->min, data->minmax[0]) - axis->min) / axisrange;
 			float s1 = (min(axis->max, data->minmax[1]) - axis->min) / axisrange;
-			float size05_axis = tofpixels(size, fig)*0.5 / axislen;
-			float innerfraction = (1 - 2 * size05_axis) / (s1 - s0);
-			float m0_axis = size05_axis - innerfraction * s0;
-			float m1_axis = 1 - (m0_axis + innerfraction);
+			float innerfraction[2];
+			for (int iside=0; iside<2; iside++) {
+				float size = (float)yxyx[iaxis+iside*2] / axislen;
+				innerfraction[iside] = (1 - 2 * size) / (s1 - s0);
+			}
+			float m0_axis = (float)yxyx[iaxis] / axislen - innerfraction[0] * s0;
+			float m1_axis = 1 - (m0_axis + innerfraction[1]);
 			int backwards = axis->direction == 1; // y-axis
 			if (m0_axis > 0) {
 				int m0 = iroundpos(m0_axis * axislen);

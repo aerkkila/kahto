@@ -10,9 +10,17 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 	if (!bargs)
 		bargs = &bargs_;
 	int boxw = topixels(bargs->boxwidth ? bargs->boxwidth : 0.02, args->fig);
+
+	if (args->yxyx_oversize_out) {
+		args->yxyx_oversize_out[1] = boxw/2;
+		args->yxyx_oversize_out[3] = boxw - boxw/2;
+		args->yxyx_oversize_out[0] = args->yxyx_oversize_out[2] = 0;
+		return;
+	}
+
 	int linew = topixels(bargs->linewidth ? bargs->linewidth : 0.003, args->fig);
 	int mlinew = topixels(bargs->linewidth ? bargs->mlinewidth : 0.003, args->fig);
-	int area[] = {0, 0, args->fig->wh[1], args->fig->wh[0]};
+	int area[] = {0, 0, args->fig->wh[0], args->fig->wh[1]};
 	int *xzy = args->yxz;
 	int ydirection = xzy[2+1] < xzy[2+3];
 
@@ -25,7 +33,7 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 		};
 		kahto_fill_box(args->canvas, args->ystride, xyxy, args->color);
 
-		xyxy[1] = xyxy[3] = xzy[2+2];
+		xyxy[1] = xyxy[3] = xzy[2+2]; // midline
 		kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->fig->background, mlinew, area);
 	}
 
@@ -39,6 +47,58 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 	xyxy[1] = xzy[2+3];
 	xyxy[3] = xzy[2+4];
 	kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, linew, area);
+}
+
+/* can be given by user to graph->draw_marker_fun */
+void kahto_draw_violin(struct kahto_draw_data_args *args) {
+	struct kahto_draw_violin_args *bargs = args->graph->draw_marker_fun_args;
+	struct kahto_draw_violin_args bargs_ = {0};
+	if (!bargs)
+		bargs = &bargs_;
+	const int *restrict lim = args->xywh_limits;
+
+	int mem = args->fig->topixels_reference;
+	if (bargs->topixels_reference)
+		args->fig->topixels_reference = bargs->topixels_reference;
+	int violinw = topixels(bargs->width ? bargs->width : 0.08, args->fig);
+	args->fig->topixels_reference = mem;
+
+	if (args->yxyx_oversize_out) {
+		args->yxyx_oversize_out[1] = violinw - violinw/2;
+		args->yxyx_oversize_out[3] = violinw/2;
+		args->yxyx_oversize_out[0] = args->yxyx_oversize_out[2] = 0;
+		return;
+	}
+
+	int area[] = xywh_to_area(lim);
+	int *xzy = args->yxz;
+	int *ydata = xzy+2;
+
+	int *w = calloc(lim[3] * sizeof(w[1]), 1);
+	for (int i=0; i<args->sublength; i++) {
+		if (area[1] <= ydata[i] && ydata[i] < area[3])
+			++w[ydata[i]-area[1]];
+	}
+	int maxw = 0;
+	for (int i=0; i<lim[3]; i++)
+		if (w[i] > maxw)
+			maxw = w[i];
+	double scale = (double)violinw / maxw;
+
+	for (int i=0; i<lim[3]; i++) {
+		if (!w[i])
+			continue;
+		int xyxy[] = {
+			xzy[0]+violinw/2,
+			i+area[1],
+			xzy[0]+violinw/2-w[i]*scale,
+			i+area[1],
+		};
+		if (xyxy[0] != xyxy[2])
+			kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, 1, area);
+	}
+
+	free(w);
 }
 
 /* start is unused */

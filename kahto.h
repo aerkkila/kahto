@@ -48,8 +48,8 @@ enum kahto_linestyle_e {
 	kahto_line_future_e, // This will be the default in future, but doesn't work well enough yet.
 };
 
-/* fixed order means changing the order of the fields will be avoided in future updates.
-   Therefore, one can quite safely fill the struct by referring only to the first field by name.
+/* fixed order means that changing the order of the fields will be avoided in future updates.
+   Therefore, one can quite safely fill the struct by using a named reference only once in the fixed order.
    E.g. struct kahto_markerstyle mstyle = {.marker="x", 0.01,};
    */
 
@@ -185,6 +185,10 @@ struct kahto_axistext {
 };
 
 enum kahto_coords_reference {kahto_dataarea_e, kahto_figurearea_e, kahto_dataarea_inner_e};
+enum kahto_fill {kahto_no_fill_e, kahto_fill_bg_e, kahto_fill_color_e};
+enum kahto_placement {kahto_placement_none, kahto_placement_first, kahto_placement_singlemaxdist};
+enum kahto_topixels_reference {kahto_total_height=1, kahto_total_width,
+	kahto_this_height, kahto_this_width, kahto_fixed_size};
 
 struct kahto_text {
 	const char *text; // const will be discarded on destroy, if owner
@@ -206,7 +210,16 @@ struct kahto_data {
 	struct kahto_data *prev, *next;
 };
 
+/* This is needed if user defines a graph->draw_marker_fun */
 struct kahto_draw_data_args {
+	/* Used in graph->draw_marker_fun to get the number of pixels,
+	   which the marker goes to each direction from the given coordinate.
+	   If this is given, the function should only fill this and return.
+	   graph and fig are set in that case but not other fields. */
+	int *yxyx_oversize_out;
+
+	struct kahto_graph *graph;
+	struct kahto_figure *fig;
 	uint32_t *canvas;
 	unsigned *canvascount;
 	int ystride;
@@ -216,24 +229,31 @@ struct kahto_draw_data_args {
 	uint32_t *colors;
 	int ncolors, ipoint;
 
-	// if sublength, then xz(y[sublength]) instead of yxz,
-	// there should be a user-given drawing function in that case
+	// If sublength, then xz(y[sublength]) instead of yxz.
+	// There should be a user-given drawing function in that case in graph->draw_marker_fun
+	// It can be one of the functions below, or a user-defined one.
 	int *yxz, sublength;
 	const unsigned char *cmap;
 	char reverse_cmap;
 
 	unsigned char *bmap;
 	int mapw, maph;
-
-	struct kahto_graph *graph;
-	struct kahto_figure *fig;
 };
 
-/* if draw_marker_fun = kahto_draw_boxmarker_,
-   then this is draw_marker_fun_args */
+/* If draw_marker_fun = kahto_draw_boxmarker_,
+   then this is graph->draw_marker_fun_args. Not mandatory. */
 struct kahto_draw_boxmarker_args {
 	float boxwidth, linewidth, mlinewidth;
 };
+void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args);
+
+/* If draw_marker_fun = kahto_draw_violin,
+   then this is graph->draw_marker_fun_args. Not mandatory. */
+struct kahto_draw_violin_args {
+	float width;
+	enum kahto_topixels_reference topixels_reference; // override the default
+};
+void kahto_draw_violin(struct kahto_draw_data_args *args);
 
 struct kahto_graph {
 	union {
@@ -262,11 +282,6 @@ struct kahto_graph {
 			 exact : 1, // only needed with colormesh
 			 legend_coloronly : 1;
 };
-
-enum kahto_fill {kahto_no_fill_e, kahto_fill_bg_e, kahto_fill_color_e};
-enum kahto_placement {kahto_placement_none, kahto_placement_first, kahto_placement_singlemaxdist};
-enum kahto_topixels_reference {kahto_total_height, kahto_total_width,
-	kahto_this_height, kahto_this_width, kahto_fixed_size};
 
 /* fixed order */
 struct kahto_colorscheme {
@@ -641,9 +656,6 @@ void kahto_init_ticker_arbitrary_relcoord(struct kahto_ticks *this, double min, 
 void kahto_init_ticker_log(struct kahto_ticks *this, double min, double max);
 
 void kahto_grid_halfway_on_arbitrary(struct kahto_axis *ax); // can be used with arbitrary_datacoord_enum
-
-/* can be given by user to graph->draw_marker_fun */
-void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args);
 
 struct kahto_async {
 	struct kahto_figure *figure;
