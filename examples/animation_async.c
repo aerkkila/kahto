@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 		   It retuns true for example if user has interactively closed the figure.
 		   In that case, we must exit.
 		   The function will wait until the thread confirms that locking is ready. */
-		if (kahto_async_lock(async))
+		if (kahto_async_lock(async, 0))
 			break;
 
 		/* now we can update the figure */

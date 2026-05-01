@@ -20,18 +20,22 @@ static int async_update(struct kahto_async *async, uint32_t *canvas, int ystride
 		return 0;
 	}
 	async->_lock = async_response;
-	while (async->_lock == async_response)
-		usleep(3000);
+	unsigned sleeptime = async->sleeptime_locked_microsec;
+	if (sleeptime)
+		while (async->_lock == async_response)
+			usleep(sleeptime);
+	else
+		while (async->_lock == async_response);
 	return 1;
 }
 
 #ifndef include_async_staticonly
-int kahto_async_lock(struct kahto_async *async) {
+int kahto_async_lock(struct kahto_async *async, unsigned wait_sleeptime_microsec) {
 	async->_lock = async_request;
 	while (async->_lock != async_response) {
 		if (!kahto_async_running(async))
 			return 1;
-		usleep(10);
+		usleep(wait_sleeptime_microsec);
 	}
 	return 0;
 }

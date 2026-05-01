@@ -681,11 +681,12 @@ struct kahto_async {
 	struct kahto_figure *figure;
 	uint32_t *canvas;
 	int ystride;
+	unsigned sleeptime_locked_microsec;
 	pthread_t _thread;
 	signed char _lock, _exit;
 	float _fps;
 };
-int kahto_async_lock(struct kahto_async *async);
+int kahto_async_lock(struct kahto_async *async, unsigned wait_sleeptime_microsec);
 void kahto_async_unlock(struct kahto_async *async);
 void kahto_async_unlock_step(struct kahto_async *async);
 void kahto_async_destroy(struct kahto_async *async);
