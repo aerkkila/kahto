@@ -229,8 +229,17 @@ struct kahto_figure* kahto_darktheme(struct kahto_figure *fig) {
 	ttra->fg_default = 0xffffffff;
 	for (int i=fig->naxis-1; i>=0; i--) {
 		fig->axis[i]->ticks->color = 0xffffffff;
+		fig->axis[i]->ticks->linestyle.color = 0xffffffff;
 		fig->axis[i]->ticks->color1 = 0xffffffff;
+		fig->axis[i]->ticks->linestyle1.color = 0xff999999;
+		fig->axis[i]->ticks->gridstyle.color = 0xff333333;
+		fig->axis[i]->linestyle.color = -1;
 	}
+	for (int i=0; i<arrlen(kahto_colorschemes); i++)
+		for (int ii=0; ii<kahto_ncolors[i]; ii++)
+			if (kahto_colorschemes[i][ii] == 0xff000000)
+				kahto_colorschemes[i][ii] = -1;
+	fig->legend.borderstyle.color = -1;
 	return fig;
 }
 
