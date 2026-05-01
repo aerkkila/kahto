@@ -684,11 +684,7 @@ static void text_placement(struct kahto_figure *fig, struct kahto_text *text) {
 	if (text->rowheight == 0)
 		text->rowheight = fig->legend.rowheight;
 	set_fontheight(fig, text->rowheight);
-	put_text(fig->ttra, text->text, 0, 0, 0, 0, text->rotation_grad, area, 1); // get textsize
-	float move_xy[] = {
-		area[2] * text->hvalign[0],
-		area[3] * text->hvalign[1],
-	};
+	put_text(fig->ttra, text->text, 0, 0, text->hvalign[0], text->hvalign[1], text->rotation_grad, area, 1); // get textsize
 	int ref_xywh[4];
 	switch (text->reference) {
 		default:
@@ -701,8 +697,8 @@ static void text_placement(struct kahto_figure *fig, struct kahto_text *text) {
 			memcpy(ref_xywh, fig->ro_inner_xywh, sizeof(ref_xywh));
 			break;
 	}
-	area[0] = ref_xywh[0] + text->xy[0] * ref_xywh[2] + move_xy[0];
-	area[1] = ref_xywh[1] + text->xy[1] * ref_xywh[3] + move_xy[1];
+	area[0] += ref_xywh[0] + text->xy[0] * ref_xywh[2];
+	area[1] += ref_xywh[1] + text->xy[1] * ref_xywh[3];
 	area[2] += area[0];
 	area[3] += area[1];
 }
