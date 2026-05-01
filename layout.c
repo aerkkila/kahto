@@ -664,7 +664,9 @@ loop_done:
 				goto everything_again_except_wh; // would be better to adjust things here
 			}
 			else if (newdiff <= olddiff-1) {
-				yxax[!smaller]->ro_margin_minmax[1] += (olddiff - newdiff);
+				/* margin_minmax is misleading: it means smaller pixel index,
+				   which on y-axis is the larger value */
+				yxax[!smaller]->ro_margin_minmax[!smaller] += (olddiff - newdiff);
 				axis_set_parallel_sizes(yxax[!smaller], 0);
 				break;
 			}
