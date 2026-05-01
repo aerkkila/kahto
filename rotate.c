@@ -57,8 +57,15 @@ static void update_alpha(unsigned char *to, unsigned char value) {
 static void update_color_and_alpha
 (unsigned *tocolor, unsigned color, unsigned char *toalpha, unsigned char alpha, int ind) {
 	if (toalpha[ind]) {
-		unsigned relative_alpha = alpha * 255 / toalpha[ind];
-		tocanvas(tocolor+ind, relative_alpha, color);
+		float relative_alpha = (float)alpha / toalpha[ind];
+		float mul = 1. / (1. + relative_alpha);
+		unsigned newcolor = 0;
+		for (int i=0; i<4; i++) {
+			unsigned fg = color >> i*8 & 0xff;
+			unsigned bg = *tocolor >> i*8 & 0xff;
+			unsigned c = iroundpos((fg * relative_alpha + bg) * mul);
+			newcolor += c << i*8;
+		}
 		update_alpha(toalpha+ind, alpha);
 	}
 	else {
