@@ -23,7 +23,7 @@ static short get_datapx_@dtype(const void *vdata, long ind, double axismin, doub
 	if (my_isnan(data[ind]))
 		return NOT_A_PIXEL;
 	float pos = (data[ind] - axismin) / axisdiff;
-	return iround(pos * (axislen-1) - 0.5);
+	return iround(pos * (axislen-1));
 }
 
 static short get_datapx_inv_@dtype(const void *vdata, long ind, double axismin, double axisdiff, int axislen, double _) {
@@ -31,7 +31,7 @@ static short get_datapx_inv_@dtype(const void *vdata, long ind, double axismin, 
 	if (my_isnan(data[ind]))
 		return NOT_A_PIXEL;
 	float pos = (data[ind] - axismin) / axisdiff;
-	return iround((1-pos) * (axislen-1) - 0.5);
+	return iround((1-pos) * (axislen-1));
 }
 
 static short get_datapx_log_@dtype(const void *vdata, long ind, double axismin, double axisdiff, int axislen, double multiplier) {
@@ -39,7 +39,7 @@ static short get_datapx_log_@dtype(const void *vdata, long ind, double axismin, 
 	if (my_isnan(data[ind]))
 		return NOT_A_PIXEL;
 	float pos = (log(data[ind])*multiplier - axismin) / axisdiff;
-	return iround(pos * (axislen-1) - 0.5);
+	return iround(pos * (axislen-1));
 }
 
 static short get_datapx_log_inv_@dtype(const void *vdata, long ind, double axismin, double axisdiff, int axislen, double multiplier) {
@@ -47,7 +47,7 @@ static short get_datapx_log_inv_@dtype(const void *vdata, long ind, double axism
 	if (my_isnan(data[ind]))
 		return NOT_A_PIXEL;
 	float pos = (log(data[ind])*multiplier - axismin) / axisdiff;
-	return iround((1-pos) * (axislen-1) - 0.5);
+	return iround((1-pos) * (axislen-1));
 }
 
 static short get_datalevel_@dtype(const void *vdata, long ind, double *axislim, int axislen) {

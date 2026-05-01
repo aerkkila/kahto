@@ -30,16 +30,6 @@ static void draw_datum(struct kahto_draw_data_args *ar) {
 		/* alfaa ei ole toteutettu tähän */
 		return;
 	}
-#if 0
-	int x0_ = ar->xywh_limits[0],       y0_ = ar->xywh_limits[1];
-	int x1_ = x0_ + ar->xywh_limits[2], y1_ = y0_ + ar->xywh_limits[3];
-	int x0  = x0_ + ar->yxz[1] - ar->mapw/2,      y0 = y0_ + yxz[0] - ar->maph/2;
-	int j0  = max(0, y0_ - y0);
-	int j1  = min(ar->maph, y1_ - y0);
-	int i0  = max(0, x0_ - x0);
-	int i1  = min(ar->mapw, x1_ - x0);
-#endif
-
 	int x0 = yxz[1] - ar->mapw/2;
 	int y0 = yxz[0] - ar->maph/2;
 	int j0 = max(0, -y0);
@@ -96,6 +86,7 @@ static unsigned char* kahto_data_marker_bmap
 			case 'v': initfun = (void*)init_triangle_down; break;
 			case '*':
 			case '4': initfun = (void*)init_4star; break;
+			case 's': initfun = (void*)init_fillall; break;
 			default: break;
 		}
 

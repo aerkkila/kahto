@@ -176,6 +176,15 @@ static unsigned char* init_4star(unsigned char *to, int *_tow, int *_toh) {
 	return to;
 }
 
+static unsigned char *init_fillall(unsigned char *to, int *_tow, int *_toh) {
+	int tow = *_tow, toh = *_toh;
+	for (int i=0; i<toh; i++) {
+		for (int ii=0; ii<tow; ii++)
+			to[i*tow+ii] = 255;
+	}
+	return to;
+}
+
 static unsigned char* init_literal(unsigned char *bmap, int *w, int *h, struct kahto_graph *graph) {
 	struct ttra *ttra = graph->yxaxis[0]->figure->ttra;
 	struct ttra memttra = *ttra;
