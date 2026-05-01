@@ -659,12 +659,12 @@ loop_done:
 			int smaller = yxax[1]->ro_pix_per_unit < yxax[0]->ro_pix_per_unit;
 			int newdiff = (yxax[!smaller]->max - yxax[!smaller]->min) * yxax[smaller]->ro_pix_per_unit;
 			int olddiff = yxax[!smaller]->ro_minmaxpos[1] - yxax[!smaller]->ro_minmaxpos[0];
-			if (newdiff < olddiff-1) {
+			if (!fig->wh_locked && newdiff < olddiff-1) {
 				fig->wh[yxax[!smaller]->direction == 'y'] -= olddiff - newdiff;
 				goto everything_again_except_wh; // would be better to adjust things here
 			}
-			else if (newdiff == olddiff-1) {
-				yxax[!smaller]->ro_margin_minmax[1] += 1;
+			else if (newdiff <= olddiff-1) {
+				yxax[!smaller]->ro_margin_minmax[1] += (olddiff - newdiff);
 				axis_set_parallel_sizes(yxax[!smaller], 0);
 				break;
 			}
@@ -677,6 +677,8 @@ loop_done:
 	// For normal figures (containing data), don't do the size check.
 	// The main reason is that it is unnecessary.
 	// I am also not sure that it would always work correctly.
+	if (fig->wh_locked)
+		goto end;
 	for (int i=fig->ngraph-1; i>=0; i--)
 		if (fig->graph[i]->data.list.ydata->length)
 			goto end;

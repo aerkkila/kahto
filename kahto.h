@@ -325,7 +325,7 @@ struct kahto_figure {
 	   This is called as the last thing in the drawing function. */
 	void (*after_drawing)(struct kahto_figure*, uint32_t *canvas, int ystride);
 	struct kahto_figure *super;
-	char ro_cannot_draw : 1, ro_colors_set : 1;
+	char ro_cannot_draw : 1, ro_colors_set : 1, wh_locked;
 
 	struct kahto_figure **subfigures;
 	float (*subfigures_xywh)[4];
