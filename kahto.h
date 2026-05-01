@@ -187,8 +187,10 @@ struct kahto_axistext {
 enum kahto_coords_reference {kahto_dataarea_e, kahto_figurearea_e, kahto_dataarea_inner_e};
 enum kahto_fill {kahto_no_fill_e, kahto_fill_bg_e, kahto_fill_color_e};
 enum kahto_placement {kahto_placement_none, kahto_placement_first, kahto_placement_singlemaxdist};
-enum kahto_topixels_reference {kahto_total_height=1, kahto_total_width,
-	kahto_this_height, kahto_this_width, kahto_fixed_size};
+enum kahto_topixels_reference {
+	kahto_topix_total_height=1, kahto_topix_total_width,
+	kahto_topix_this_height, kahto_topix_this_width, kahto_topix_fixed_size,
+};
 
 struct kahto_text {
 	const char *text; // const will be discarded on destroy, if owner

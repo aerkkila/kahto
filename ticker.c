@@ -405,7 +405,7 @@ void kahto_init_ticker_datetime(struct kahto_ticks *this, double min, double max
 	time = max;
 	struct tm tm1 = *gmtime(&time);
 	long best_diff = 10000000;
-	int datetype = 0, step;
+	int datetype = 0, step = 1;
 	double target_n_orig = this->tickerdata.datetime.target_nticks;
 	double target_n = target_n_orig ? target_n_orig : default_linear_target_nticks;
 

@@ -91,15 +91,15 @@ static inline struct kahto_figure* __attribute__((pure)) get_toplevel_figure(str
 static inline float __attribute__((pure)) _tofpixels(float size, struct kahto_figure *figure) {
 	switch (figure->topixels_reference) {
 		default:
-		case kahto_total_height:
+		case kahto_topix_total_height:
 			return size * (float)get_toplevel_figure(figure)->ro_wh0[1];
-		case kahto_this_height:
+		case kahto_topix_this_height:
 			return size * (float)figure->ro_wh0[1];
-		case kahto_total_width:
+		case kahto_topix_total_width:
 			return size * (float)get_toplevel_figure(figure)->ro_wh0[0];
-		case kahto_this_width:
+		case kahto_topix_this_width:
 			return size * (float)figure->ro_wh0[0];
-		case kahto_fixed_size:
+		case kahto_topix_fixed_size:
 			return size * figure->topixels_fixed_size;
 	}
 }
