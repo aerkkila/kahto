@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 49
+#define __kahto_version_in_program 50
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -244,6 +244,7 @@ struct kahto_draw_data_args {
    then this is graph->draw_marker_fun_args. Not mandatory. */
 struct kahto_draw_boxmarker_args {
 	float boxwidth, linewidth, mlinewidth;
+	unsigned char mlinealpha;
 };
 void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args);
 
@@ -269,14 +270,15 @@ struct kahto_graph {
 	const char *label; // 1. fixed order. The const will be discarded, if labelowner is true.
 	int labelowner;    // 2. fixed order
 	/* style */
-	void (*draw_marker_fun)(struct kahto_draw_data_args*);
-	void *draw_marker_fun_args;
+	void (*draw_marker_fun)(struct kahto_draw_data_args*); // 1. fixed order
+	void *draw_marker_fun_args;                            // 2. fixed order
 	struct kahto_markerstyle markerstyle;	// fixed order
 	struct kahto_linestyle linestyle, errstyle;	// fixed order
 	unsigned color; // overridden by style.color
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
+	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset; // if xdata is not given, xₙ = xoffset + n
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1, // only needed with colormesh
@@ -382,6 +384,7 @@ struct kahto_args {
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
 	int cmh_enum, icolor;
+	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset;
 	unsigned equal_xy : 1, // only works with colormesh
 			 exact : 1, // only needed with colormesh

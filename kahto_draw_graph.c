@@ -20,6 +20,7 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 
 	int linew = topixels(bargs->linewidth ? bargs->linewidth : 0.003, args->fig);
 	int mlinew = topixels(bargs->linewidth ? bargs->mlinewidth : 0.003, args->fig);
+	int mlinealpha = bargs->mlinealpha ? bargs->mlinealpha : 255;
 	int area[] = {0, 0, args->fig->wh[0], args->fig->wh[1]};
 	int *xzy = args->yxz;
 	int ydirection = xzy[2+1] < xzy[2+3];
@@ -34,7 +35,8 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 		kahto_fill_box(args->canvas, args->ystride, xyxy, args->color);
 
 		xyxy[1] = xyxy[3] = xzy[2+2]; // midline
-		kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->fig->background, mlinew, area);
+		kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->fig->background,
+			mlinew, area, mlinealpha);
 	}
 
 	int xyxy[] = {
@@ -43,10 +45,10 @@ void kahto_draw_boxmarker_5(struct kahto_draw_data_args *args) {
 		xzy[0],
 		xzy[2+1],
 	};
-	kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, linew, area);
+	kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, linew, area, 255);
 	xyxy[1] = xzy[2+3];
 	xyxy[3] = xzy[2+4];
-	kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, linew, area);
+	kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, linew, area, 255);
 }
 
 /* can be given by user to graph->draw_marker_fun */
@@ -95,7 +97,7 @@ void kahto_draw_violin(struct kahto_draw_data_args *args) {
 			i+area[1],
 		};
 		if (xyxy[0] != xyxy[2])
-			kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, 1, area);
+			kahto_draw_straight_line(args->canvas, args->ystride, xyxy, args->color, 1, area, 255);
 	}
 
 	free(w);
@@ -126,8 +128,12 @@ void kahto_draw_graph(struct kahto_graph *graph, uint32_t *canvas, int ystride, 
 		.graph = graph,
 		.fig = fig,
 	};
+	if (graph->colormodify)
+		args.color = graph->colormodify(args.color);
 	kahto_draw_graph_markers(graph, fig, &args);
 
 	args.color = graph->linestyle.color;
+	if (graph->colormodify)
+		args.color = graph->colormodify(args.color);
 	kahto_draw_graph_lines(graph, fig, &args);
 }

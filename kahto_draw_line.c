@@ -1,5 +1,5 @@
 static void kahto_draw_straight_line
-(uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness, int *xyminmax) {
+(uint32_t *canvas, int ystride, const int *xy, uint32_t color, float thickness, int *xyminmax, int alpha) {
 	int i1, i0, j1, j0;
 	int ithickness = iroundpos(thickness);
 	if (xy[3] == xy[1]) {
@@ -20,9 +20,14 @@ static void kahto_draw_straight_line
 	if (j0 < xyminmax[1]) j0 = xyminmax[1];
 	if (i1 > xyminmax[2]) i1 = xyminmax[2];
 	if (j1 > xyminmax[3]) j1 = xyminmax[3];
-	for (int j=j0; j<j1; j++)
-		for (int i=i0; i<i1; i++)
-			canvas[j*ystride+i] = color;
+	if (alpha < 255)
+		for (int j=j0; j<j1; j++)
+			for (int i=i0; i<i1; i++)
+				tocanvas(&canvas[j*ystride+i], alpha, color);
+	else
+		for (int j=j0; j<j1; j++)
+			for (int i=i0; i<i1; i++)
+				canvas[j*ystride+i] = color;
 	return;
 }
 
@@ -55,7 +60,7 @@ static void draw_line_kahto
 	int dx = xy[2] - xy[0],
 		dy = xy[3] - xy[1];
 	if (!dy || !dx)
-		return kahto_draw_straight_line(canvas, ystride, xy, color, thickness, xyminmax);
+		return kahto_draw_straight_line(canvas, ystride, xy, color, thickness, xyminmax, 255);
 
 	int steep = Abs(xy[3] - xy[1]) >= Abs(xy[2] - xy[0]);
 	float m_per_n = steep ? (float)dy / dx : (float)dx / dy; // m,n = (steep ? y,x : x,y)
