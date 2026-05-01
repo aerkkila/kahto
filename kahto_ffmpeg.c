@@ -161,6 +161,8 @@ struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const ch
 	fig->wh[0] -= fig->wh[0] % 2; // has to be a multiple of 2
 	fig->wh[1] -= fig->wh[1] % 2; // has to be a multiple of 2
 	kahto_layout(fig); // might change fig->wh
+	fig->wh[0] += fig->wh[0] % 2; // has to be a multiple of 2
+	fig->wh[1] += fig->wh[1] % 2; // has to be a multiple of 2
 	int w = fig->wh[0], h = fig->wh[1];
 	uint32_t *argb = malloc(w * h * sizeof(uint32_t));
 	kahto_draw_figures(fig, argb, w);
