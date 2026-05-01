@@ -127,7 +127,7 @@ static int axis_set_parallel_sizes(struct kahto_axis *axis, int firsttime) {
 	if (axis->ro_minmaxpos[0] >= axis->ro_minmaxpos[1])
 		return 1;
 
-	axis->ro_pix_per_unit = (axis->ro_minmaxpos[1] - axis->ro_minmaxpos[1]) / (axis->max - axis->min);
+	axis->ro_pix_per_unit = (axis->ro_minmaxpos[1] - axis->ro_minmaxpos[0]) / (axis->max - axis->min);
 
 	/* text->ro_area[parallel] already contains the limits around the zero point
 	   or further has been moved to correct place */
