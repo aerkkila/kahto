@@ -17,7 +17,7 @@ static void rotate300
 		tcph = min(th, fw);
 	for (int j=0; j<tcph; j++)
 		for (int i=0; i<tcpw; i++) {
-			int ifrom = i*fw + tcph-j-i;
+			int ifrom = i*fw + tcph-j-1;
 			tocanvas(to+j*tostride+i, alpha[ifrom], color[ifrom]);
 		}
 }
@@ -49,7 +49,6 @@ static void get_rotated_area(float w, float h, float *restrict area, float rot_g
 }
 
 static void update_alpha(unsigned char *to, unsigned char value) {
-	//value = value < 128 ? value*2 : 255;
 	float opacity0 = 1 - to[0]/255.0;
 	float opacity = opacity0 * (1 - value/255.0);
 	to[0] = iroundpos((1 - opacity) * 255);
@@ -146,8 +145,8 @@ static void rotate(
 	for (int y0=0; y0<fh; y0++)
 		for (int x0=0; x0<fw; x0++)
 			if (alpha[y0*fw + x0]) {
-				float x1 = (x0+0.5)*co - (y0+0.5)*si;
-				float y1 = (x0+0.5)*si + (y0+0.5)*co;
+				float x1 = x0*co - y0*si;
+				float y1 = x0*si + y0*co;
 				put_tmp_rot(
 					colorrot, color[y0*fw + x0], alpharot, alpha[y0*fw + x0],
 					newlen, new_w, y1+yshift, x1+xshift);
@@ -159,7 +158,7 @@ static void rotate(
 		for (int i=0; i<cpw; i++)
 			if (alpharot[j*new_w+i]) {
 				unsigned char a = alpharot[j*new_w+i];
-				a = a >= 128 ? 255 : 2*a;
+				a = a > 255*2/3 ? 255 : a*3/2;
 				tocanvas(to+j*ystride+i, a, colorrot[j*new_w+i]);
 			}
 
