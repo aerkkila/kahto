@@ -682,7 +682,7 @@ struct kahto_async {
 	int ystride;
 	unsigned sleeptime_locked_microsec;
 	pthread_t _thread;
-	signed char _lock, _exit;
+	signed char volatile _lock, _exit;
 	float _fps;
 };
 int kahto_async_lock(struct kahto_async *async, unsigned wait_sleeptime_microsec);
