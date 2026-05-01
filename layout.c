@@ -670,9 +670,14 @@ loop_done:
 			int smaller = yxax[1]->ro_pix_per_unit < yxax[0]->ro_pix_per_unit;
 			int newdiff = (yxax[!smaller]->max - yxax[!smaller]->min) * yxax[smaller]->ro_pix_per_unit;
 			int olddiff = yxax[!smaller]->ro_minmaxpos[1] - yxax[!smaller]->ro_minmaxpos[0];
-			if (newdiff < olddiff) {
+			if (newdiff < olddiff-1) {
 				fig->wh[yxax[!smaller]->direction == 'y'] -= olddiff - newdiff;
 				goto everything_again_except_wh; // would be better to adjust things here
+			}
+			else if (newdiff == olddiff-1) {
+				yxax[!smaller]->ro_margin_minmax[1] += 1;
+				axis_set_parallel_sizes(yxax[!smaller], 0);
+				break;
 			}
 		}
 
