@@ -497,6 +497,7 @@ static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
 	else
 		memcpy(fig->ro_wh0, fig->wh, sizeof(fig->wh));
 
+everything_again_except_wh:
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	for (int i=0; i<fig->naxis; i++)
@@ -662,6 +663,18 @@ break0:
 	} // for iloop < maxloops
 	fprintf(stderr, "Loop in %s reached maximum iterations.\n", __func__);
 loop_done:
+
+	for (int i=fig->ngraph-1; i>=0; i--)
+		if (fig->graph[i]->equal_scale_xy) {
+			struct kahto_axis **yxax = fig->graph[i]->yxaxis;
+			int smaller = yxax[1]->ro_pix_per_unit < yxax[0]->ro_pix_per_unit;
+			int newdiff = (yxax[!smaller]->max - yxax[!smaller]->min) * yxax[smaller]->ro_pix_per_unit;
+			int olddiff = yxax[!smaller]->ro_minmaxpos[1] - yxax[!smaller]->ro_minmaxpos[0];
+			if (newdiff < olddiff) {
+				fig->wh[yxax[!smaller]->direction == 'y'] -= olddiff - newdiff;
+				goto everything_again_except_wh; // would be better to adjust things here
+			}
+		}
 
 	legend_placement(fig);
 	texts_placement(fig);

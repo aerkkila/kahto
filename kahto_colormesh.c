@@ -1,7 +1,7 @@
 void kahto_colormesh_render
 (struct kahto_graph *graph, uint32_t *canvas, int ystride, struct kahto_figure *fig, long start) {
-	int xdatalen = graph->data.list.xdata->length;
-	int ydatalen = graph->data.list.ydata->length;
+	int xdatalen = graph->data.list.xdata->length - 1; // -1 because contains the endpoint
+	int ydatalen = graph->data.list.ydata->length - 1; // -1 because contains the endpoint
 	int xywh[4] = {
 		graph->yxaxis[1]->ro_minmaxpos[0],
 		graph->yxaxis[0]->ro_minmaxpos[0],
@@ -18,11 +18,6 @@ void kahto_colormesh_render
 		(float)xdatalen / xywh[2],
 		(float)ydatalen / xywh[3],
 	};
-	/* akseli menee väärin, koska kokoa muokataan vain täällä */
-	if (graph->equal_xy) {
-		data_per_pixel[0] = max(data_per_pixel[0], data_per_pixel[1]);
-		data_per_pixel[1] = data_per_pixel[0];
-	}
 	if (graph->exact)
 		for (int i=0; i<2; i++)
 			data_per_pixel[i] = data_per_pixel[i] >= 1 ? ceil(data_per_pixel[i]) :

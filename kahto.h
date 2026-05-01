@@ -291,8 +291,8 @@ struct kahto_graph {
 	int cmh_enum, icolor;
 	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset; // if xdata is not given, xₙ = xoffset + n
-	unsigned equal_xy : 1, // only works with colormesh
-			 exact : 1, // only needed with colormesh
+	unsigned equal_scale_xy : 1,
+			 exact : 1, // colormesh only: Every grid cell is exactly same size. Ticks will be slightly off.
 			 legend_coloronly : 1;
 };
 
@@ -400,7 +400,7 @@ struct kahto_args {
 	int cmh_enum, icolor;
 	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset;
-	unsigned equal_xy : 1, // only works with colormesh
+	unsigned equal_scale_xy : 1,
 			 exact : 1, // only needed with colormesh
 			 legend_coloronly : 1;
 	/* above must match with kahto_graph */
@@ -479,12 +479,12 @@ struct kahto_args {
 	.ztype=kahto_type(*(z)),	\
 	.kahto_len=__VA_ARGS__		\
 	})
+/* multiple colormeshes in a superfigure does not currently work */
 #define kahto_colormesh(z, ...) kahto_plot_inl((struct kahto_args){ \
 	__kahto_defaultargs,        \
 	.zdata=(z),                 \
 	.ztype=kahto_type(*(z)),    \
-	.equal_xy=1,                \
-	.exact=1,                   \
+	.equal_scale_xy=1,          \
 	.kahto_ylen=__VA_ARGS__	    \
 	})
 

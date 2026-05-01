@@ -10,6 +10,6 @@ int main() {
 		for (int ii=0; ii<xlen; ii++)
 			zdata[i][ii] = cos(i * 2*pi / ylen) + cos(ii * 3*pi / xlen);
 
-	kahto_show(
-		kahto_colormesh(zdata[0], ylen, xlen));
+	struct kahto_figure *fig = kahto_colormesh(zdata[0], ylen, xlen);
+	kahto_show(fig);
 }

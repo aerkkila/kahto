@@ -720,9 +720,9 @@ static struct kahto_graph* add_graph(struct kahto_args *args) {
 		if (length == 0)
 			length = args->kahto_len;
 		else if (iyxz == 1)
-			length = args->kahto_xlen;
+			length = args->kahto_xlen + 1; // colormesh goes to the gaps, hence + 1
 		else if (iyxz == 0)
-			length = args->kahto_ylen;
+			length = args->kahto_ylen + 1; // colormesh goes to the gaps, hence + 1
 
 		if (!thedata) {
 			for (data=fig->data.next; data; data=data->next)
