@@ -62,11 +62,12 @@ static void update_color_and_alpha
 		unsigned newcolor = 0;
 		for (int i=0; i<4; i++) {
 			unsigned fg = color >> i*8 & 0xff;
-			unsigned bg = *tocolor >> i*8 & 0xff;
+			unsigned bg = tocolor[ind] >> i*8 & 0xff;
 			unsigned c = iroundpos((fg * relative_alpha + bg) * mul);
 			newcolor += c << i*8;
 		}
 		update_alpha(toalpha+ind, alpha);
+		tocolor[ind] = newcolor;
 	}
 	else {
 		toalpha[ind] = alpha;
