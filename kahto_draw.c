@@ -163,9 +163,9 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 	line_px[iort+0] = ticks->ro_lines[0];
 	line_px[iort+2] = ticks->ro_lines[1];
 	int nticks = ticks->tickerdata.common.nticks;
-	int gridline[4], startlen[2], *xywh_frame=ticks->axis->figure->ro_inner_xywh;
-	startlen[0] = ticks->axis->ro_minmaxpos[0];
-	startlen[1] = ticks->axis->ro_minmaxpos[1] + 1 - startlen[0];
+	int gridline[4], *xywh_frame=ticks->axis->figure->ro_inner_xywh;
+	int startpos = ticks->axis->ro_minmaxpos[0];
+	float px_len_minus_1 = ticks->axis->ro_minmaxpos[1] - startpos; // will be multiplied with float
 	gridline[iort] = xywh_frame[iort];
 	gridline[iort+2] = xywh_frame[iort] + xywh_frame[iort+2];
 	int inner_area[] = xywh_to_area(xywh_frame);
@@ -179,10 +179,10 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 	int visible_labels = ttra && ticks->visible && ticks->visible_labels;
 	for (int itick=0; itick<nticks; itick++) {
 		double pos_data = ticks->get_tick(ticks, itick, &tick, 128);
-		double pos_rel = (pos_data - axisdatamin) / axisdatalen;
+		float pos_rel = (pos_data - axisdatamin) / axisdatalen;
 		if (!isx)
 			pos_rel = 1 - pos_rel;
-		line_px[!iort] = line_px[!iort+2] = startlen[0] + iround(pos_rel * startlen[1]);
+		line_px[!iort] = line_px[!iort+2] = startpos + iround(pos_rel * px_len_minus_1);
 		if (ticks->visible && ticks->length)
 			draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle, figure, 0);
 		int area_text[4] = {0};
@@ -201,10 +201,10 @@ void kahto_draw_ticks(struct kahto_ticks *ticks, unsigned *canvas, int figurewid
 		line_px[iort+0] = ticks->ro_lines1[0];
 		line_px[iort+2] = ticks->ro_lines1[1];
 		for (int i=0; i<nticks; i++) {
-			double pos_rel = (posdata[i] - axisdatamin) / axisdatalen;
+			float pos_rel = (posdata[i] - axisdatamin) / axisdatalen;
 			if (!isx)
 				pos_rel = 1 - pos_rel;
-			line_px[!iort] = line_px[!iort+2] = startlen[0] + iroundpos(pos_rel * startlen[1]);
+			line_px[!iort] = line_px[!iort+2] = startpos + iroundpos(pos_rel * px_len_minus_1);
 			if (ticks->visible && ticks->length1)
 				draw_line(canvas, ystride, line_px, tot_area, &ticks->linestyle1, figure, 0);
 			if (ticks->gridstyle1.style) {
