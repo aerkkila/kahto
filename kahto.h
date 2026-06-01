@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 51
+#define __kahto_version_in_program 52
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -329,7 +329,7 @@ struct kahto_figure {
 
 	struct kahto_figure **subfigures;
 	float (*subfigures_xywh)[4];
-	int nsubfigures, memsubfigures;
+	int nsubfigures, memsubfigures, zorder; // zorder: higher is drawn later among peers (this->super->subfigures)
 
 	struct kahto_axis **axis;
 	int naxis, mem_axis;

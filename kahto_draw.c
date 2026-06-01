@@ -381,9 +381,23 @@ void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystrid
 void kahto_draw_figures(struct kahto_figure *fig, uint32_t *canvas, int ystride) {
 	kahto_draw_figure(fig, canvas, ystride); // before subfigures to not cover them with background color
 	struct kahto_figure *f;
+	int zorder_next = (unsigned)-1 >> 1; // int max
 	for (int i=0; i<fig->nsubfigures; i++)
 		if ((f = fig->subfigures[i]))
-			kahto_draw_figures(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
+			update_min(zorder_next, f->zorder);
+	while (1) {
+		int zorder_now = zorder_next;
+		zorder_next = (unsigned)-1 >> 1;
+		for (int i=0; i<fig->nsubfigures; i++)
+			if ((f = fig->subfigures[i])) {
+				if (f->zorder == zorder_now)
+					kahto_draw_figures(f, canvas + f->ro_corner[1]*ystride + f->ro_corner[0], ystride);
+				else if (f->zorder > zorder_now && f->zorder < zorder_next)
+					zorder_next = f->zorder;
+			}
+		if (zorder_now == zorder_next)
+			break;
+	}
 	if (fig->revert_fixes)
 		fig->revert_fixes(fig);
 }
