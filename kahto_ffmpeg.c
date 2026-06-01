@@ -179,10 +179,10 @@ struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const ch
 
 	long updatecount = -1;
 	double interval = 1 / fps;
-	while ((++updatecount, fig->update((void*)fig, argb, w, updatecount, updatecount * interval)) >= 0) {
+	do {
 		write_frame(&video, argb);
 		video.iframe++;
-	}
+	} while ((++updatecount, fig->update((void*)fig, argb, w, updatecount, updatecount * interval)) >= 0);
 	encode(video.fcontext, video.ctx, video.stream, NULL, video.packet);
 	kahto_destroy_video(&video);
 
