@@ -27,25 +27,15 @@ struct kahto_avstream {
 };
 
 struct kahto_video {
-	int w, h, iframe_vid, samplerate;
+	int w, h, iframe /*video*/, samplerate, audiomem;
+	char owner, nchannels;
 	float fps;
-	long iframe_aud;
+	long isample; // audio
 	AVFormatContext *fcontext;
 	struct kahto_avstream video, audio;
 };
 
-struct kahto_videoargs {
-	int w, h;
-	float fps;
-	char *preset; // default = slow
-};
-
-struct kahto_audioargs {
-	int samplerate, bitrate;
-	char channels;
-};
-
-int init_video(AVFormatContext *fcontext, struct kahto_videoargs *args, struct kahto_video *out) {
+static int init_video(AVFormatContext *fcontext, struct kahto_videoargs *args, struct kahto_video *out) {
 	const AVCodec *boolfun(videocodec, avcodec_find_encoder, AV_CODEC_ID_H264);
 	AVCodecContext *boolfun(videoctx, avcodec_alloc_context3, videocodec);
 	AVPacket *boolfun(videopacket, av_packet_alloc);
@@ -77,7 +67,7 @@ int init_video(AVFormatContext *fcontext, struct kahto_videoargs *args, struct k
 	return 0;
 }
 
-int init_audio(AVFormatContext *fcontext, struct kahto_audioargs *args, struct kahto_video *out) {
+static int init_audio(AVFormatContext *fcontext, struct kahto_audioargs *args, struct kahto_video *out) {
 	const AVCodec *boolfun(audiocodec, avcodec_find_encoder, AV_CODEC_ID_MP3);
 	AVCodecContext *boolfun(audioctx, avcodec_alloc_context3, audiocodec);
 	AVPacket *boolfun(audiopacket, av_packet_alloc);
@@ -88,7 +78,7 @@ int init_audio(AVFormatContext *fcontext, struct kahto_audioargs *args, struct k
 	audioctx->bit_rate = args->bitrate ? args->bitrate : 128000;
 	audioctx->sample_rate = audioframe->sample_rate = args->samplerate ? args->samplerate : 48000;
 	audioctx->time_base = audiostream->time_base = (AVRational){1, audioctx->sample_rate};
-	AVChannelLayout layout = args->channels == 2 ?
+	AVChannelLayout layout = args->nchannels == 2 ?
 		(typeof(layout))AV_CHANNEL_LAYOUT_STEREO :
 		(typeof(layout))AV_CHANNEL_LAYOUT_MONO;
 	av_channel_layout_copy(&audioctx->ch_layout, &layout);
@@ -102,6 +92,7 @@ int init_audio(AVFormatContext *fcontext, struct kahto_audioargs *args, struct k
 
 	out->samplerate = audioframe->sample_rate;
 	out->fcontext = fcontext;
+	out->nchannels = args->nchannels;
 	out->audio = (struct kahto_avstream) {
 		.ctx = audioctx,
 		.packet = audiopacket,
@@ -111,7 +102,7 @@ int init_audio(AVFormatContext *fcontext, struct kahto_audioargs *args, struct k
 	return 0;
 }
 
-int kahto_init_video
+static int kahto_init_video
 (struct kahto_video *out, const char *filename,
  struct kahto_videoargs *videoargs, struct kahto_audioargs *audioargs) {
 	AVFormatContext *fcontext;
@@ -129,21 +120,89 @@ int kahto_init_video
 	return 0;
 }
 
+struct kahto_videohelper* kahto_start_video
+(struct kahto_figure *fig, const char *filename, struct kahto_videoargs *va, struct kahto_audioargs *aa) {
+	struct kahto_videohelper *vh = calloc(1, sizeof(*vh));
+	vh->lockmem = fig->wh_locked;
+	if (va->w) fig->wh[0] = va->w;
+	if (va->h) fig->wh[1] = va->h;
+
+	fig->wh[0] -= fig->wh[0] % 2; // has to be a multiple of 2
+	fig->wh[1] -= fig->wh[1] % 2; // has to be a multiple of 2
+	kahto_layout(fig); // might change fig->wh
+	fig->wh_locked = 1;
+	fig->wh[0] += fig->wh[0] % 2; // has to be a multiple of 2
+	fig->wh[1] += fig->wh[1] % 2; // has to be a multiple of 2
+	va->w = fig->wh[0];
+	va->h = fig->wh[1];
+
+	vh->canvas = malloc(fig->wh[0] * fig->wh[1] * sizeof(*vh->canvas));
+	vh->ystride = fig->wh[0];
+	vh->video = kahto_video_new(filename, va, aa);
+	vh->fig = fig;
+	return vh;
+}
+
+void kahto_end_video(struct kahto_videohelper *vh) {
+	kahto_destroy_video(vh->video);
+	kahto_destroy(vh->fig);
+	free(vh->canvas);
+	free(vh);
+}
+
 static void avstream_destroy(struct kahto_avstream *s) {
 	av_frame_free(&s->frame);
 	av_packet_free(&s->packet);
 	avcodec_free_context(&s->ctx);
 }
 
+static int encode(AVFormatContext *fcontext, AVCodecContext *ctx, AVStream *vstream, AVFrame *frame, AVPacket *packet);
+
+static int finish_audio(kahto_video *restrict video) {
+	struct kahto_avstream *astream = &video->audio;
+	int full = astream->frame->nb_samples;
+	int missing = full - video->audiomem;
+	for (int ic=0; ic<video->nchannels; ic++) {
+		short *data = (void*)astream->frame->data[ic];
+		memset(data+video->audiomem, 0, missing*sizeof(data[0]));
+	}
+	negfun(av_frame_make_writable, astream->frame);
+	astream->frame->pts = video->isample;
+	encode(video->fcontext, astream->ctx, astream->stream, astream->frame, astream->packet);
+	video->isample += full;
+	return 0;
+}
+
 int kahto_destroy_video(struct kahto_video *video) {
+	if (video->audiomem)
+		finish_audio(video);
+	if (video->isample)
+		encode(video->fcontext, video->audio.ctx, video->audio.stream, NULL, video->audio.packet);
+	if (video->iframe)
+		encode(video->fcontext, video->video.ctx, video->video.stream, NULL, video->video.packet);
 	av_write_trailer(video->fcontext);
+
 	if (video->audio.ctx)
 		avstream_destroy(&video->audio);
 	if (video->video.ctx)
 		avstream_destroy(&video->video);
+
 	negfun(avio_closep, &video->fcontext->pb);
 	avformat_free_context(video->fcontext);
+	if (video->owner)
+		free(video);
 	return 0;
+}
+
+kahto_video* kahto_video_new
+(const char *filename, struct kahto_videoargs *videoargs, struct kahto_audioargs *audioargs) {
+	kahto_video *video = calloc(sizeof(*video), 1);
+	video->owner = 1;
+	if (kahto_init_video(video, filename, videoargs, audioargs)) {
+		kahto_destroy_video(video);
+		return NULL;
+	}
+	return video;
 }
 
 static inline int get_luma_rgb(int r, int g, int b) {
@@ -189,10 +248,10 @@ static int encode(AVFormatContext *fcontext, AVCodecContext *ctx, AVStream *vstr
 	}
 }
 
-static int write_frame(struct kahto_video *video, uint32_t *argb) {
+int kahto_write_videoframe(kahto_video *video, uint32_t *argb) {
 	struct kahto_avstream *vstream = &video->video;
 	negfun(av_frame_make_writable, vstream->frame);
-	vstream->frame->pts = video->iframe_vid;
+	vstream->frame->pts = video->iframe;
 
 	int w = video->w, h = video->h,
 		W = vstream->frame->linesize[0];
@@ -217,7 +276,39 @@ static int write_frame(struct kahto_video *video, uint32_t *argb) {
 		}
 	}
 
+	++video->iframe;
 	return encode(video->fcontext, vstream->ctx, vstream->stream, vstream->frame, vstream->packet);
+}
+
+int kahto_write_audio(kahto_video *restrict video, short **indata0, int ndata) {
+	struct kahto_avstream *astream = &video->audio;
+	int full = astream->frame->nb_samples;
+	int missing = full - video->audiomem;
+	short *indata[video->nchannels];
+	memcpy(indata, indata0, sizeof(indata));
+
+	while (ndata >= missing) {
+		for (int ic=0; ic<video->nchannels; ic++) {
+			short *data = (void*)astream->frame->data[ic];
+			memcpy(data + video->audiomem, indata[ic], missing * sizeof(data[0]));
+			indata[ic] += missing;
+		}
+		ndata -= missing;
+		video->audiomem = 0;
+		missing = full;
+
+		negfun(av_frame_make_writable, astream->frame);
+		astream->frame->pts = video->isample;
+		encode(video->fcontext, astream->ctx, astream->stream, astream->frame, astream->packet);
+		video->isample += full;
+	}
+
+	video->audiomem = ndata;
+	for (int ic=0; ic<video->nchannels; ic++) {
+		short *data = (void*)astream->frame->data[ic];
+		memcpy(data, indata[ic], ndata*sizeof(data[0]));
+	}
+	return 0;
 }
 
 static int video_async_update(struct kahto_figure *fig, uint32_t *canvas, int ystride, long count, double elapsed) {
@@ -228,6 +319,8 @@ struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const ch
 	fig->wh[0] -= fig->wh[0] % 2; // has to be a multiple of 2
 	fig->wh[1] -= fig->wh[1] % 2; // has to be a multiple of 2
 	kahto_layout(fig); // might change fig->wh
+	int lockmem = fig->wh_locked;
+	fig->wh_locked = 1;
 	fig->wh[0] += fig->wh[0] % 2; // has to be a multiple of 2
 	fig->wh[1] += fig->wh[1] % 2; // has to be a multiple of 2
 	int w = fig->wh[0], h = fig->wh[1];
@@ -251,14 +344,13 @@ struct kahto_figure* kahto_write_mp4_preserve(struct kahto_figure *fig, const ch
 
 	long updatecount = -1;
 	double interval = 1 / fps;
-	do {
-		write_frame(&video, argb);
-		video.iframe_vid++;
-	} while ((++updatecount, fig->update((void*)fig, argb, w, updatecount, updatecount * interval)) >= 0);
-	encode(video.fcontext, video.video.ctx, video.video.stream, NULL, video.video.packet);
+	do
+		kahto_write_videoframe(&video, argb);
+	while ((++updatecount, fig->update((void*)fig, argb, w, updatecount, updatecount * interval)) >= 0);
 	kahto_destroy_video(&video);
 	free(argb);
 
+	fig->wh_locked = lockmem;
 	return fig;
 }
 

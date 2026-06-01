@@ -371,6 +371,36 @@ struct kahto_figure {
 	struct ro_internal *ro_internal;
 };
 
+struct kahto_videoargs {
+	int w, h;
+	float fps;
+	char *preset; // default = slow
+};
+
+struct kahto_audioargs {
+	int samplerate, bitrate;
+	char nchannels;
+};
+
+typedef struct kahto_video kahto_video;
+
+struct kahto_videohelper {
+	kahto_video *video;
+	struct kahto_figure *fig;
+	uint32_t *canvas;
+	int ystride;
+	char lockmem;
+};
+
+struct kahto_videohelper* kahto_start_video
+(struct kahto_figure*, const char *filename, struct kahto_videoargs*, struct kahto_audioargs*);
+void kahto_end_video(struct kahto_videohelper *vh);
+/* lower level: no figure needed */
+kahto_video* kahto_video_new(const char *filename, struct kahto_videoargs*, struct kahto_audioargs*);
+int kahto_destroy_video(kahto_video *video);
+int kahto_write_videoframe(kahto_video *restrict video, uint32_t *argb);
+int kahto_write_audio(kahto_video *restrict video, short **indata, int ndata);
+
 struct kahto_args {
 	void *ydata, *xdata, *zdata, *edata0, *edata1;
 	int ytype, xtype, ztype, e0type, e1type; // unspecified eXtype is assumed equal to ytype
