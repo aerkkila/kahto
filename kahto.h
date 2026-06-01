@@ -393,7 +393,7 @@ struct kahto_videohelper {
 };
 
 struct kahto_videohelper* kahto_start_video
-(struct kahto_figure*, const char *filename, struct kahto_videoargs*, struct kahto_audioargs*);
+(struct kahto_figure*, const char *filename, struct kahto_videoargs, struct kahto_audioargs);
 void kahto_end_video(struct kahto_videohelper *vh);
 /* lower level: no figure needed */
 kahto_video* kahto_video_new(const char *filename, struct kahto_videoargs*, struct kahto_audioargs*);

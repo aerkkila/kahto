@@ -16,7 +16,7 @@ int main() {
 		.samplerate = 48000,
 		.nchannels = 2,
 	};
-	struct kahto_videohelper *vid = kahto_start_video(fig, "testi.mp4", &va, &aa);
+	struct kahto_videohelper *vid = kahto_start_video(fig, "testi.mp4", va, aa);
 
 	kahto_draw_figure(vid->fig, vid->canvas, vid->ystride);
 	float nsec = 2;

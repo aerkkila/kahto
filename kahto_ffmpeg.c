@@ -121,11 +121,11 @@ static int kahto_init_video
 }
 
 struct kahto_videohelper* kahto_start_video
-(struct kahto_figure *fig, const char *filename, struct kahto_videoargs *va, struct kahto_audioargs *aa) {
+(struct kahto_figure *fig, const char *filename, struct kahto_videoargs va, struct kahto_audioargs aa) {
 	struct kahto_videohelper *vh = calloc(1, sizeof(*vh));
 	vh->lockmem = fig->wh_locked;
-	if (va->w) fig->wh[0] = va->w;
-	if (va->h) fig->wh[1] = va->h;
+	if (va.w) fig->wh[0] = va.w;
+	if (va.h) fig->wh[1] = va.h;
 
 	fig->wh[0] -= fig->wh[0] % 2; // has to be a multiple of 2
 	fig->wh[1] -= fig->wh[1] % 2; // has to be a multiple of 2
@@ -133,12 +133,12 @@ struct kahto_videohelper* kahto_start_video
 	fig->wh_locked = 1;
 	fig->wh[0] += fig->wh[0] % 2; // has to be a multiple of 2
 	fig->wh[1] += fig->wh[1] % 2; // has to be a multiple of 2
-	va->w = fig->wh[0];
-	va->h = fig->wh[1];
+	va.w = fig->wh[0];
+	va.h = fig->wh[1];
 
 	vh->canvas = malloc(fig->wh[0] * fig->wh[1] * sizeof(*vh->canvas));
 	vh->ystride = fig->wh[0];
-	vh->video = kahto_video_new(filename, va, aa);
+	vh->video = kahto_video_new(filename, &va, &aa);
 	vh->fig = fig;
 	return vh;
 }
