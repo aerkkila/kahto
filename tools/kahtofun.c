@@ -13,27 +13,18 @@
 #include <err.h>
 #include <time.h>
 
-const char fun_alku[] =
+const char muoto[] =
 "#include <math.h>\n"
 "#include <stdlib.h>\n" // at least rand() might be wanted
 "const double pi = 3.14159265358979L;\n"
 "double funktio(double x) {\n"
-"	return ";
+"	%s;\n"
+"	return %s;\n"
+"}\n";
 
-const char fun_loppu[] = ";\n}";
-
-void* käännä(const char *sisälmys) {
-	int pitsis = strlen(sisälmys);
-	int tekstipit = sizeof(fun_alku)-1 + pitsis + sizeof(fun_loppu);
-
-	/* tehdään lähdetiedoston sisältö */
-	char *teksti = malloc(tekstipit);
-	int nyt = 0;
-	memcpy(teksti+nyt, fun_alku, sizeof(fun_alku)-1);
-	nyt += sizeof(fun_alku)-1;
-	memcpy(teksti+nyt, sisälmys, pitsis);
-	nyt += pitsis;
-	memcpy(teksti+nyt, fun_loppu, sizeof(fun_loppu));
+void* käännä(const char *sisälmys, const char *määrittele) {
+	char *lähde;
+	int pituus = asprintf(&lähde, muoto, määrittele, sisälmys);
 
 	char nimi_so[128];
 	srand(time(NULL));
@@ -52,9 +43,9 @@ void* käännä(const char *sisälmys) {
 		err(1, "popen %s", cmd);
 	free(cmd);
 
-	fwrite(teksti, tekstipit-1, 1, prog);
+	fwrite(lähde, 1, pituus-1, prog);
 	pclose(prog);
-	free(teksti);
+	free(lähde);
 
 	void *kahva = dlopen(nimi_so, RTLD_NOW);
 	if (!kahva) {
@@ -73,8 +64,9 @@ int main(int argc, char **argv) {
 		   loppu = 5;
 	int n = 512, opt;
 	char ylog = 0, xlog = 0, equal_xy = 0;
+	char *määrittele = "";
 
-	while ((opt = getopt(argc, argv, "a:b:n:yxe")) >= 0)
+	while ((opt = getopt(argc, argv, "a:b:n:yxed:")) >= 0)
 		switch (opt) {
 			case 'a': alku = atof(optarg); break;
 			case 'b': loppu = atof(optarg); break;
@@ -82,6 +74,7 @@ int main(int argc, char **argv) {
 			case 'y': ylog = 1; break;
 			case 'x': xlog = 1; break;
 			case 'e': equal_xy = 1; break;
+			case 'd': määrittele = optarg; break;
 		}
 
 	int käyriä = argc - optind;
@@ -94,7 +87,7 @@ int main(int argc, char **argv) {
 
 	void *kahva;
 	for (int ikäyrä=0; ikäyrä<käyriä; ikäyrä++) {
-		kahva = käännä(argv[optind+ikäyrä]);
+		kahva = käännä(argv[optind+ikäyrä], määrittele);
 		double (*funktio)(double) = dlsym(kahva, "funktio");
 		if (!funktio)
 			err(1, "dlsym funktio");
