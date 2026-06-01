@@ -4,6 +4,9 @@ CFLAGS += -gdwarf-2 -g3
 animation: animation.c
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS) -lkahto-ffmpeg
 
+animation_and_audio_ffmpeg: animation_and_audio_ffmpeg.c
+	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS) -lkahto-ffmpeg
+
 animation_async: animation_async.c
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS) -lkahto-ffmpeg
 
