@@ -582,6 +582,7 @@ static void set_icolor(struct kahto_graph *graph) {
 		figure->icolor++;
 	else if (!graph->errstyle.color && graph->errstyle.style && (graph->data.list.e0data || graph->data.list.e1data))
 		figure->icolor++;
+	figure->ro_colors_set = 0;
 }
 
 static int figure_has_data(struct kahto_figure *figure) {
