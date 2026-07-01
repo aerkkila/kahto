@@ -146,6 +146,7 @@ int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rhei
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
 static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargin_xyxy[4]);
+static void kahto_forward_graphcolor(struct kahto_graph *graph);
 
 static double __attribute__((unused)) get_time() {
 	struct timeval tv;
@@ -570,8 +571,11 @@ static void set_icolor(struct kahto_graph *graph) {
 	}
 	struct kahto_figure *figure = graph->figure;
 	graph->icolor = figure->icolor;
-	if (graph->color)
+	if (graph->color) {
+		if (figure->ro_colors_set)
+			kahto_forward_graphcolor(graph);
 		return;
+	}
 	if (!graph->markerstyle.color && graph->markerstyle.marker && graph->markerstyle.marker[0] && !graph->data.list.zdata)
 		figure->icolor++;
 	else if (!graph->linestyle.color && graph->linestyle.style)
@@ -1078,7 +1082,7 @@ struct kahto_figure* kahto_plot_args(struct kahto_args *args) {
 	return *figure;
 }
 
-void kahto_forward_graphcolor(struct kahto_graph *graph) {
+static void kahto_forward_graphcolor(struct kahto_graph *graph) {
 	if (!graph->markerstyle.color)
 		graph->markerstyle.color = graph->color;
 	if (!graph->linestyle.color)
