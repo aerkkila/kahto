@@ -307,11 +307,11 @@ int kahto_write_audio(kahto_video *restrict video, short **indata0, int ndata) {
 		video->isample += fullframe;
 	}
 
-	video->audiomem = ndata;
 	for (int ic=0; ic<video->nchannels; ic++) {
 		short *data = (void*)astream->frame->data[ic];
-		memcpy(data, indata[ic], ndata*sizeof(data[0]));
+		memcpy(data+video->audiomem, indata[ic], ndata*sizeof(data[0]));
 	}
+	video->audiomem += ndata;
 	return 0;
 }
 
