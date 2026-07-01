@@ -160,16 +160,16 @@ static int encode(AVFormatContext *fcontext, AVCodecContext *ctx, AVStream *vstr
 
 static int finish_audio(kahto_video *restrict video) {
 	struct kahto_avstream *astream = &video->audio;
-	int full = astream->frame->nb_samples;
-	int missing = full - video->audiomem;
+	int fullframe = astream->frame->nb_samples;
+	int missing = fullframe - video->audiomem;
 	for (int ic=0; ic<video->nchannels; ic++) {
-		short *data = (void*)astream->frame->data[ic];
-		memset(data+video->audiomem, 0, missing*sizeof(data[0]));
+		short *dest = (void*)astream->frame->data[ic];
+		memset(dest+video->audiomem, 0, missing*sizeof(dest[0]));
 	}
 	negfun(av_frame_make_writable, astream->frame);
 	astream->frame->pts = video->isample;
 	encode(video->fcontext, astream->ctx, astream->stream, astream->frame, astream->packet);
-	video->isample += full;
+	video->isample += fullframe;
 	return 0;
 }
 
@@ -282,25 +282,25 @@ int kahto_write_videoframe(kahto_video *video, uint32_t *argb) {
 
 int kahto_write_audio(kahto_video *restrict video, short **indata0, int ndata) {
 	struct kahto_avstream *astream = &video->audio;
-	int full = astream->frame->nb_samples;
-	int missing = full - video->audiomem;
 	short *indata[video->nchannels];
 	memcpy(indata, indata0, sizeof(indata));
+	int fullframe = astream->frame->nb_samples;
+	int missing = fullframe - video->audiomem;
 
 	while (ndata >= missing) {
 		for (int ic=0; ic<video->nchannels; ic++) {
-			short *data = (void*)astream->frame->data[ic];
-			memcpy(data + video->audiomem, indata[ic], missing * sizeof(data[0]));
+			short *dest = (void*)astream->frame->data[ic];
+			memcpy(dest + video->audiomem, indata[ic], missing * sizeof(dest[0]));
 			indata[ic] += missing;
 		}
 		ndata -= missing;
 		video->audiomem = 0;
-		missing = full;
+		missing = fullframe;
 
 		negfun(av_frame_make_writable, astream->frame);
 		astream->frame->pts = video->isample;
 		encode(video->fcontext, astream->ctx, astream->stream, astream->frame, astream->packet);
-		video->isample += full;
+		video->isample += fullframe;
 	}
 
 	video->audiomem = ndata;
