@@ -171,9 +171,9 @@ static int finish_audio(kahto_video *restrict video) {
 		memset(dest+video->audiomem, 0, missing*sizeof(dest[0]));
 	}
 	negfun(av_frame_make_writable, astream->frame);
-	astream->frame->pts = video->isample;
+	astream->frame->pts = video->isample - video->audiomem;
 	encode(video->fcontext, astream->ctx, astream->stream, astream->frame, astream->packet);
-	video->isample += fullframe;
+	video->isample += missing;
 	return 0;
 }
 
@@ -302,9 +302,9 @@ int kahto_write_audio(kahto_video *restrict video, short **indata0, int ndata) {
 		missing = fullframe;
 
 		negfun(av_frame_make_writable, astream->frame);
-		astream->frame->pts = video->isample;
+		astream->frame->pts = video->isample - video->audiomem;
 		encode(video->fcontext, astream->ctx, astream->stream, astream->frame, astream->packet);
-		video->isample += fullframe;
+		video->isample += missing;
 	}
 
 	for (int ic=0; ic<video->nchannels; ic++) {
@@ -328,8 +328,8 @@ void kahto_write_audio_silence(kahto_video *restrict video, float time) {
 }
 
 void kahto_sync_time_video_audio(kahto_video *restrict video, uint32_t *canvas) {
-	double videotime = video->iframe / video->fps;
-	double audiotime = video->isample / video->samplerate;
+	double videotime = video->iframe / (double)video->fps;
+	double audiotime = video->isample / (double)video->samplerate;
 	if (videotime > audiotime) {
 		double time = videotime - audiotime;
 		kahto_write_audio_silence(video, time);
