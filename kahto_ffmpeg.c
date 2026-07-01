@@ -315,6 +315,33 @@ int kahto_write_audio(kahto_video *restrict video, short **indata0, int ndata) {
 	return 0;
 }
 
+void kahto_write_audio_silence(kahto_video *restrict video, float time) {
+	short data[500];
+	short *data2[] = {data, data};
+	memset(data, 0, sizeof(data));
+	int n = round(time * video->samplerate);
+	while (n > 500) {
+		kahto_write_audio(video, data2, 500);
+		n -= 500;
+	}
+	kahto_write_audio(video, data2, n);
+}
+
+void kahto_sync_time_video_audio(kahto_video *restrict video, uint32_t *canvas) {
+	double videotime = video->iframe / video->fps;
+	double audiotime = video->isample / video->samplerate;
+	if (videotime > audiotime) {
+		double time = videotime - audiotime;
+		kahto_write_audio_silence(video, time);
+	}
+	else if (audiotime > videotime) {
+		double time = audiotime - videotime;
+		int nframes = round(time * video->fps);
+		for (int i=0; i<nframes; i++)
+			kahto_write_videoframe(video, canvas);
+	}
+}
+
 static int video_async_update(struct kahto_figure *fig, uint32_t *canvas, int ystride, long count, double elapsed) {
 	return async_update(fig->async, canvas, ystride);
 }

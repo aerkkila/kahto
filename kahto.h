@@ -404,6 +404,8 @@ kahto_video* kahto_video_new(const char *filename, struct kahto_videoargs*, stru
 int kahto_destroy_video(kahto_video *video);
 int kahto_write_videoframe(kahto_video *restrict video, uint32_t *argb);
 int kahto_write_audio(kahto_video *restrict video, short **indata, int ndata);
+void kahto_write_audio_silence(kahto_video *restrict video, float time);
+void kahto_sync_time_video_audio(kahto_video *restrict video, uint32_t *canvas);
 
 struct kahto_args {
 	void *ydata, *xdata, *zdata, *edata0, *edata1;
