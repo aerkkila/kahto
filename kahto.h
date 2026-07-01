@@ -150,9 +150,13 @@ struct kahto_ticks {
 
 enum kahto_feature {kahto_position_e, kahto_color_e, kahto_alpha_e};
 
+/* if axis->visible == kahto_visible_layout,
+   room for axis is preserved in layout but axis is not drawn */
+#define kahto_visible_layout -1
+
 struct kahto_axis {
 	struct kahto_figure *figure;
-	char direction, outside, visible, logscale; // direction: 'x' or 'y'
+	signed char direction, outside, visible, logscale; // direction: 'x' or 'y'
 	float pos;
 	double min, max,
 		   center; // works only for coloraxis

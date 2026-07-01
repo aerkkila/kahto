@@ -550,9 +550,10 @@ everything_again_except_wh:
 	struct kahto_axis *axis_xyxy[4] = {0};
 	for (int i=0; i<fig->naxis; i++) {
 		int ipos = fig->axis[i]->pos != 0;
-		if (my_isnan(fig->axis[i]->min) || my_isnan(fig->axis[i]->max))
-			continue;
-		if (!fig->axis[i]->outside && ipos == fig->axis[i]->pos)
+		if (
+			fig->axis[i]->visible && !fig->axis[i]->outside && ipos == fig->axis[i]->pos &&
+			!my_isnan(fig->axis[i]->min) && !my_isnan(fig->axis[i]->max)
+		)
 			axis_xyxy[(fig->axis[i]->direction=='y') + ipos*2] = fig->axis[i];
 	}
 

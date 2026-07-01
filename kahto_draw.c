@@ -270,7 +270,7 @@ void _draw_coloraxis(struct kahto_axis *axis, unsigned *canvas, int figurewidth,
 }
 
 void kahto_draw_axis(struct kahto_axis *axis, unsigned *canvas, int figurewidth, int figureheight, int ystride) {
-	if (!axis || axis->direction < 0 || !axis->visible ||
+	if (!axis || axis->direction < 0 || axis->visible <= 0 ||
 		my_isnan(axis->min) || my_isnan(axis->max)
 	)
 		return;
