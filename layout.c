@@ -327,7 +327,7 @@ static void _axis_texts_orthogonal(struct kahto_axis *axis, struct layout_ort_ar
 #undef unpack_args
 
 void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
-	if (axis->direction < 0)
+	if (axis->direction < 0 || !axis->visible)
 		return;
 	int isx = axis->direction == 'x';
 	int iort = isx;
