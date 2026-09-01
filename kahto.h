@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 52
+#define __kahto_version_in_program 53
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -75,6 +75,15 @@ struct kahto_markerstyle {
 	int literal:1, count:1,
 		size_in_xaxisunit:1, size_in_yaxisunit:1; // size x equals the distance from 0 to x in the axis
 	unsigned color;
+};
+
+enum kahto_arrowstyle_e {kahto_arrowstyle_none, kahto_arrowstyle_triangle};
+
+struct kahto_arrowstyle {
+	enum kahto_arrowstyle_e style;
+	float length, angle_grad;
+	unsigned color;
+	char as_fraction_of_line;
 };
 
 struct kahto_tickerdata_linear {
@@ -289,6 +298,7 @@ struct kahto_graph {
 	void *draw_marker_fun_args;                            // 2. fixed order
 	struct kahto_markerstyle markerstyle;	// fixed order
 	struct kahto_linestyle linestyle, errstyle;	// fixed order
+	struct kahto_arrowstyle arrowstyle;
 	unsigned color; // overridden by style.color
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
@@ -428,6 +438,7 @@ struct kahto_args {
 	struct kahto_markerstyle markerstyle;
 	struct kahto_linestyle
 		linestyle, errstyle;
+	struct kahto_arrowstyle arrowstyle;
 	unsigned color;
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
@@ -470,6 +481,8 @@ struct kahto_args {
 	.e1stride = 1,							\
 	.linestyle.thickness = 1./600,			\
 	.errstyle.style = kahto_line_normal_e,	\
+	.arrowstyle.length = 0.016,             \
+	.arrowstyle.angle_grad = 40,            \
 	.icolor = kahto_automatic,				\
 	.errstyle.thickness = 1./600,           \
 	.caxis_center = 0./0.,                  \
@@ -752,6 +765,7 @@ void kahto_draw_graph(struct kahto_graph *graph, uint32_t *canvas, int ystride, 
 void kahto_clear_data(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride);
 void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride);
+void kahto_fill_triangle(uint32_t *canvas, int ystride, const float *xycorners, uint32_t color, const int *xyminmax);
 
 float __attribute__((malloc))* kahto_f4arr(int n, double terminator, ...);
 

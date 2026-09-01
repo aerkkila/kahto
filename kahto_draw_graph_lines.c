@@ -1,6 +1,41 @@
 static inline char set_bit(char num, int ibit, int val) {
-	return (num & ~(1 << ibit)) // reset bit
-		| val << ibit; // set bit
+	return (num & ~(1 << ibit))/*set bit to 0*/ | val << ibit;
+}
+
+static void draw_arrowtip(uint32_t *canvas, int ystride, const int *xy, struct kahto_graph *graph, const int *area) {
+	const struct kahto_arrowstyle *style = &graph->arrowstyle;
+	if (style->style == kahto_arrowstyle_none)
+		return;
+	float corners[6] = { xy[2], xy[3] };
+	float mainvector[] = {xy[0] - xy[2], xy[1] - xy[3]};
+	float halfangle_rad = style->angle_grad / 400 * PI;
+	float co = cosf(halfangle_rad);
+	float si = sinf(halfangle_rad);
+	float mainlen = sqrt(mainvector[0]*mainvector[0] + mainvector[1]*mainvector[1]);
+	for (int iside=0; iside<2; iside++) {
+		float vector[] = {
+			mainvector[0]*co - mainvector[1]*si,
+			mainvector[0]*si + mainvector[1]*co,
+		};
+		float length;
+		if (style->as_fraction_of_line && style->length < 1)
+			length = style->length * mainlen;
+		else
+			length = tofpixels(style->length, graph->figure);
+		vector[0] *= length/mainlen;
+		vector[1] *= length/mainlen;
+		corners[(iside+1)*2+0] = corners[0]+vector[0];
+		corners[(iside+1)*2+1] = corners[1]+vector[1];
+		si = -si; // angle = -angle
+	}
+
+	switch(style->style) {
+		case kahto_arrowstyle_triangle:
+			kahto_fill_triangle(canvas, ystride, corners, style->color, area);
+			break;
+		case kahto_arrowstyle_none:
+			__builtin_unreachable();
+	}
 }
 
 void kahto_draw_graph_lines
@@ -102,7 +137,9 @@ void kahto_draw_graph_lines
 				level = 255 - level;
 			graph->linestyle.color = from_cmap(caxis->cmap+3*level);
 		}
-		if (!notapixel)
+		if (!notapixel) {
 			carry = draw_line(args->canvas, args->ystride, xy[0], area, &graph->linestyle, fig, carry);
+			draw_arrowtip(args->canvas, args->ystride, xy[0], graph, area);
+		}
 	}
 }

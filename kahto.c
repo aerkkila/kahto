@@ -1086,6 +1086,8 @@ static void kahto_forward_graphcolor(struct kahto_graph *graph) {
 		graph->linestyle.color = graph->color;
 	if (!graph->errstyle.color)
 		graph->errstyle.color = graph->color;
+	if (!graph->arrowstyle.color)
+		graph->arrowstyle.color = graph->color;
 }
 
 void kahto_set_colors(struct kahto_figure *figure) {

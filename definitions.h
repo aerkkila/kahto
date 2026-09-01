@@ -1,1 +1,2 @@
 #define NOT_A_PIXEL -9999
+#define PI 3.14159265358979
