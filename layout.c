@@ -753,7 +753,7 @@ end:
 static void align_axis_min(struct kahto_align *restrict a) {
 	int pos = 0;
 	for (int i=a->naxes-1; i>=0; i--)
-		update_max(a->axes[i]->ro_minmaxpos[0], pos);
+		update_max(pos, a->axes[i]->ro_minmaxpos[0]);
 	for (int i=a->naxes-1; i>=0; i--)
 		if (a->axes[i]->ro_minmaxpos[0] < pos) {
 			a->axes[i]->ro_margin_minmax[0] += pos - a->axes[i]->ro_minmaxpos[0];
@@ -762,12 +762,12 @@ static void align_axis_min(struct kahto_align *restrict a) {
 }
 
 static void align_axis_max(struct kahto_align *restrict a) {
-	int pos = 0;
+	int pos = ~(1<<31); // INT_MAX
 	for (int i=a->naxes-1; i>=0; i--)
-		update_min(a->axes[i]->ro_minmaxpos[1], pos);
+		update_min(pos, a->axes[i]->ro_minmaxpos[1]);
 	for (int i=a->naxes-1; i>=0; i--)
 		if (a->axes[i]->ro_minmaxpos[1] > pos) {
-			a->axes[i]->ro_margin_minmax[0] += a->axes[i]->ro_minmaxpos[0] - pos;
+			a->axes[i]->ro_margin_minmax[1] += a->axes[i]->ro_minmaxpos[1] - pos;
 			axis_set_parallel_sizes(a->axes[i], 0);
 		}
 }
