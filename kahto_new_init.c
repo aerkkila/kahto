@@ -117,8 +117,8 @@ struct kahto_figure* kahto_figure_init(struct kahto_figure *figure) {
 	memset(figure, 0, sizeof(*figure));
 	figure->background = -1;
 
-	figure->wh[0] = kahto_default_width;
-	figure->wh[1] = kahto_default_height;
+	figure->wh[0] = figure->ro_wh0[0] = kahto_default_width;
+	figure->wh[1] = figure->ro_wh0[1] = kahto_default_height;
 
 	figure->topixels_reference = kahto_topix_total_height;
 	figure->colorscheme.colors = kahto_colorschemes[0];

@@ -11,7 +11,7 @@ static void move_area(int *xyxy, int *xy) {
 	xyxy[3] += xy[1];
 }
 
-static void move_xywh(int *xywh, int *xy) {
+static void move_xy(int *xywh, int *xy) {
 	xywh[0] += xy[0];
 	xywh[1] += xy[1];
 }
@@ -37,16 +37,15 @@ static void move_everything(struct kahto_figure *fig, int *xy) {
 		ax->ro_minmaxpos[0] += xy[!xy_orthogonal];
 		ax->ro_minmaxpos[1] += xy[!xy_orthogonal];
 	}
-	move_xywh(fig->ro_inner_xywh, xy);
+	move_xy(fig->ro_inner_xywh, xy);
 	for (int itx=0; itx<fig->ntexts; itx++)
 		if (fig->texts[itx].text)
 			move_area(fig->texts[itx].ro_area, xy);
-	move_xywh(fig->legend.ro_xywh, xy);
+	move_xy(fig->legend.ro_xywh, xy);
 
 	for (int i=0; i<fig->nsubfigures; i++)
 		if (fig->subfigures[i])
-			for (int idim=0; idim<2; idim++)
-				fig->subfigures[i]->ro_corner[idim] += xy[idim];
+			move_xy(fig->subfigures[i]->ro_corner, xy);
 }
 
 static void update_maxarea(int *a, int *b) {
@@ -546,10 +545,7 @@ static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
 		ttra_init(fig->ttra);
 	kahto_make_range(fig);
 
-	if (*(long*)fig->ro_wh0)
-		memcpy(fig->wh, fig->ro_wh0, sizeof(fig->wh));
-	else
-		memcpy(fig->ro_wh0, fig->wh, sizeof(fig->wh));
+	memcpy(fig->wh, fig->ro_wh0, sizeof(fig->wh));
 
 layout_again_except_wh:
 	/* tick initialization */
