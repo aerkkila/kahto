@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 54
+#define __kahto_version_in_program 55
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -302,7 +302,7 @@ struct kahto_graph {
 	unsigned color; // overridden by style.color
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
-	int cmh_enum, icolor;
+	int cmh_enum, icolor, zorder; // higher zorder is drawn later among this->figure->graph
 	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset; // if xdata is not given, xₙ = xoffset + n
 	float scale_y_per_x;
@@ -442,7 +442,7 @@ struct kahto_args {
 	unsigned color;
 	unsigned *colors, ncolors; // data repeat these colors, overrides other color settings
 	unsigned char *cmap, alpha;
-	int cmh_enum, icolor;
+	int cmh_enum, icolor, zorder; // higher zorder is drawn later among this->figure->graph
 	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset;
 	float scale_y_per_x;

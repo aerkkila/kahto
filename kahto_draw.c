@@ -369,8 +369,25 @@ void kahto_draw_figure(struct kahto_figure *figure, uint32_t *canvas, int ystrid
 
 	for (int i=0; i<figure->naxis; i++)
 		kahto_draw_axis(figure->axis[i], canvas, figure->wh[0], figure->wh[1], ystride);
+
+	/* Draw graphes using the right zorder. */
+	int znext = (unsigned)-1 >> 1; // int max
 	for (int i=0; i<figure->ngraph; i++)
-		kahto_draw_graph(figure->graph[i], canvas, ystride, figure, 0);
+		update_min(znext, figure->graph[i]->zorder);
+	while (1) {
+		int znow = znext;
+		znext = (unsigned)-1 >> 1;
+		for (int i=0; i<figure->ngraph; i++) {
+			struct kahto_graph *g = figure->graph[i];
+			if (g->zorder == znow)
+				kahto_draw_graph(g, canvas, ystride, figure, 0);
+			else if (g->zorder > znow && g->zorder < znext)
+				znext = g->zorder;
+		}
+		if (znext == znow)
+			break;
+	}
+
 	kahto_draw_legend(figure, canvas, ystride);
 
 	if (figure->title.text) {
