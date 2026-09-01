@@ -4,6 +4,46 @@
 #include "kahto.h"
 #include <ttra.h>
 
+static void move_area(int *xyxy, int *xy) {
+	xyxy[0] += xy[0];
+	xyxy[2] += xy[0];
+	xyxy[1] += xy[1];
+	xyxy[3] += xy[1];
+}
+
+static void move_xywh(int *xywh, int *xy) {
+	xywh[0] += xy[0];
+	xywh[1] += xy[1];
+}
+
+static void move_everything(struct kahto_figure *fig, int *xy) {
+	if (fig->title.text)
+		move_area(fig->title.ro_area, xy);
+	for (int iax=0; iax<fig->naxis; iax++) {
+		struct kahto_axis *ax = fig->axis[iax];
+		if (!ax)
+			continue;
+		for (int i=0; i<ax->ntexts; i++)
+			if (ax->text[i])
+				move_area(ax->text[i]->ro_area, xy);
+		if (ax->ticks)
+			move_area(ax->ticks->ro_labelarea, xy);
+		int xy_orthogonal = ax->direction == 'x';
+		ax->ticks->ro_lines[0]  += xy[xy_orthogonal];
+		ax->ticks->ro_lines[1]  += xy[xy_orthogonal];
+		ax->ticks->ro_lines1[0] += xy[xy_orthogonal];
+		ax->ticks->ro_lines1[1] += xy[xy_orthogonal];
+		move_area(ax->ro_area, xy);
+		ax->ro_minmaxpos[0] += xy[!xy_orthogonal];
+		ax->ro_minmaxpos[1] += xy[!xy_orthogonal];
+	}
+	move_xywh(fig->ro_inner_xywh, xy);
+	for (int itx=0; itx<fig->ntexts; itx++)
+		if (fig->texts[itx].text)
+			move_area(fig->texts[itx].ro_area, xy);
+	move_xywh(fig->legend.ro_xywh, xy);
+}
+
 static void update_maxarea(int *a, int *b) {
 	if (b[0] < a[0]) a[0] = b[0];
 	if (b[1] < a[1]) a[1] = b[1];
@@ -43,21 +83,26 @@ static int get_subfigures_area(struct kahto_figure *fig, int area[4]) {
    because there is nothing which can expand to fill the whole figure.
    Returns whether the figure size should be changed to match returned area. */
 static int get_used_area(struct kahto_figure *fig, int area[4]) {
-	int cmp[4] = {0};
-	int adjust_size = !!fig->naxis; // adjust size if there is an axis
-	memcpy(area, fig->legend.ro_xywh, sizeof(fig->legend.ro_xywh));
-	if (memcmp(cmp, area, sizeof(cmp))) {
+	int adjust_size = 0;
+
+	if (fig->legend.ro_xywh[2]) { // there is a legend
+		memcpy(area, fig->legend.ro_xywh, sizeof(fig->legend.ro_xywh));
 		area[2] += area[0];
 		area[3] += area[1];
-		adjust_size = 1; // adjust size if there is a legend
+		adjust_size = 1;
 	}
-	update_maxarea(area, fig->title.ro_area); // don't adjust size for standalone titles
+	else
+		area[0] = area[1] = ~(1<<31); // INT_MAX
+
+	if (fig->title.text)
+		update_maxarea(area, fig->title.ro_area);
 
 	int help[4];
 	for (int iaxis=0; iaxis<fig->naxis; iaxis++)
 		if (fig->axis[iaxis]) {
 			get_axisarea(fig->axis[iaxis], help);
 			update_maxarea(area, help);
+			adjust_size = 1;
 		}
 
 	if (fig->ro_internal->subfiguresize_ready) {
@@ -66,12 +111,9 @@ static int get_used_area(struct kahto_figure *fig, int area[4]) {
 			return adjust_size;
 		adjust_size = 1; // adjust size according to the subfigures
 
-		if (!(area[2] || area[3])) {
+		if (!(area[2] || area[3]))
 			memcpy(area, areasub, sizeof(areasub));
-			return adjust_size;
-		}
-
-		if (areasub[2] || areasub[3])
+		else if (areasub[2] || areasub[3])
 			update_maxarea(area, areasub);
 	}
 
@@ -492,41 +534,41 @@ static int fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2]) {
 #define return return fig->ro_cannot_draw =
 
 static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
+	kahto_get_ttra(fig);
+	if (!fig->ttra->initialized)
+		ttra_init(fig->ttra);
+	kahto_make_range(fig);
+
 	if (*(long*)fig->ro_wh0)
 		memcpy(fig->wh, fig->ro_wh0, sizeof(fig->wh));
 	else
 		memcpy(fig->ro_wh0, fig->wh, sizeof(fig->wh));
 
-everything_again_except_wh:
+layout_again_except_wh:
+	/* tick initialization */
+	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
+		struct kahto_axis *axis = fig->axis[iaxis];
+		if (!axis || my_isnan(axis->min) || my_isnan(axis->max))
+			continue;
+		if (axis->ticks && axis->ticks->init)
+			axis->ticks->init(axis->ticks, axis->min, axis->max);
+	}
+
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	for (int i=0; i<fig->naxis; i++)
 		memset(fig->axis[i]->ro_margin_minmax, 0, sizeof(fig->axis[i]->ro_margin_minmax));
-	kahto_get_ttra(fig);
-	if (!fig->ttra->initialized)
-		ttra_init(fig->ttra);
 	if (fig->title.text) {
 		set_fontheight(fig, fig->title.rowheight);
 		put_text(fig->ttra, fig->title.text, fig->wh[0]*0.5, 0, -0.5, 0, fig->title.rotation_grad, fig->title.ro_area, 1);
 		imargin_xyxy[1] += fig->title.ro_area[3];
 	}
 
-	kahto_make_range(fig);
-
-	/* tick initialization */
-	for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
-		struct kahto_axis *axis = fig->axis[iaxis];
-		if (my_isnan(axis->min) || my_isnan(axis->max))
-			continue;
-		if (axis->ticks && axis->ticks->init)
-			axis->ticks->init(axis->ticks, axis->min, axis->max);
-	}
-
 	/* orthogonal axis size */
 	for (int outside=1; outside>=0; outside--)
 		for (int iaxis=0; iaxis<fig->naxis; iaxis++) {
 			struct kahto_axis *axis = fig->axis[iaxis];
-			if (my_isnan(axis->min) || my_isnan(axis->max))
+			if (!axis || my_isnan(axis->min) || my_isnan(axis->max))
 				continue;
 			if (axis->pos == (int)axis->pos && axis->outside == outside)
 				kahto_axis_get_orthogonal(axis, imargin_xyxy);
@@ -662,7 +704,7 @@ loop_done:
 			int olddiff = yxax[!smaller]->ro_minmaxpos[1] - yxax[!smaller]->ro_minmaxpos[0];
 			if (!fig->wh_locked && newdiff < olddiff-1) {
 				fig->wh[yxax[!smaller]->direction == 'y'] -= olddiff - newdiff;
-				goto everything_again_except_wh; // would be better to adjust things here
+				goto layout_again_except_wh;
 			}
 			else if (newdiff <= olddiff-1) {
 				/* margin_minmax is misleading: it means smaller pixel index,
@@ -686,8 +728,9 @@ loop_done:
 		if (fig->graph[i]->data.list.ydata->length)
 			goto end;
 	int area[4];
-	if (!get_used_area(fig, area)) // returns false if size should not be changed
+	if (!get_used_area(fig, area)) // returns false if figure size should not be changed
 		goto end;
+
 	int w = area[2] - area[0],
 		h = area[3] - area[1];
 
@@ -695,6 +738,11 @@ loop_done:
 		fig->wh[0] = w;
 	if (h < fig->wh[1])
 		fig->wh[1] = h;
+
+	if (area[0] || area[1]) {
+		int move[] = {-area[0], -area[1]};
+		move_everything(fig, move);
+	}
 
 end:
 	return 0;
@@ -750,7 +798,7 @@ void kahto_layout(struct kahto_figure *fig) {
 		a = a->next;
 	}
 
-	/* this figure again because subfigure sizes may change affecting this figure too */
+	/* this figure again because figure sizes may change affecting the layout */
 	if (kahto_figure_layout(fig, pxmargin_xyxy) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
 		kahto_figure_layout(fig, pxmargin_xyxy);
