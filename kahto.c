@@ -1052,25 +1052,24 @@ struct kahto_figure* kahto_plot_args(struct kahto_args *args) {
 	struct kahto_graph *graph = add_graph(args);
 
 	/* copy if necessary */
-	/* toteuttamatta sublength-tapauksessa */
 	for (int idim=0; idim<arrlen(graph->data.arr); idim++) {
 		struct kahto_data *data = graph->data.arr[idim];
 		if (!data || data->owner != -1)
 			continue;
-		size_t size = kahto_sizes[data->type] * data->length;
+		int sublen = data->sublength ? data->sublength : 1;
+		size_t size = kahto_sizes[data->type] * data->length * sublen;
 		void *old = data->data;
 		if (!(data->data = malloc(size)))
 			fprintf(stderr, "malloc %zu (%s)\n", size, __func__);
 		if (data->stride == 1)
 			memcpy(data->data, old, size);
 		else {
-			/* after copying, stride == 1 */
 			char *dt = data->data;
-			int size = kahto_sizes[data->type];
+			int size = kahto_sizes[data->type] * sublen;
 			int stride = data->stride;
 			for (int i=data->length-1; i>=0; i--)
 				memcpy(dt+i*size, (char*)old+i*stride*size, size);
-			data->stride = 1;
+			data->stride = 1; // after copying, stride == 1
 		}
 		data->owner = 1;
 	}
