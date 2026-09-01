@@ -531,7 +531,7 @@ void kahto_make_range(struct kahto_figure *figure) {
 
 		for (int yxz=0; yxz<arrlen(graph->data.arr); yxz++) {
 			struct kahto_data *data = graph->data.arr[yxz];
-			if (!data)
+			if (!data || !data->length)
 				continue;
 			kahto_check_dataminmax(data, yxz);
 			struct kahto_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
@@ -540,19 +540,19 @@ void kahto_make_range(struct kahto_figure *figure) {
 			if ((axis->range_isset & minmax) == minmax)
 				continue;
 			if (!(axis->range_isset & kahto_minbit)) {
-				if (axis->range_isset & kahto_minbit<<4) // we use this temporarily to mark initialized minmax
+				if (axis->range_isset & kahto_minbit<<4) // temporary bit to mark initialized minmax
 					update_min(axis->min, data->minmax[0]);
 				else {
 					axis->min = data->minmax[0];
-					axis->range_isset |= kahto_minbit<<4; // we use this temporarily to mark initialized minmax
+					axis->range_isset |= kahto_minbit<<4; // temporary bit to mark initialized minmax
 				}
 			}
 			if (!(axis->range_isset & kahto_maxbit)) {
-				if (axis->range_isset & kahto_maxbit<<4) // we use this temporarily to mark initialized minmax
+				if (axis->range_isset & kahto_maxbit<<4) // temporary bit to mark initialized minmax
 					update_max(axis->max, data->minmax[1]);
 				else {
 					axis->max = data->minmax[1];
-					axis->range_isset |= kahto_maxbit<<4; // we use this temporarily to mark initialized minmax
+					axis->range_isset |= kahto_maxbit<<4; // temporary bit to mark initialized minmax
 				}
 			}
 		}
@@ -819,14 +819,11 @@ found:
 		// A use case for plotting nothing (length == 0) is legend customization.
 		goto axes_added;
 
+	struct kahto_axis *yxax[] = {kahto_gly(fig), kahto_glx(fig)};
 	for (int iaxis=0; iaxis<2; iaxis++)
-		if (!graph->yxaxis[iaxis]) {
-			if (fig->ngraph > 1)
-				graph->yxaxis[iaxis] = fig->graph[fig->ngraph-2]->yxaxis[iaxis];
-			else {
-				graph->yxaxis[iaxis] = kahto_axis_new(fig, 'y'-iaxis, 0+iaxis);
-				graph->yxaxis[iaxis]->ticks->gridstyle.style = kahto_line_normal_e;
-			}
+		if (!(graph->yxaxis[iaxis] = yxax[iaxis])) {
+			graph->yxaxis[iaxis] = kahto_axis_new(fig, 'y'-iaxis, 0+iaxis);
+			graph->yxaxis[iaxis]->ticks->gridstyle.style = kahto_line_normal_e;
 		}
 
 	/* add featureaxis, if necessary */

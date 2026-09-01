@@ -1,4 +1,6 @@
 struct kahto_axis* kahto_axis_void_new(struct kahto_figure *figure) {
+	if (!figure)
+		figure = kahto_figure_new();
 	struct kahto_axis *axis = calloc(1, sizeof(struct kahto_axis));
 	axis->figure = figure;
 	axis->center = 0.0 / 0.0;
@@ -29,7 +31,10 @@ struct kahto_axis* kahto_axis_init(struct kahto_axis *axis, int x_or_y, float po
 }
 
 struct kahto_axis* kahto_axis_new(struct kahto_figure *figure, int x_or_y, float pos) {
-	return kahto_axis_init(kahto_axis_void_new(figure), x_or_y, pos);
+	struct kahto_axis *ax = kahto_axis_init(kahto_axis_void_new(figure), x_or_y, pos);
+	if (!figure)
+		ax->ticks->gridstyle.style = kahto_line_normal_e; // Only the first axis have grid on by default
+	return ax;
 }
 
 struct kahto_axis* kahto_coloraxis_init(struct kahto_axis *axis, int x_or_y) {

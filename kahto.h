@@ -687,16 +687,18 @@ static inline struct kahto_graph* kahto_glg(struct kahto_figure *fig) {
 
 /* get latest xaxis */
 static inline struct kahto_axis* kahto_glx(struct kahto_figure *fig) {
-	if (fig->ngraph <= 0)
-		return NULL;
-	return fig->graph[fig->ngraph-1]->yxaxis[1];
+	for (int i=fig->ngraph-1; i>=0; i--)
+		if (fig->graph[i]->yxaxis[1])
+			return fig->graph[i]->yxaxis[1];
+	return NULL;
 }
 
 /* get latest yaxis */
 static inline struct kahto_axis* kahto_gly(struct kahto_figure *fig) {
-	if (fig->ngraph <= 0)
-		return NULL;
-	return fig->graph[fig->ngraph-1]->yxaxis[0];
+	for (int i=fig->ngraph-1; i>=0; i--)
+		if (fig->graph[i]->yxaxis[0])
+			return fig->graph[i]->yxaxis[0];
+	return NULL;
 }
 
 void kahto_init_ticker_default(struct kahto_ticks *this, double min, double max);
