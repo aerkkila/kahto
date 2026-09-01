@@ -12,7 +12,6 @@ core
 vgcore*
 functions.c
 config.mk
-.nclangcomplete.lua
 testejä
 tests
 dependencies
