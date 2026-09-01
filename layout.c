@@ -42,6 +42,11 @@ static void move_everything(struct kahto_figure *fig, int *xy) {
 		if (fig->texts[itx].text)
 			move_area(fig->texts[itx].ro_area, xy);
 	move_xywh(fig->legend.ro_xywh, xy);
+
+	for (int i=0; i<fig->nsubfigures; i++)
+		if (fig->subfigures[i])
+			for (int idim=0; idim<2; idim++)
+				fig->subfigures[i]->ro_corner[idim] += xy[idim];
 }
 
 static void update_maxarea(int *a, int *b) {
@@ -785,9 +790,16 @@ void kahto_layout(struct kahto_figure *fig) {
 	kahto_xywh_to_subfigures(fig, pxmargin_xyxy);
 
 	/* then subfigures */
-	for (int i=0; i<fig->nsubfigures; i++)
-		if ((fig->subfigures[i]))
-			kahto_layout(fig->subfigures[i]);
+	for (int i=0; i<fig->nsubfigures; i++) {
+		if (!fig->subfigures[i])
+			continue;
+		struct kahto_figure *fig1 = fig->subfigures[i];
+		int wh[] = {fig1->wh[0], fig1->wh[1]};
+		kahto_layout(fig1);
+		for (int idim=0; idim<2; idim++)
+			if (fig1->wh[idim] < wh[idim] && fig1->ro_corner[idim] == 0)
+				fig1->ro_corner[idim] += wh[idim] - fig1->wh[idim];
+	}
 
 	struct kahto_align *a = fig->ro_internal->align_min;
 	while (a) {
