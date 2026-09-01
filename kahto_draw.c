@@ -23,10 +23,21 @@ static inline uint32_t from_cmap(const unsigned char *ptr) {
 }
 
 void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color);
+void kahto_fill_box_safe(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color, const int *maxarea);
 
 #include "kahto_draw_line.c" // future default method
 #include "kahto_draw_line_more.c" // other methods
 #include "kahto_draw_graph.c"
+
+void kahto_fill_box_safe(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color, const int *maxarea) {
+	int j0 = max(maxarea[1], area[1]),
+		j1 = min(maxarea[3], area[3]),
+		i0 = max(maxarea[0], area[0]),
+		i1 = min(maxarea[2], area[2]);
+	for (int j=j0; j<j1; j++)
+		for (int i=i0; i<i1; i++)
+			canvas[j*ystride+i] = color;
+}
 
 void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color) {
 	for (int j=area[1]; j<area[3]; j++)
