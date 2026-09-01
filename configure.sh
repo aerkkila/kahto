@@ -6,7 +6,7 @@
 
 LIBS=
 OBJS=
-tmpfile=/tmp/cplot_configure_test
+tmpfile=/tmp/kahto_configure_test
 file=config.mk
 
 isinstalled() {
@@ -38,9 +38,9 @@ make_dependency() {
 printf "# Automatically created by $0. Edit if necessary.\n\n" > $file
 
 printf "# Optional third party libraries. If value is no, library was not found.\n" >> $file
-printf "# Enable cplot_write_png (yes, no)\n" >> $file
+printf "# Enable kahto_write_png (yes, no)\n" >> $file
 make_dependency yes no libpng png
-printf "# Enable cplot_write_mp4 (yes, no)\n" >> $file
+printf "# Enable kahto_write_mp4 (yes, no)\n" >> $file
 printf "# This becomes a separate object file to be linked with -lkahto-ffmpeg when necessary.\n" >> $file
 printf "# Linking to ffmpeg libraries is slow, which is the reason for separating it.\n" >> $file
 make_dependency yes no ffmpeg avcodec avutil avformat
@@ -52,7 +52,7 @@ printf "#   yes:    Already installed. Will be linked dynamically.\n" >> $file
 printf "#   static: Download this and link statically to the library.\n" >> $file
 make_dependency yes static libttra ttra
 make_dependency yes static cmh_colormaps cmh_colormaps.h
-printf "# Optional. Enables cplot_show\n" >> $file
+printf "# Optional. Enables kahto_show\n" >> $file
 isinstalled wayland-client && default=static || default=no
 make_dependency yes $default libwaylandhelper waylandhelper
 printf "\n" >> $file
