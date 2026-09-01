@@ -106,6 +106,7 @@ static int kahto_init_video
 (struct kahto_video *out, const char *filename,
  struct kahto_videoargs *videoargs, struct kahto_audioargs *audioargs) {
 	AVFormatContext *fcontext;
+	mkdir_file(filename);
 	negfun(avformat_alloc_output_context2, &fcontext, NULL, NULL, filename);
 
 	if (videoargs)
