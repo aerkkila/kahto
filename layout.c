@@ -45,6 +45,8 @@ static void move_everything(struct kahto_figure *fig, int *xy) {
 }
 
 static void update_maxarea(int *a, int *b) {
+	if (b[0] == b[2] || b[1] == b[3])
+		return;
 	if (b[0] < a[0]) a[0] = b[0];
 	if (b[1] < a[1]) a[1] = b[1];
 	if (b[2] > a[2]) a[2] = b[2];
@@ -78,8 +80,8 @@ static int get_subfigures_area(struct kahto_figure *fig, int area[4]) {
 	return first;
 }
 
-/* Usually returned area is the size of the whole figure.
-   Smaller, if e.g. a standalone coloraxis or a standalone legend is drawn,
+/* Returned area is usually the size of the whole figure.
+   Smaller, if e.g. a standalone axis or a standalone legend is drawn,
    because there is nothing which can expand to fill the whole figure.
    Returns whether the figure size should be changed to match returned area. */
 static int get_used_area(struct kahto_figure *fig, int area[4]) {

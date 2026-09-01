@@ -337,8 +337,6 @@ struct kahto_figure {
 
 	struct kahto_axis **axis;
 	int naxis, mem_axis;
-	/* these figures share the same x- or y-coordinates
-	   after computing the layout, each size is changed according to the smallest x- or y-axis */
 	struct ttra *ttra;
 	char ttra_owner;
 	int ro_inner_xywh[4], ro_corner[2];
