@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 53
+#define __kahto_version_in_program 54
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -305,8 +305,8 @@ struct kahto_graph {
 	int cmh_enum, icolor;
 	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset; // if xdata is not given, xₙ = xoffset + n
-	unsigned equal_scale_xy : 1,
-			 exact : 1, // colormesh only: Every grid cell is exactly same size. Ticks will be slightly off.
+	float scale_y_per_x;
+	unsigned exact : 1, // colormesh only: Every grid cell is exactly same size. Ticks will be slightly off.
 			 legend_coloronly : 1;
 };
 
@@ -445,8 +445,8 @@ struct kahto_args {
 	int cmh_enum, icolor;
 	unsigned (*colormodify)(unsigned color); // return the color to use
 	double xoffset;
-	unsigned equal_scale_xy : 1,
-			 exact : 1, // only needed with colormesh
+	float scale_y_per_x;
+	unsigned exact : 1, // only needed with colormesh
 			 legend_coloronly : 1;
 	/* above must match with kahto_graph */
 

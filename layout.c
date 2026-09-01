@@ -700,10 +700,11 @@ layout_again_except_wh:
 loop_done:
 
 	for (int i=fig->ngraph-1; i>=0; i--)
-		if (fig->graph[i]->equal_scale_xy) {
+		if (fig->graph[i]->scale_y_per_x) {
+			float yxscale[] = {1/fig->graph[i]->scale_y_per_x, fig->graph[i]->scale_y_per_x};
 			struct kahto_axis **yxax = fig->graph[i]->yxaxis;
-			int smaller = yxax[1]->ro_pix_per_unit < yxax[0]->ro_pix_per_unit;
-			int newdiff = (yxax[!smaller]->max - yxax[!smaller]->min) * yxax[smaller]->ro_pix_per_unit;
+			int smaller = yxax[1]->ro_pix_per_unit < yxax[0]->ro_pix_per_unit * yxscale[0];
+			int newdiff = (yxax[!smaller]->max - yxax[!smaller]->min) * yxax[smaller]->ro_pix_per_unit * yxscale[smaller];
 			int olddiff = yxax[!smaller]->ro_minmaxpos[1] - yxax[!smaller]->ro_minmaxpos[0];
 			if (!fig->wh_locked && newdiff < olddiff-1) {
 				fig->wh[yxax[!smaller]->direction == 'y'] -= olddiff - newdiff;
