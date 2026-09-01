@@ -82,12 +82,12 @@ struct _kahto_dashed_line_args {
 };
 
 static uint32_t draw_line_bresenham_dashed(struct _kahto_dashed_line_args *args, uint32_t carry) {
-	int nosteep		= args->nosteep,
-		ystride		= args->ystride;
+	int nosteep = args->nosteep,
+		ystride = args->ystride;
 	struct kahto_figure *fig = args->fig;
-	uint32_t *canvas	     = args->canvas,
-			 color           = args->color,
-			 *colors         = args->colors,
+	uint32_t *canvas = args->canvas,
+			 color   = args->color,
+			 *colors = args->colors,
 			 colornow;
 
 	int backwards = args->xy[2+!nosteep] < args->xy[!nosteep]; // m1 < m0
@@ -367,7 +367,7 @@ static uint32_t draw_line
  struct kahto_figure *fig, int32_t carry) {
 	if (style->style == kahto_line_future_e) {
 		draw_line_kahto(canvas, ystride, xy_c, style->color, tofpixels(style->thickness, fig), area);
-		return 0;
+		return carry;
 	}
 
 	int xy[4];
@@ -378,7 +378,7 @@ static uint32_t draw_line
 	// n is incremented only sometimes
 
 	/* Vinon viivan leveys vaakasuunnassa on eri.
-	   Yhtälö on johdettu kynällä ja paperilla yhdenmuotoisista kolmioista. */
+	   Yhtälö on johdettu yhdenmuotoisista kolmioista. */
 	int dm = xy[2+!n_ind] - xy[!n_ind];
 	int dn = xy[2+n_ind] - xy[n_ind];
 	if (dm && dn) {
@@ -431,5 +431,6 @@ static uint32_t draw_line
 		case kahto_line_none_e:
 			break;
 	}
+
 	return carry;
 }
