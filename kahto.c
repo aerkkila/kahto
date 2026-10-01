@@ -323,7 +323,7 @@ struct kahto_figure* kahto_subfigures_margin(struct kahto_figure *fig, float xma
 
 		if (xywh[1] > 0) {
 			xywh[1] += ymarg;
-			xywh[1] -= ymarg;
+			xywh[3] -= ymarg;
 		}
 		if (xywh[1] + xywh[3] < 0.999999)
 			xywh[3] -= ymarg;
