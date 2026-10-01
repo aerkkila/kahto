@@ -22,6 +22,10 @@
 #define xywh_to_area(xywh) {(xywh)[0], (xywh)[1], (xywh)[2]+(xywh)[0], (xywh)[3]+(xywh)[1]}
 #define Abs(a) ((a) < 0 ? -(a) : (a))
 #define Sign(a) ((a) < 0 ? -1 : 1 * ((a)>0))
+#define swap(a,b) do { \
+	typeof(a) _tmp_zbGqngbHQKNWbjOyhzue3HNTS = a; \
+	a = b; b = _tmp_zbGqngbHQKNWbjOyhzue3HNTS; \
+} while (0)
 
 #define default_colormap cmh_jet_e
 

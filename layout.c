@@ -397,66 +397,89 @@ void kahto_axis_get_orthogonal(struct kahto_axis *axis, int *imargin_xyxy) {
 }
 
 /* add room for markers whose value is in the axis area but which are clipped partially */
-static int room_for_markers_on_edge(struct kahto_figure *fig) {
-	for (int i=0; i<fig->ngraph; i++) {
-		struct kahto_graph *graph = fig->graph[i];
-		int yxyx[4];
-		if (graph->draw_marker_fun) {
-			struct kahto_draw_data_args args = {.yxyx_oversize_out=yxyx, .fig=fig, .graph=graph};
-			graph->draw_marker_fun(&args); // fills yxyx_oversize_out
-		}
-		else {
-			int isize = 0;
-			if (graph->linestyle.style != kahto_line_none_e)
-				isize = topixels(graph->linestyle.thickness, fig);
-			if (kahto_visible_marker(graph->markerstyle.marker)) {
-				int a = topixels_marker(graph);
-				update_max(isize, a);
-			}
-			if (isize <= 0)
-				continue;
-			yxyx[0] = yxyx[1] = yxyx[2] = yxyx[3] = isize/2;
-		}
-		for (int iaxis=0; iaxis<2; iaxis++) {
-			struct kahto_axis *axis = graph->yxaxis[iaxis];
-			if (!axis)
-				continue;
-			struct kahto_data *data = graph->data.arr[iaxis];
-			double axisrange = axis->max - axis->min;
-			if (my_isnan(axisrange))
-				continue;
-			int axislen = fig->ro_inner_xywh[2+(axis->direction=='y')];
-			/* This was derived using pen and paper. Reading this code might be challenging. */
-			float s0 = (max(axis->min, data->minmax[0]) - axis->min) / axisrange;
-			float s1 = (min(axis->max, data->minmax[1]) - axis->min) / axisrange;
-			float innerfraction[2];
-			for (int iside=0; iside<2; iside++) {
-				float size = (float)yxyx[iaxis+iside*2] / axislen;
-				innerfraction[iside] = (1 - 2 * size) / (s1 - s0);
-			}
-			float m0_axis = (float)yxyx[iaxis] / axislen - innerfraction[0] * s0;
-			float m1_axis = 1 - (m0_axis + innerfraction[1]);
-			int backwards = axis->direction == 'y';
-			char change = 0;
-			if (m0_axis > 0) {
-				int m0 = iroundpos(m0_axis * axislen);
-				if (m0 > axis->ro_margin_minmax[backwards]) {
-					axis->ro_margin_minmax[backwards] = m0;
-					change = 1;
-				}
-			}
-			if (m1_axis > 0) {
-				int m1 = iroundpos(m1_axis * axislen);
-				if (m1 > axis->ro_margin_minmax[!backwards]) {
-					axis->ro_margin_minmax[!backwards] = m1;
-					change = 1;
-				}
-			}
-			if (change)
-				if (axis_set_parallel_sizes(axis, 0))
-					return 1;
-		}
+static int room_for_markers_on_edge_graph(struct kahto_figure *fig, struct kahto_graph *graph) {
+	int yxyx[4];
+	if (graph->draw_marker_fun) {
+		struct kahto_draw_data_args args = {.yxyx_oversize_out=yxyx, .fig=fig, .graph=graph};
+		graph->draw_marker_fun(&args); // fills yxyx_oversize_out
 	}
+	else {
+		int isize = 0;
+		if (graph->linestyle.style != kahto_line_none_e)
+			isize = topixels(graph->linestyle.thickness, fig);
+		if (kahto_visible_marker(graph->markerstyle.marker)) {
+			int a = topixels_marker(graph);
+			update_max(isize, a);
+		}
+		if (isize <= 0)
+			return 0;
+		yxyx[0] = yxyx[1] = yxyx[2] = yxyx[3] = isize/2;
+	}
+
+	for (int iaxis=0; iaxis<2; iaxis++) {
+		struct kahto_axis *axis = graph->yxaxis[iaxis];
+		if (!axis)
+			continue;
+		struct kahto_data *data = graph->data.arr[iaxis];
+		double axisrange = axis->max - axis->min;
+		if (my_isnan(axisrange))
+			continue;
+
+		float posdata[] = {
+			(data->minmax[0] - axis->min) / axisrange,
+			(data->minmax[1] - axis->min) / axisrange,
+		};
+		if (posdata[0] < 0)
+			posdata[0] = 0;
+		if (posdata[1] > 1)
+			posdata[1] = 1;
+		int ipos[] = {axis->ro_minmaxpos[0], axis->ro_minmaxpos[1]};
+		if (iaxis == 0)
+			swap(ipos[0], ipos[1]);
+		int iposdata[] = {
+			ipos[0] + (ipos[1] - ipos[0]) * posdata[0],
+			ipos[0] + (ipos[1] - ipos[0]) * posdata[1],
+		};
+		double val[] = {axis->min, axis->max};
+
+		int smallerpos = iaxis == 0;
+		if (iposdata[smallerpos]-yxyx[iaxis] < axis->ro_area[0+!iaxis]) {
+			ipos[smallerpos] = axis->ro_area[0+!iaxis] + yxyx[iaxis];
+			val[smallerpos] = data->minmax[smallerpos];
+		}
+		if (iposdata[!smallerpos]+yxyx[2+iaxis] > axis->ro_area[2+!iaxis]) {
+			ipos[!smallerpos] = axis->ro_area[2+!iaxis] - yxyx[2+iaxis];
+			val[!smallerpos] = data->minmax[!smallerpos];
+		}
+
+		double pix_per_unit = (ipos[1] - ipos[0]) / (val[1] - val[0]);
+		int axisminpos = ipos[0] + (axis->min - val[0]) * pix_per_unit;
+		int axismaxpos = ipos[0] + (axis->max - val[0]) * pix_per_unit;
+		int change = 0;
+		if (iaxis == 0)
+			swap(axisminpos, axismaxpos);
+		if (axisminpos > axis->ro_minmaxpos[0]) {
+			axis->ro_minmaxpos[0] = axisminpos;
+			axis->ro_margin_minmax[0] = axis->ro_minmaxpos[0] - axis->ro_area[!iaxis];
+			change = 1;
+		}
+		if (axismaxpos < axis->ro_minmaxpos[1]) {
+			axis->ro_minmaxpos[1] = axismaxpos;
+			axis->ro_margin_minmax[1] = axis->ro_area[2+!iaxis] - axis->ro_minmaxpos[1];
+			change = 1;
+		}
+
+		if (change)
+			if (axis_set_parallel_sizes(axis, 0))
+				return 1;
+	}
+	return 0;
+}
+
+static int room_for_markers_on_edge(struct kahto_figure *fig) {
+	for (int i=fig->ngraph-1; i>=0; i--)
+		if (room_for_markers_on_edge_graph(fig, fig->graph[i]))
+			return 1;
 	return 0;
 }
 
