@@ -20,8 +20,8 @@ Other make commands
 | make clean
 | # To remove everything which can be regenerated: compiled files, config.mk, dependencies:
 | make dist-clean
-| (To download the dependencies marked to be downloaded in config.mk:)
-| $ make get_dep
+| # To download the dependencies marked to be downloaded in config.mk:
+| make get_dep
 
 Dependencies
 ------------
