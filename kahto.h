@@ -531,7 +531,7 @@ struct kahto_args {
 	__kahto_defaultargs,        \
 	.zdata=(z),                 \
 	.ztype=kahto_type(*(z)),    \
-	.equal_scale_xy=1,          \
+	.scale_y_per_x=1,           \
 	.kahto_ylen=__VA_ARGS__	    \
 	})
 

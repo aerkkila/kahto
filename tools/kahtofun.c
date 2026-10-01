@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 	for (int ikäyrä=0; ikäyrä<käyriä; ikäyrä++)
 		kahto_yx(y[ikäyrä], x, n, kahto_lineargs, .figure=figure);
 	if (equal_xy)
-		kahto_glg(figure)->equal_scale_xy = 1;
+		kahto_glg(figure)->scale_y_per_x = 1;
 	kahto_glx(figure)->logscale = xlog;
 	kahto_gly(figure)->logscale = ylog;
 	kahto_show(figure);

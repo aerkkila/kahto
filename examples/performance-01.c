@@ -9,10 +9,10 @@
 
 int main(){
 #define ndata 40
-#define length 50
-	short data[ndata][length];
+#define howmany 50
+	short data[ndata][howmany];
 	for (int i=0; i<ndata; i++)
-		for (int ii=0; ii<length; ii++)
+		for (int ii=0; ii<howmany; ii++)
 			data[i][ii] = rand() % 3000 + i*10;
 	clock_t start;
 	double time;
@@ -22,7 +22,7 @@ int main(){
 	/* Creating a new figure each time is simple but takes some time. */
 	start = clock();
 	for (int i=0; i<ndata; i++) {
-		struct kahto_figure *fig = kahto_y(data[i], length);
+		struct kahto_figure *fig = kahto_y(data[i], howmany);
 		kahto_draw(fig, canvas, kahto_default_width);
 		kahto_destroy(fig);
 	}
@@ -33,7 +33,7 @@ int main(){
 	start = clock();
 	struct kahto_figure *fig = kahto_figure_new();
 	for (int i=0; i<ndata; i++) {
-		kahto_y(data[i], length, .figure=fig);
+		kahto_y(data[i], howmany, .figure=fig);
 		kahto_draw(fig, canvas, kahto_default_width);
 		kahto_clean(fig);
 	}
