@@ -1048,6 +1048,7 @@ struct kahto_figure* kahto_plot_args(struct kahto_args *args) {
 			args->figure ? args->figure :
 			args->yaxis ? args->yaxis->figure :
 			args->xaxis ? args->xaxis->figure :
+			args->caxis ? args->caxis->figure :
 			kahto_figure_new();
 	args->figure = *figure;
 	struct kahto_graph *graph = add_graph(args);

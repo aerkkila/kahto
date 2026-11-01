@@ -3,5 +3,6 @@
 
 return {
 	['kahto_ffmpeg.c'] = {nil, nil},
+	['kahto.c'] = {{'-DHAVE_PNG'}, nil},
 	default = {{'-DHAVE_PNG'}, 'kahto.c'},
 };
