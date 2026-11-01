@@ -35,7 +35,7 @@ extern const unsigned char kahto_sizes[];
 
 #define kahto_rgb(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 
-#define __kahto_version_in_program 55
+#define __kahto_version_in_program 56
 extern const int __kahto_version_in_library;
 
 extern unsigned *kahto_colorschemes[];
@@ -344,6 +344,9 @@ struct kahto_figure {
 	struct kahto_figure **subfigures;
 	float (*subfigures_xywh)[4];
 	int nsubfigures, memsubfigures, zorder; // zorder: higher is drawn later among peers (this->super->subfigures)
+	void (*subfigures_tile)(struct kahto_figure *this),
+		 (*subfigures_tile_locked_wh)(struct kahto_figure *this),
+		 *subfigures_tiledata; // must be freeable
 
 	struct kahto_axis **axis;
 	int naxis, mem_axis;
@@ -551,9 +554,9 @@ struct kahto_figure* kahto_subfigures_new(int nrows, int ncols);
  * xyowner: (xowner<<0) | (yowner<<1)
  */
 struct kahto_figure* kahto_subfigures_grid_new(int nrows, int ncols, float *ysizes, float *xsizes, unsigned xyowner);
-/* Add xmarg and ymarg between all subfigures, but not to outer borders of superfigure.
-   If ymarg < 0, it becomes the same as xmarg. */
-struct kahto_figure* kahto_subfigures_margin(struct kahto_figure *fig, float xmarg, float ymarg);
+#define kahto_subfigures_margin use_kahto_subfigures_gap_instead
+/* if ygap < 0, it becomes the same as xgap */
+struct kahto_figure* kahto_subfigures_gap(struct kahto_figure *fig, float xgap, float ygap);
 
 /* Calling:
  *     kahto_subfigures_xyarr_new(4, (0.1, 0.1), 3, (0., 0.5, 0.2))

@@ -287,48 +287,61 @@ long kahto_get_startcanvas(struct kahto_figure *fig, struct kahto_figure *dest, 
 	return start;
 }
 
-struct kahto_figure* kahto_subfigures_put_rows_and_cols(struct kahto_figure *fig, int nrows, int ncols) {
-	float height = 1.0 / nrows,
-		  width = 1.0 / ncols;
+static void kahto_subfigures_tile_rectangular(struct kahto_figure *fig) {
+	int nrows  = ((float*)fig->subfigures_tiledata)[0];
+	int ncols  = ((float*)fig->subfigures_tiledata)[1];
+	float xgap = ((float*)fig->subfigures_tiledata)[2];
+	float ygap = ((float*)fig->subfigures_tiledata)[3];
+	if (ygap < 0) ygap = xgap;
+	if (xgap < 0) xgap = ygap;
+	float height = (1.0 - ygap*(nrows-1)) / nrows,
+		  width = (1.0 - xgap*(ncols-1)) / ncols,
+		  advance_y = 1.0 / nrows,
+		  advance_x = 1.0 / ncols;
 	float x[ncols];
 	for (int i=0; i<ncols; i++)
-		x[i] = i * width;
-	float y0 = 0;
+		x[i] = i * advance_x;
 	for (int j=0; j<nrows; j++) {
-		float y1 = (j+1) * height;
+		float y0 = j * advance_y;
 		for (int i=0; i<ncols; i++) {
 			fig->subfigures_xywh[j*ncols+i][0] = x[i];
 			fig->subfigures_xywh[j*ncols+i][1] = y0;
 			fig->subfigures_xywh[j*ncols+i][2] = width;
 			fig->subfigures_xywh[j*ncols+i][3] = height;
 		}
-		y0 = y1;
 	}
-	return fig;
 }
 
-struct kahto_figure* kahto_subfigures_margin(struct kahto_figure *fig, float xmarg, float ymarg) {
-	if (ymarg < 0)
-		ymarg = xmarg;
-	xmarg *= 0.5;
-	ymarg *= 0.5;
-	for (int ifig=fig->nsubfigures-1; ifig>=0; ifig--) {
-		float *xywh = fig->subfigures_xywh[ifig];
-		if (xywh[0] > 0) {
-			xywh[0] += xmarg;
-			xywh[2] -= xmarg;
+static void kahto_subfigures_tile_rectangular_locked_wh(struct kahto_figure *fig) {
+	int nrows  = ((float*)fig->subfigures_tiledata)[0];
+	int ncols  = ((float*)fig->subfigures_tiledata)[1];
+	float xgap = ((float*)fig->subfigures_tiledata)[2];
+	float ygap = ((float*)fig->subfigures_tiledata)[3];
+	if (ygap < 0) ygap = xgap;
+	if (xgap < 0) xgap = ygap;
+	int top = 0;
+	for (int irow=0; irow<nrows; irow++) {
+		int left = 0, rowh = 0;
+		for (int icol=0; icol<ncols; icol++) {
+			struct kahto_figure *fig1 = fig->subfigures[irow*ncols+icol];
+			if (!fig1)
+				continue;
+			fig1->ro_corner[0] = left;
+			left += fig1->wh[0] + xgap;
+			fig1->ro_corner[1] = top;
+			update_max(rowh, fig1->wh[1]);
 		}
-		if (xywh[0] + xywh[2] < 0.999999)
-			xywh[2] -= xmarg;
-
-		if (xywh[1] > 0) {
-			xywh[1] += ymarg;
-			xywh[3] -= ymarg;
-		}
-		if (xywh[1] + xywh[3] < 0.999999)
-			xywh[3] -= ymarg;
+		top += rowh + ygap;
 	}
-	return fig;
+}
+
+struct kahto_figure* kahto_subfigures_gap(struct kahto_figure *fig, float xgap, float ygap) {
+	if (fig->subfigures_tile != kahto_subfigures_tile_rectangular)
+		return NULL;
+	float *a = fig->subfigures_tiledata;
+	a[2] = xgap;
+	a[3] = ygap;
+	return fig->subfigures_tile(fig), fig;
 }
 
 static void _kahto_make_grid_1d(float (*xywh)[4], int which, int stride, int n, float *arr, float space) {
@@ -402,7 +415,14 @@ struct kahto_figure* kahto_add_subfigures(struct kahto_figure *fig, int n) {
 }
 
 struct kahto_figure* kahto_subfigures_new(int nrows, int ncols) {
-	return kahto_subfigures_put_rows_and_cols(kahto_add_subfigures(kahto_figure_new(), nrows*ncols), nrows, ncols);
+	struct kahto_figure *fig = kahto_add_subfigures(kahto_figure_new(), nrows*ncols);
+	float *a = fig->subfigures_tiledata = malloc(4*sizeof(float));
+	a[0] = nrows;
+	a[1] = ncols;
+	a[2] = a[3] = 0; // xygap (the reason for using float)
+	fig->subfigures_tile = kahto_subfigures_tile_rectangular;
+	fig->subfigures_tile_locked_wh = kahto_subfigures_tile_rectangular_locked_wh;
+	return fig->subfigures_tile(fig), fig;
 }
 
 struct kahto_figure* kahto_subfigures_grid_new(int nrows, int ncols, float *yarr, float *xarr, unsigned xyowner) {
@@ -958,6 +978,7 @@ struct kahto_figure* kahto_destroy_single(struct kahto_figure *fig) {
 	/* Subfigures must be destroyed already or referenced by other pointers. */
 	free(fig->subfigures);
 	free(fig->subfigures_xywh);
+	free(fig->subfigures_tiledata);
 
 	for (int i=0; i<fig->naxis; i++)
 		kahto_destroy_axis(fig->axis[i]);
@@ -1127,10 +1148,10 @@ void kahto_grid_halfway_on_arbitrary(struct kahto_axis *ax) {
 }
 
 static void subfigures_xywh_to_pixels(struct kahto_figure *fig, int islot, int px[4], const int *xywh) {
-	px[0] = iroundpos(fig->subfigures_xywh[islot][0] * xywh[2]) + xywh[0];
-	px[1] = iroundpos(fig->subfigures_xywh[islot][1] * xywh[3]) + xywh[1];
-	px[2] = iroundpos(fig->subfigures_xywh[islot][2] * xywh[2]);
-	px[3] = iroundpos(fig->subfigures_xywh[islot][3] * xywh[3]);
+	px[0] = fig->subfigures_xywh[islot][0] * xywh[2] + xywh[0];
+	px[1] = fig->subfigures_xywh[islot][1] * xywh[3] + xywh[1];
+	px[2] = fig->subfigures_xywh[islot][2] * xywh[2];
+	px[3] = fig->subfigures_xywh[islot][3] * xywh[3];
 	if (px[0] + px[2] > fig->wh[0])
 		px[2] = fig->wh[0] - px[0];
 	if (px[1] + px[3] > fig->wh[1])

@@ -824,10 +824,15 @@ void kahto_layout(struct kahto_figure *fig) {
 		struct kahto_figure *fig1 = fig->subfigures[i];
 		int wh[] = {fig1->wh[0], fig1->wh[1]};
 		kahto_layout(fig1);
+		/* Move subfigures towards center from top and left,
+		   possibly allowing to crop the figure on top or left. */
 		for (int idim=0; idim<2; idim++)
 			if (fig1->wh[idim] < wh[idim] && fig1->ro_corner[idim] == 0)
 				fig1->ro_corner[idim] += wh[idim] - fig1->wh[idim];
 	}
+
+	if (fig->subfigures_tile_locked_wh)
+		fig->subfigures_tile_locked_wh(fig); // in case sizes changed
 
 	struct kahto_align *a = fig->ro_internal->align_min;
 	while (a) {
