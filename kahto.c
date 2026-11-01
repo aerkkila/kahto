@@ -149,7 +149,7 @@ void kahto_get_legend_dims_px(struct kahto_figure *figure, int *y, int *x);
 int kahto_find_empty_rectangle(struct kahto_figure *figure, int rwidth, int rheight, int *xout, int *yout, enum kahto_placement);
 static void legend_placement(struct kahto_figure *figure);
 static void texts_placement(struct kahto_figure *figure);
-static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargin_xyxy[4]);
+static void kahto_xywh_to_subfigures(struct kahto_figure *fig);
 static void kahto_forward_graphcolor(struct kahto_graph *graph);
 
 static double __attribute__((unused)) get_time() {
@@ -319,9 +319,9 @@ static void kahto_subfigures_tile_rectangular_locked_wh(struct kahto_figure *fig
 	float ygap = ((float*)fig->subfigures_tiledata)[3];
 	if (ygap < 0) ygap = xgap;
 	if (xgap < 0) xgap = ygap;
-	int top = 0;
+	int top = fig->ro_inner_xywh[1];
 	for (int irow=0; irow<nrows; irow++) {
-		int left = 0, rowh = 0;
+		int left = fig->ro_inner_xywh[0], rowh = 0;
 		for (int icol=0; icol<ncols; icol++) {
 			struct kahto_figure *fig1 = fig->subfigures[irow*ncols+icol];
 			if (!fig1)
@@ -1164,10 +1164,8 @@ static void subfigures_xywh_to_pixels(struct kahto_figure *fig, int islot, int p
 		px[3] = fig->wh[1] - px[1];
 }
 
-static void kahto_xywh_to_subfigures(struct kahto_figure *fig, const int pxmargin_xyxy[4]) {
-	int xywh[4] = {pxmargin_xyxy[0], pxmargin_xyxy[1]};
-	xywh[2] = fig->ro_wh0[0] - pxmargin_xyxy[0] - pxmargin_xyxy[2];
-	xywh[3] = fig->ro_wh0[1] - pxmargin_xyxy[1] - pxmargin_xyxy[3];
+static void kahto_xywh_to_subfigures(struct kahto_figure *fig) {
+	int *xywh = fig->ro_inner_xywh;
 	for (int isub=0; isub<fig->nsubfigures; isub++) {
 		if (!fig->subfigures[isub])
 			continue;

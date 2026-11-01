@@ -562,7 +562,7 @@ static int fit_to_figure(struct kahto_axis **axis_xyxy, int limits[4][2]) {
 /* This will make people freak out. */
 #define return return fig->ro_cannot_draw =
 
-static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
+static int kahto_figure_layout(struct kahto_figure *fig) {
 	kahto_get_ttra(fig);
 	if (!fig->ttra->initialized)
 		ttra_init(fig->ttra);
@@ -588,6 +588,7 @@ layout_again_except_wh:
 			axis->ticks->init(axis->ticks, axis->min, axis->max);
 	}
 
+	int imargin_xyxy[4];
 	for (int i=0; i<4; i++)
 		imargin_xyxy[i] = topixels(fig->margin[i], fig);
 	for (int i=0; i<fig->naxis; i++)
@@ -808,14 +809,13 @@ static void align_axis_max(struct kahto_align *restrict a) {
 }
 
 void kahto_layout(struct kahto_figure *fig) {
-	int pxmargin_xyxy[4];
 	/* first this figure because title and outside axes etc. affect subfigure sizes */
 	fig->ro_internal->subfiguresize_ready = 0;
-	if (kahto_figure_layout(fig, pxmargin_xyxy) && fig->fix_too_little_space) {
+	if (kahto_figure_layout(fig) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
-		kahto_figure_layout(fig, pxmargin_xyxy);
+		kahto_figure_layout(fig);
 	}
-	kahto_xywh_to_subfigures(fig, pxmargin_xyxy);
+	kahto_xywh_to_subfigures(fig);
 
 	/* then subfigures */
 	for (int i=0; i<fig->nsubfigures; i++) {
@@ -846,8 +846,8 @@ void kahto_layout(struct kahto_figure *fig) {
 	}
 
 	/* this figure again because figure sizes may change affecting the layout */
-	if (kahto_figure_layout(fig, pxmargin_xyxy) && fig->fix_too_little_space) {
+	if (kahto_figure_layout(fig) && fig->fix_too_little_space) {
 		fig->fix_too_little_space(fig);
-		kahto_figure_layout(fig, pxmargin_xyxy);
+		kahto_figure_layout(fig);
 	}
 }
