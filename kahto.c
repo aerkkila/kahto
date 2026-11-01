@@ -15,8 +15,8 @@
 
 #define min(a,b) ((a) < (b) ? a : (b))
 #define max(a,b) ((a) > (b) ? a : (b))
-#define update_min(a, b) ((a) = min(a,b))
-#define update_max(a, b) ((a) = max(a,b))
+#define update_min(a, b) ((a) = min(b,a))
+#define update_max(a, b) ((a) = max(b,a))
 #define arrlen(a) (sizeof(a) / sizeof(*(a)))
 #define RGB(r, g, b) (0xff<<24 | (r)<<16 | (g)<<8 | (b)<<0)
 #define xywh_to_area(xywh) {(xywh)[0], (xywh)[1], (xywh)[2]+(xywh)[0], (xywh)[3]+(xywh)[1]}
