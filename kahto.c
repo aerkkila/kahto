@@ -507,7 +507,7 @@ int kahto_isubfigure_from_coords(struct kahto_figure *fig0, int x, int y) {
 	return -1;
 }
 
-void kahto_check_dataminmax(struct kahto_data *data, int yxz) {
+void kahto_check_dataminmax(struct kahto_data *data) {
 	unsigned range_isset = data->have_minmax;
 
 	int sublength = data->sublength;
@@ -557,7 +557,7 @@ void kahto_make_range(struct kahto_figure *figure) {
 			struct kahto_data *data = graph->data.arr[yxz];
 			if (!data || !data->length)
 				continue;
-			kahto_check_dataminmax(data, yxz);
+			kahto_check_dataminmax(data);
 			struct kahto_axis *axis = yxz < arrlen(graph->yxaxis) ? graph->yxaxis[yxz] : graph->yxaxis[0];
 			used_axis[kahto_get_iaxis(axis)] = 1;
 			// errordata uses yaxis
@@ -586,6 +586,12 @@ void kahto_make_range(struct kahto_figure *figure) {
 	for (int i=0; i<figure->naxis; i++)
 		if (used_axis[i])
 			figure->axis[i]->range_isset = kahto_minbit | kahto_maxbit;
+}
+
+struct kahto_data* kahto_update_datarange(struct kahto_data *data) {
+	data->have_minmax = 0;
+	kahto_check_dataminmax(data);
+	return data;
 }
 
 static void set_icolor(struct kahto_graph *graph) {

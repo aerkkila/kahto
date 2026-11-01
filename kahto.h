@@ -693,6 +693,7 @@ static inline struct kahto_axis* kahto_set_max(struct kahto_axis *axis, double m
 	return axis;
 }
 void kahto_same_range(struct kahto_axis **axs, int naxs);
+struct kahto_data* kahto_update_datarange(struct kahto_data *data);
 
 /* get latest graph */
 static inline struct kahto_graph* kahto_glg(struct kahto_figure *fig) {
