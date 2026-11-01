@@ -25,6 +25,46 @@ static inline uint32_t from_cmap(const unsigned char *ptr) {
 void kahto_fill_box(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color);
 void kahto_fill_box_safe(uint32_t *canvas, int ystride, const int *restrict area, uint32_t color, const int *maxarea);
 
+void kahto_init_get_datapx(struct kahto_get_datapx *out, struct kahto_graph *graph) {
+	int yxlogscale[] = {graph->yxaxis[0]->logscale, graph->yxaxis[1]->logscale};
+	struct kahto_data
+		*xdata = graph->data.list.xdata,
+		*ydata = graph->data.list.ydata;
+
+	*out = (struct kahto_get_datapx) {
+		.yxmultiplier = {1, 1},
+		.yxmin = { graph->yxaxis[0]->min, graph->yxaxis[1]->min, },
+		.get_yxpx = { get_datapx_inv[ydata->type], get_datapx[xdata->type], },
+	};
+	out->yxdiff[0] = graph->yxaxis[0]->max - out->yxmin[0];
+	out->yxdiff[1] = graph->yxaxis[1]->max - out->yxmin[1];
+
+	for (int iyx=0; iyx<2; iyx++)
+		if (yxlogscale[iyx]) {
+			// convert from log_e to log_base
+			out->yxmultiplier[iyx] = 1 / log(graph->yxaxis[iyx]->ticks->tickerdata.log.base);
+			if (iyx == 0)
+				out->get_yxpx[0] = get_datapx_log_inv[ydata->type];
+			else
+				out->get_yxpx[1] = get_datapx_log[xdata->type];
+			out->yxmin[iyx] = log(out->yxmin[iyx]) * out->yxmultiplier[iyx];
+			out->yxdiff[iyx] = log(graph->yxaxis[iyx]->max) * out->yxmultiplier[iyx] - out->yxmin[iyx];
+		}
+
+
+	struct kahto_data *edatalist[] = { graph->data.list.e0data, graph->data.list.e1data, };
+	for (int iedata=0; iedata<arrlen(edatalist); iedata++) {
+		struct kahto_data *edata = edatalist[iedata];
+		if (edata)
+			out->get_epx[iedata] =
+				yxlogscale[0] ? get_datapx_log_inv[edata->type] :
+				get_datapx_inv[edata->type];
+	}
+
+	for (int i=0; i<2; i++)
+		out->yxlen[i] = graph->yxaxis[i]->ro_minmaxpos[1] - graph->yxaxis[i]->ro_minmaxpos[0] + 1;
+}
+
 #include "kahto_draw_line.c" // future default method
 #include "kahto_draw_line_more.c" // other methods
 #include "kahto_draw_graph.c"

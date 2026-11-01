@@ -767,6 +767,24 @@ void kahto_draw_grid(struct kahto_figure *figure, uint32_t *canvas, int ystride)
 void kahto_draw(struct kahto_figure *fig, uint32_t *canvas, int ystride);
 void kahto_fill_triangle(uint32_t *canvas, int ystride, const float *xycorners, uint32_t color, const int *xyminmax);
 
+/* Conversion from datacoordinates to pixelcoordinates in the figure.
+   Can be useful when custom-drawing things with the kahto_figure.after_drawing function. */
+struct kahto_get_datapx {
+	double yxmultiplier[2], yxmin[2], yxdiff[2], yxlen[2];
+	int (*get_yxpx[2])(const void *vdata, long ind, double axismin, double axisdiff, int axislen, double mul);
+	int (*get_epx[2])(const void *vdata, long ind, double axismin, double axisdiff, int axislen, double mul);
+};
+void kahto_init_get_datapx(struct kahto_get_datapx *out, struct kahto_graph *graph);
+static inline int kahto_get_datapx_y(struct kahto_get_datapx get, const void *data, long ind) {
+	return get.get_yxpx[0](data, ind, get.yxmin[0], get.yxdiff[0], get.yxlen[0], get.yxmultiplier[0]);
+}
+static inline int kahto_get_datapx_x(struct kahto_get_datapx get, const void *data, long ind) {
+	return get.get_yxpx[1](data, ind, get.yxmin[1], get.yxdiff[1], get.yxlen[1], get.yxmultiplier[1]);
+}
+static inline int kahto_get_datapx_e(struct kahto_get_datapx get, int which_e, const void *data, long ind) {
+	return get.get_epx[which_e](data, ind, get.yxmin[0], get.yxdiff[0], get.yxlen[0], get.yxmultiplier[0]);
+}
+
 float __attribute__((malloc))* kahto_f4arr(int n, double terminator, ...);
 
 #ifndef KAHTO_NO_VERSION_CHECK

@@ -130,45 +130,19 @@ void kahto_draw_graph_markers
 		*ydata = graph->data.list.ydata,
 		*zdata = graph->data.list.zdata;
 
-	int yxlogscale[] = {graph->yxaxis[0]->logscale, graph->yxaxis[1]->logscale};
-	double yxmultiplier[] = {1, 1};
-	typeof(get_datapx[0]) get_yxpx[] = {
-		get_datapx_inv[ydata->type],
-		get_datapx[xdata->type],
-	};
+	struct kahto_get_datapx getpx;
+	kahto_init_get_datapx(&getpx, graph);
+	int area[] = xywh_to_area(fig->ro_inner_xywh);
 
-	double yxmin[] = {
-		graph->yxaxis[0]->min,
-		graph->yxaxis[1]->min,
-	};
-	double yxdiff[] = {
-		graph->yxaxis[0]->max - yxmin[0],
-		graph->yxaxis[1]->max - yxmin[1],
-	};
-
-	for (int iyx=0; iyx<2; iyx++)
-		if (yxlogscale[iyx]) {
-			// convert from log_e to log_base
-			yxmultiplier[iyx] = 1 / log(graph->yxaxis[iyx]->ticks->tickerdata.log.base);
-			if (iyx == 0)
-				get_yxpx[0] = get_datapx_log_inv[ydata->type];
-			else
-				get_yxpx[1] = get_datapx_log[xdata->type];
-			yxmin[iyx] = log(yxmin[iyx]) * yxmultiplier[iyx];
-			yxdiff[iyx] = log(graph->yxaxis[iyx]->max) * yxmultiplier[iyx] - yxmin[iyx];
-		}
-
-	int startpos_yx[2], yxlen[2];
-	for (int i=0; i<2; i++) {
-		yxlen[i] = graph->yxaxis[i]->ro_minmaxpos[1] - graph->yxaxis[i]->ro_minmaxpos[0] + 1;
+	int startpos_yx[2];
+	for (int i=0; i<2; i++)
 		startpos_yx[i] = graph->yxaxis[i]->ro_minmaxpos[0];
-	}
 	struct kahto_axis *caxis = graph->yxaxis[2];
 
 	/* help for xdata */
 	double xstep = xdata->length > 1 ? (xdata->minmax[1] - xdata->minmax[0]) / (xdata->length-1) : 0;
-	double xpix_per_step = yxlen[1] / yxdiff[1] * xstep;
-	double x0data_axis = xdata->minmax[0] - yxmin[1];
+	double xpix_per_step = getpx.yxlen[1] / getpx.yxdiff[1] * xstep;
+	double x0data_axis = xdata->minmax[0] - getpx.yxmin[1];
 	/* help for zdata */
 	double caxislim[3] = {0/0.0, 0/0.0, 0/0.0};
 	typeof(get_datalevel[0]) get_datalevel_fun = NULL;
@@ -199,9 +173,8 @@ void kahto_draw_graph_markers
 		draw_data_fun = draw_data_xyc_list;
 
 	int xoffset = xdata->data ? 0 :
-		get_datapx[kahto_f8](&graph->xoffset, 0, yxmin[1], yxdiff[1], yxlen[1], 1);
+		get_datapx[kahto_f8](&graph->xoffset, 0, getpx.yxmin[1], getpx.yxdiff[1], getpx.yxlen[1], 1);
 
-	int area[] = xywh_to_area(fig->ro_inner_xywh);
 	struct kahto_data *edatalist[] = {
 		graph->data.list.e0data,
 		graph->data.list.e1data,
@@ -218,18 +191,9 @@ void kahto_draw_graph_markers
 		args->sublength = ysublen;
 	}
 
-	typeof(get_datapx[0]) get_epx[arrlen(edatalist)];
-	for (int iedata=0; iedata<arrlen(edatalist); iedata++) {
-		struct kahto_data *edata = edatalist[iedata];
-		if (edata)
-			get_epx[iedata] =
-				yxlogscale[0] ? get_datapx_log_inv[edata->type] :
-				get_datapx_inv[edata->type];
-	}
-
 	for (int ipoint=0; ipoint<end; ipoint++) {
 		if (xdata->data) {
-			yxz[1] = get_yxpx[1](xdata->data, ipoint*xdata->stride, yxmin[1], yxdiff[1], yxlen[1], yxmultiplier[1]);
+			yxz[1] = kahto_get_datapx_x(getpx, xdata->data, ipoint*xdata->stride);
 			if (yxz[1] == NOT_A_PIXEL)
 				continue;
 		}
@@ -240,7 +204,7 @@ void kahto_draw_graph_markers
 				yxz[2] = get_datalevel_fun(zdata->data, ipoint*zdata->stride, caxislim, 255)) == NOT_A_PIXEL)
 			continue;
 		if (!ysublen) {
-			yxz[0] = get_yxpx[0](ydata->data, ipoint*ystride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
+			yxz[0] = kahto_get_datapx_y(getpx, ydata->data, ipoint*ystride);
 			if (yxz[0] == NOT_A_PIXEL)
 				continue;
 			yxz[0] += startpos_yx[0];
@@ -249,8 +213,7 @@ void kahto_draw_graph_markers
 			xzy_[0] = yxz[1];
 			xzy_[1] = yxz[2];
 			for (int iy=0; iy<ysublen; iy++)
-				xzy_[2+iy] = get_yxpx[0](ydata->data, ipoint*ystride+iy, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0])
-					+ startpos_yx[0];
+				xzy_[2+iy] = kahto_get_datapx_y(getpx, ydata->data, ipoint*ystride+iy) + startpos_yx[0];
 		}
 
 		args->ipoint = ipoint;
@@ -260,7 +223,7 @@ void kahto_draw_graph_markers
 			struct kahto_data *edata = edatalist[iedata];
 			if (!edata)
 				continue;
-			int y = get_epx[iedata](edata->data, ipoint*edata->stride, yxmin[0], yxdiff[0], yxlen[0], yxmultiplier[0]);
+			int y = kahto_get_datapx_e(getpx, iedata, edata->data, ipoint*edata->stride);
 			if (y == NOT_A_PIXEL)
 				continue;
 			y += startpos_yx[0];
