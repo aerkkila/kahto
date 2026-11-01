@@ -567,6 +567,14 @@ static int kahto_figure_layout(struct kahto_figure *fig, int imargin_xyxy[4]) {
 	if (!fig->ttra->initialized)
 		ttra_init(fig->ttra);
 	kahto_make_range(fig);
+	for (int i=fig->naxis-1; i>=0; i--) {
+		struct kahto_axis *a = fig->axis[i];
+		if (a->min == a->max) { // there will be segfault if these are the same
+			double diff = (fabs(a->min) + 1) * 1e-3;
+			a->min -= diff;
+			a->max += diff;
+		}
+	}
 
 	memcpy(fig->wh, fig->ro_wh0, sizeof(fig->wh));
 
